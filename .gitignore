@@ -17,3 +17,4 @@ t/tdata/*.rng
 dist/build-env-cmds
 *_flymake*
 *~
+/target
