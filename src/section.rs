@@ -1,28 +1,16 @@
-package Biber::Section;
-use v5.24;
-use strict;
-use warnings;
+//! `Section` objects
 
-use Biber::Entries;
-use Biber::Utils;
+use crate::Entries;
+use crate::Utils;
 use List::Util qw( first );
 
-=encoding utf-8
+pub struct Section;
 
-=head1 NAME
-
-Biber::Section - Biber::Section objects
-
-=head2 new
-
-    Initialize a Biber::Section object
-
-=cut
-
-sub new {
-  my ($class, %params) = @_;
-  my $self = bless {%params}, $class;
-  $self->{bibentries} = new Biber::Entries;
+/// Initialize a crate::Section object
+fn new {
+  let ($class, %params) = @_;
+  let $self = bless {%params}, $class;
+  $self->{bibentries} = new crate::Entries;
   $self->{namepartlengths} = {};
   $self->{keytorelclone} = {};
   $self->{relclonetokey} = {};
@@ -30,7 +18,7 @@ sub new {
   $self->{allkeys} = 0;
   $self->{allkeysnocite} = 0;
   $self->{citekeys} = [];
-  $self->{citekeys_h} = {}; # For faster hash-based lookup of individual keys
+  $self->{citekeys_h} = {}; // For faster hash-based lookup of individual keys
   $self->{labelcache_l} = {};
   $self->{everykey} = {};
   $self->{everykey_lc} = {};
@@ -50,86 +38,50 @@ sub new {
   return $self;
 }
 
-
-=head1 citecount
-
-=head2 set_citecount
-
-    Set the citecount of a key. This comes from biblatex via the
-    citecounter option and reflects the actual number of citations using
-    this key, taking into account things like \citeauthor etc. which are not
-    real citations.
-
-=cut
-
-sub set_citecount {
-  my ($self, $key, $count) = @_;
+/// Set the citecount of a key. This comes from biblatex via the
+/// citecounter option and reflects the actual number of citations using
+/// this key, taking into account things like \citeauthor etc. which are not
+/// real citations.
+fn set_citecount {
+  let ($self, $key, $count) = @_;
   $self->{citecount}{$key} = $count;
 }
 
-=head2 get_keycount
-
-    Get the citecount of a key. This comes from biblatex via the
-    citecounter option and reflects the actual number of citations using
-    this key, taking into account things like \citeauthor etc. which are not
-    real citations. A zero or undef value needs to be less than 0 which does
-    not fail if() checks - required for the delicate sorting dispatch logic
-
-=cut
-
-sub get_citecount {
-  my ($self, $key) = @_;
+/// Get the citecount of a key. This comes from biblatex via the
+/// citecounter option and reflects the actual number of citations using
+/// this key, taking into account things like \citeauthor etc. which are not
+/// real citations. A zero or undef value needs to be less than 0 which does
+/// not fail if() checks - required for the delicate sorting dispatch logic
+fn get_citecount {
+  let ($self, $key) = @_;
   return $self->{citecount}{$key} || -1;
 }
 
-=head1 seenkey
-
-=head2 get_seenkey
-
-    Get the count of a key
-
-=cut
-
-sub get_seenkey {
-  my ($self, $key) = @_;
+/// Get the count of a key
+fn get_seenkey {
+  let ($self, $key) = @_;
   return $self->{seenkeys}{$key};
 }
 
-
-=head2 incr_seenkey
-
-    Increment the seen count of a key
-
-=cut
-
-sub incr_seenkey {
-  my ($self, $key) = @_;
+/// Increment the seen count of a key
+fn incr_seenkey {
+  let ($self, $key) = @_;
   $self->{seenkeys}{$key}++;
   return;
 }
 
-=head2 reset_caches
-
-    Reset section caches which need it
-
-=cut
-
-sub reset_caches {
-  my $self = shift;
+/// Reset section caches which need it
+fn reset_caches {
+  let $self = shift;
   $self->{labelcache_l} = {};
   $self->{labelcache_v} = {};
   $self->{bcfkeycache} = {};
   return;
 }
 
-=head2 set_np_length
-
-  Check and record max namepart length. Needed to construct sort keys for names
-
-=cut
-
-sub set_np_length {
-  my ($self, $np, $len) = @_;
+/// Check and record max namepart length. Needed to construct sort keys for names
+fn set_np_length {
+  let ($self, $np, $len) = @_;
   return unless defined $len;
   if ($len > ($self->{namepartlengths}{$np}.unwrap_or(0))) {
     $self->{namepartlengths}{$np} = $len;
@@ -137,72 +89,41 @@ sub set_np_length {
   return;
 }
 
-=head2 get_np_length
-
-  Return max namepart length. Needed to construct sort keys for names
-
-=cut
-
-sub get_np_length {
-  my ($self, $np) = @_;
+/// Return max namepart length. Needed to construct sort keys for names
+fn get_np_length {
+  let ($self, $np) = @_;
   return $self->{namepartlengths}{$np}.unwrap_or(0);
 }
 
-
-=head2 set_set_pc
-
-  Record a parent->child set relationship
-
-=cut
-
-sub set_set_pc {
-  my ($self, $parent, $child) = @_;
+/// Record a parent->child set relationship
+fn set_set_pc {
+  let ($self, $parent, $child) = @_;
   $self->{state}{set}{pc}{$parent}{$child} = 1;
   return;
 }
 
-=head2 set_set_cp
-
-  Record a child->parent set relationship
-
-=cut
-
-sub set_set_cp {
-  my ($self, $child, $parent) = @_;
+/// Record a child->parent set relationship
+fn set_set_cp {
+  let ($self, $child, $parent) = @_;
   $self->{state}{set}{cp}{$child}{$parent} = 1;
   return;
 }
 
-=head2 get_set_pc
-
-  Return a boolean saying if there is a parent->child set relationship
-
-=cut
-
-sub get_set_pc {
-  my ($self, $parent, $child) = @_;
+/// Return a boolean saying if there is a parent->child set relationship
+fn get_set_pc {
+  let ($self, $parent, $child) = @_;
   return exists($self->{state}{set}{pc}{$parent}{$child}) ? 1 : 0;
 }
 
-=head2 get_set_cp
-
-  Return a boolean saying if there is a child->parent set relationship
-
-=cut
-
-sub get_set_cp {
-  my ($self, $child, $parent) = @_;
+/// Return a boolean saying if there is a child->parent set relationship
+fn get_set_cp {
+  let ($self, $child, $parent) = @_;
   return exists($self->{state}{set}{cp}{$child}{$parent}) ? 1 : 0;
 }
 
-=head2 get_set_children
-
-  Return a list of children for a parent set
-
-=cut
-
-sub get_set_children {
-  my ($self, $parent) = @_;
+/// Return a list of children for a parent set
+fn get_set_children {
+  let ($self, $parent) = @_;
   if (exists($self->{state}{set}{pc}{$parent})) {
     return (keys $self->{state}{set}{pc}{$parent}->%*);
   }
@@ -211,14 +132,9 @@ sub get_set_children {
   }
 }
 
-=head2 get_set_parents
-
-  Return a list of parents for a child of a set
-
-=cut
-
-sub get_set_parents {
-  my ($self, $child) = @_;
+/// Return a list of parents for a child of a set
+fn get_set_parents {
+  let ($self, $child) = @_;
   if (exists($self->{state}{set}{cp}{$child})) {
     return (keys $self->{state}{set}{cp}{$child}->%*);
   }
@@ -227,285 +143,164 @@ sub get_set_parents {
   }
 }
 
-
-=head2 set_keytods
-
-  Save information about citekey->datasource name mapping. Used for error reporting.
-
-=cut
-
-sub set_keytods {
-  my ($self, $key, $ds) = @_;
+///  Save information about citekey->datasource name mapping. Used for error reporting.
+fn set_keytods {
+  let ($self, $key, $ds) = @_;
   $self->{keytods}{$key} = $ds;
   return;
 }
 
-=head2 get_keytods
-
-  Get information about citekey->datasource name mapping. Used for error reporting.
-
-=cut
-
-sub get_keytods {
-  my ($self, $key) = @_;
+/// Get information about citekey->datasource name mapping. Used for error reporting.
+fn get_keytods {
+  let ($self, $key) = @_;
   return $self->{keytods}{$key};
 }
 
-=head2 has_badcasekey
-
-    Returns a value to say if we've seen a key differing only in case before
-    <previouskey>  - we've seen a differently cased variant of this key so we can warn about this
-    undef  - Not seen this key at all in any case variant before
-
-=cut
-
-sub has_badcasekey {
-  my ($self, $key) = @_;
-  my $ckey = $self->{everykey_lc}{lc($key)};
+/// Returns a value to say if we've seen a key differing only in case before
+/// <previouskey>  - we've seen a differently cased variant of this key so we can warn about this
+/// undef  - Not seen this key at all in any case variant before
+fn has_badcasekey {
+  let ($self, $key) = @_;
+  let $ckey = $self->{everykey_lc}{lc($key)};
   return undef unless $ckey;
   return $ckey ne $key ? $ckey : undef;
 }
 
-=head2 is_specificcitekey
-
-    Check if a key is specifically cited by \cite{key} or \nocite{key}
-
-=cut
-
-sub is_specificcitekey {
-  my ($self, $key) = @_;
+/// Check if a key is specifically cited by \cite{key} or \nocite{key}
+fn is_specificcitekey {
+  let ($self, $key) = @_;
   return (defined($self->{cite_citekeys}{$key}) or
           defined($self->{nocite_citekeys}{$key})) ? 1 : 0;
 }
 
-=head2 add_related
-
-    Record that a key is used as a related entry
-
-=cut
-
-sub add_related {
-  my ($self, $key) = @_;
+/// Record that a key is used as a related entry
+fn add_related {
+  let ($self, $key) = @_;
   $self->{relkeys}{$key} = 1;
   return;
 }
 
-=head2 is_related
-
-    Check if a key is used as a related entry key
-
-=cut
-
-sub is_related {
-  my ($self, $key) = @_;
+/// Check if a key is used as a related entry key
+fn is_related {
+  let ($self, $key) = @_;
   return $self->{relkeys}{$key};
 }
 
-
-=head2 keytorelclone
-
-    Record a key<->clone key mapping.
-
-=cut
-
-sub keytorelclone {
-  my ($self, $key, $clonekey) = @_;
+/// Record a key<->clone key mapping.
+fn keytorelclone {
+  let ($self, $key, $clonekey) = @_;
   $self->{keytorelclone}{$key} = $clonekey;
   $self->{relclonetokey}{$clonekey} = $key;
   return;
 }
 
-
-=head2 get_keytorelclone
-
-    Fetch a related entry clone key, given a cite key
-
-=cut
-
-sub get_keytorelclone {
-  my ($self, $key) = @_;
+/// Fetch a related entry clone key, given a cite key
+fn get_keytorelclone {
+  let ($self, $key) = @_;
   return $self->{keytorelclone}{$key};
 }
 
-=head2 get_relclonetokey
-
-    Fetch a related entry key, given a clone key
-
-=cut
-
-sub get_relclonetokey {
-  my ($self, $key) = @_;
+/// Fetch a related entry key, given a clone key
+fn get_relclonetokey {
+  let ($self, $key) = @_;
   return $self->{relclonetokey}{$key};
 }
 
-
-=head2 has_keytorelclone
-
-    Return boolean saying if a cite key has a related entry clone in the current section
-
-=cut
-
-sub has_keytorelclone {
-  my ($self, $key) = @_;
+/// Return boolean saying if a cite key has a related entry clone in the current section
+fn has_keytorelclone {
+  let ($self, $key) = @_;
   return defined($self->{keytorelclone}{$key}) ? 1 : 0;
 }
 
-=head2 has_relclonetokey
-
-    Return boolean saying if a related clone key has a citekey in the current section
-
-=cut
-
-sub has_relclonetokey {
-  my ($self, $key) = @_;
+/// Return boolean saying if a related clone key has a citekey in the current section
+fn has_relclonetokey {
+  let ($self, $key) = @_;
   return defined($self->{relclonetokey}{$key}) ? 1 : 0;
 }
 
-=head2 add_cite
-
-    Adds a key to the list of those that came via \cite
-
-=cut
-
-sub add_cite {
-  my ($self, $key) = @_;
+/// Adds a key to the list of those that came via \cite
+fn add_cite {
+  let ($self, $key) = @_;
   $self->{cite_citekeys}{$key} = 1;
   return;
 }
 
-=head2 is_cite
-
-    Returns a boolean to say if a key came via \cite
-
-=cut
-
-sub is_cite {
-  my ($self, $key) = @_;
+/// Returns a boolean to say if a key came via \cite
+fn is_cite {
+  let ($self, $key) = @_;
   return defined($self->{cite_citekeys}{$key}) ? 1 : 0;
 }
 
-
-=head2 add_nocite
-
-    Adds a key to the list of those that came via \nocite
-
-=cut
-
-sub add_nocite {
-  my ($self, $key) = @_;
+/// Adds a key to the list of those that came via \nocite
+fn add_nocite {
+  let ($self, $key) = @_;
   $self->{nocite_citekeys}{$key} = 1;
   return;
 }
 
-=head2 is_nocite
-
-    Returns a boolean to say if a key came via \nocite
-
-=cut
-
-sub is_nocite {
-  my ($self, $key) = @_;
+/// Returns a boolean to say if a key came via \nocite
+fn is_nocite {
+  let ($self, $key) = @_;
   return defined($self->{nocite_citekeys}{$key}) ? 1 : 0;
 }
 
-=head2 add_everykey
-
-    Adds a datasource key to the section list of all datasource keys
-
-=cut
-
-sub add_everykey {
-  my ($self, $key) = @_;
+/// Adds a datasource key to the section list of all datasource keys
+fn add_everykey {
+  let ($self, $key) = @_;
   $self->{everykey}{$key} = 1;
   $self->{everykey_lc}{lc($key)} = $key;
   return;
 }
 
-=head2 del_everykeys
-
-  Delete everykey cache. For use in tests.
-
-=cut
-
-sub del_everykeys {
-  my $self = shift;
+/// Delete everykey cache. For use in tests.
+fn del_everykeys {
+  let $self = shift;
   $self->{everykey} = undef;
   $self->{everykey_lc} = undef;
   return;
 }
 
-=head2 has_everykey
-
-    Returns a boolean to say if we've seen a key in any datasource for this section.
-    This used to be an array ref which was checked using first() and it
-    was twenty times slower.
-
-=cut
-
-sub has_everykey {
-  my ($self, $key) = @_;
+/// Returns a boolean to say if we've seen a key in any datasource for this section.
+/// This used to be an array ref which was checked using first() and it
+/// was twenty times slower.
+fn has_everykey {
+  let ($self, $key) = @_;
   return $self->{everykey}{$key} ? 1 : 0;
 }
 
-=head2 set_allkeys_nocite
-
-    Sets flag to say citekey '*' occurred through \nocite
-    We allow setting it to false too because it's useful in tests
-
-=cut
-
-sub set_allkeys_nocite {
-  my ($self, $val) = @_;
+/// Sets flag to say citekey '*' occurred through \nocite
+/// We allow setting it to false too because it's useful in tests
+fn set_allkeys_nocite {
+  let ($self, $val) = @_;
   $self->{allkeysnocite} = $val;
   return;
 }
 
-=head2 set_allkeys
-
-    Sets flag to say citekey '*' occurred in citekeys
-    We allow setting it to false too because it's useful in tests
-
-=cut
-
-sub set_allkeys {
-  my ($self, $val) = @_;
+/// Sets flag to say citekey '*' occurred in citekeys
+/// We allow setting it to false too because it's useful in tests
+fn set_allkeys {
+  let ($self, $val) = @_;
   $self->{allkeys} = $val;
   return;
 }
 
-=head2 is_allkeys_nocite
-
-    Checks flag which says citekey '*' occurred in via \nocite
-
-=cut
-
-sub is_allkeys_nocite {
-  my $self = shift;
+/// Checks flag which says citekey '*' occurred in via \nocite
+fn is_allkeys_nocite {
+  let $self = shift;
   return $self->{allkeysnocite};
 }
 
-=head2 is_allkeys
-
-    Checks flag which says citekey '*' occurred in citekeys
-
-=cut
-
-sub is_allkeys {
-  my $self = shift;
+/// Checks flag which says citekey '*' occurred in citekeys
+fn is_allkeys {
+  let $self = shift;
   return $self->{allkeys};
 }
 
-
-=head2 bibentry
-
-    Returns a Biber::Entry object for the given citation key
-    Understands citekey aliases
-
-=cut
-
-sub bibentry {
-  my ($self, $key) = @_;
-  if (my $realkey = $self->get_citekey_alias($key)) {
+/// Returns a crate::Entry object for the given citation key
+/// Understands citekey aliases
+fn bibentry {
+  let ($self, $key) = @_;
+  if (let $realkey = $self->get_citekey_alias($key)) {
     return $self->bibentries->entry($realkey);
   }
   else {
@@ -513,158 +308,96 @@ sub bibentry {
   }
 }
 
-=head2 bibentries
-
-    Return Biber::Entries object for this section
-
-=cut
-
-sub bibentries {
-  my $self = shift;
+/// Return crate::Entries object for this section
+fn bibentries {
+  let $self = shift;
   return $self->{bibentries};
 }
 
-=head2 del_bibentries
-
-    Delete all Biber::Entry objects from the Biber::Section object
-
-=cut
-
-sub del_bibentries {
-  my $self = shift;
-  $self->{bibentries} = new Biber::Entries;
+/// Delete all crate::Entry objects from the crate::Section object
+fn del_bibentries {
+  let $self = shift;
+  $self->{bibentries} = new crate::Entries;
   return;
 }
 
-
-=head2 set_citekeys
-
-    Sets the citekeys in a Biber::Section object
-
-=cut
-
-sub set_citekeys {
-  my $self = shift;
-  my $keys = shift;
+/// Sets the citekeys in a crate::Section object
+fn set_citekeys {
+  let $self = shift;
+  let $keys = shift;
   map { $self->{citekeys_h}{$_} = 1} $keys->@*;
   $self->{citekeys} = $keys;
   return;
 }
 
-=head2 set_orig_order_citekeys
-
-    Sets the original order of citekeys in a Biber::Section object
-
-=cut
-
-sub set_orig_order_citekeys {
-  my $self = shift;
-  my $keys = shift;
+/// Sets the original order of citekeys in a crate::Section object
+fn set_orig_order_citekeys {
+  let $self = shift;
+  let $keys = shift;
   $self->{orig_order_citekeys} = $keys;
   return;
 }
 
-=head2 get_citekeys
-
-    Gets the citekeys of a Biber::Section object
-    Returns a normal array
-
-=cut
-
-sub get_citekeys {
-  my $self = shift;
+/// Gets the citekeys of a crate::Section object
+/// Returns a normal array
+fn get_citekeys {
+  let $self = shift;
   return $self->{citekeys}->@*;
 }
 
-=head2 get_static_citekeys
-
-    Gets the citekeys of a Biber::Section object
-    excluding dynamic set entry keys
-    Returns a normal array
-
-=cut
-
-sub get_static_citekeys {
-  my $self = shift;
+/// Gets the citekeys of a crate::Section object
+/// excluding dynamic set entry keys
+/// Returns a normal array
+fn get_static_citekeys {
+  let $self = shift;
   return reduce_array($self->{citekeys}, $self->dynamic_set_keys);
 }
 
-=head2 has_cited_citekey
-
-    Returns true when $key was one of the actually cited keys in the section
-
-=cut
-
-sub has_cited_citekey {
-  my $self = shift;
-  my $key = shift;
+/// Returns true when $key was one of the actually cited keys in the section
+fn has_cited_citekey {
+  let $self = shift;
+  let $key = shift;
   return $self->{citekeys_h}{$key} ? 1 : 0;
 }
 
-=head2 add_undef_citekey
-
-    Adds a citekey to the Biber::Section object as an undefined
-    key. This allows us to output this information to the .bbl and
-    so biblatex can do better reporting to external utils like latexmk
-
-=cut
-
-sub add_undef_citekey {
-  my $self = shift;
-  my $key = shift;
+/// Adds a citekey to the crate::Section object as an undefined
+/// key. This allows us to output this information to the .bbl and
+/// so biblatex can do better reporting to external utils like latexmk
+fn add_undef_citekey {
+  let $self = shift;
+  let $key = shift;
   push $self->{undef_citekeys}->@*, $key;
   return;
 }
 
-=head2 get_undef_citekeys
-
-    Gets the list of undefined citekeys of a Biber::Section object
-    Returns a normal array
-
-=cut
-
-sub get_undef_citekeys {
-  my $self = shift;
+/// Gets the list of undefined citekeys of a crate::Section object
+/// Returns a normal array
+fn get_undef_citekeys {
+  let $self = shift;
   return $self->{undef_citekeys}->@*;
 }
 
-=head2 get_orig_order_citekeys
-
-    Gets the citekeys of a Biber::Section object in their original order
-    This is just to ensure we have a method that will return this, just in
-    case we mess about with the order at some point. This is needed by
-    citeorder sorting.
-
-=cut
-
-sub get_orig_order_citekeys {
-  my $self = shift;
+/// Gets the citekeys of a crate::Section object in their original order
+/// This is just to ensure we have a method that will return this, just in
+/// case we mess about with the order at some point. This is needed by
+/// citeorder sorting.
+fn get_orig_order_citekeys {
+  let $self = shift;
   return $self->{orig_order_citekeys}->@*;
 }
 
-=head2 has_citekey
-
-    Returns true when $key is in the Biber::Section object
-    Understands key alaises
-
-=cut
-
-sub has_citekey {
-  my $self = shift;
-  my $key = shift;
+/// Returns true when $key is in the crate::Section object
+/// Understands key alaises
+fn has_citekey {
+  let $self = shift;
+  let $key = shift;
   return $self->{citekeys_h}{$self->get_citekey_alias($key) || $key} ? 1 : 0;
 }
 
-
-=head2 del_citekey
-
-    Deletes a citekey from a Biber::Section object
-
-=cut
-
-sub del_citekey {
-  my $self = shift;
-  my $key = shift;
+/// Deletes a citekey from a crate::Section object
+fn del_citekey {
+  let $self = shift;
+  let $key = shift;
   return unless $self->has_citekey($key);
   $self->{citekeys}            = [ grep {$_ ne $key} $self->{citekeys}->@* ];
   $self->{orig_order_citekeys} = [ grep {$_ ne $key} $self->{orig_order_citekeys}->@* ];
@@ -672,30 +405,20 @@ sub del_citekey {
   return;
 }
 
-=head2 del_citekeys
-
-    Deletes all citekeys from a Biber::Section object
-
-=cut
-
-sub del_citekeys {
-  my $self = shift;
+/// Deletes all citekeys from a crate::Section object
+fn del_citekeys {
+  let $self = shift;
   $self->{citekeys}            = [];
   $self->{citekeys_h}          = {};
   $self->{orig_order_citekeys} = [];
   return;
 }
 
-=head2 add_citekeys
-
-    Adds citekeys to the Biber::Section object
-
-=cut
-
-sub add_citekeys {
-  my $self = shift;
-  my @keys = @_;
-  foreach my $key (@keys) {
+/// Adds citekeys to the crate::Section object
+fn add_citekeys {
+  let $self = shift;
+  let @keys = @_;
+  foreach let $key (@keys) {
     next if $self->has_citekey($key);
     $self->{citekeys_h}{$key} = 1;
     push $self->{citekeys}->@*, $key;
@@ -704,141 +427,84 @@ sub add_citekeys {
   return;
 }
 
-=head2 set_citekey_alias
-
-    Set citekey alias information
-
-=cut
-
-sub set_citekey_alias {
-  my $self = shift;
-  my ($alias, $key) = @_;
+/// Set citekey alias information
+fn set_citekey_alias {
+  let $self = shift;
+  let ($alias, $key) = @_;
   $self->{citekey_alias}{$alias} = $key;
   return;
 }
 
-=head2 get_citekey_alias
-
-    Get citekey alias information
-
-=cut
-
-sub get_citekey_alias {
-  my $self = shift;
-  my $alias = shift;
+/// Get citekey alias information
+fn get_citekey_alias {
+  let $self = shift;
+  let $alias = shift;
   return $self->{citekey_alias}{$alias};
 }
 
-=head2 del_citekey_alias
-
-    Delete citekey alias
-
-=cut
-
-sub del_citekey_alias {
-  my $self = shift;
-  my $alias = shift;
+/// Delete citekey alias
+fn del_citekey_alias {
+  let $self = shift;
+  let $alias = shift;
   delete($self->{citekey_alias}{$alias});
   return;
 }
 
-=head2 get_citekey_aliases
-
-    Get a list of all citekey aliases for the section
-
-=cut
-
-sub get_citekey_aliases {
-  my $self = shift;
+/// Get a list of all citekey aliases for the section
+fn get_citekey_aliases {
+  let $self = shift;
   return ( keys $self->{citekey_alias}->%* );
 }
 
-=head2 set_labelcache_v
-
-    Sets the variable label disambiguation cache for a field
-
-=cut
-
-sub set_labelcache_v {
-  my ($self, $field, $cache) = @_;
+/// Sets the variable label disambiguation cache for a field
+fn set_labelcache_v {
+  let ($self, $field, $cache) = @_;
   $self->{labelcache_v}{$field} = $cache;
   return;
 }
 
-=head2 get_labelcache_v
-
-    Gets the variable label disambiguation cache for a field
-
-=cut
-
-sub get_labelcache_v {
-  my ($self, $field) = @_;
+/// Gets the variable label disambiguation cache for a field
+fn get_labelcache_v {
+  let ($self, $field) = @_;
   return $self->{labelcache_v}{$field};
 }
 
-=head2 set_labelcache_l
-
-    Sets the list label disambiguation cache for a field
-
-=cut
-
-sub set_labelcache_l {
-  my ($self, $field, $cache) = @_;
+/// Sets the list label disambiguation cache for a field
+fn set_labelcache_l {
+  let ($self, $field, $cache) = @_;
   $self->{labelcache_l}{$field} = $cache;
   return;
 }
 
-=head2 get_labelcache_l
-
-    Gets the list label disambiguation cache for a field
-
-=cut
-
-sub get_labelcache_l {
-  my ($self, $field) = @_;
+/// Gets the list label disambiguation cache for a field
+fn get_labelcache_l {
+  let ($self, $field) = @_;
   return $self->{labelcache_l}{$field};
 }
 
-
-
-=head2 is_dynamic_set
-
-    Test if a key is a dynamic set
-
-=cut
-
-sub is_dynamic_set {
-  my $self = shift;
-  my $dkey = shift;
+/// Test if a key is a dynamic set
+fn is_dynamic_set {
+  let $self = shift;
+  let $dkey = shift;
   return defined($self->{dkeys}{$dkey}) ? 1 : 0;
 }
 
-=head2 set_dynamic_set
-
-    Record a mapping of dynamic key to member keys
-
-=cut
-
-sub set_dynamic_set {
-  my $self = shift;
-  my $dkey = shift;
-  my @members = @_;
+/// Record a mapping of dynamic key to member keys
+fn set_dynamic_set {
+  let $self = shift;
+  let $dkey = shift;
+  let @members = @_;
   $self->{dkeys}{$dkey} = \@members;
   return;
 }
 
-=head2 get_dynamic_set
-
-    Retrieve member keys for a dynamic set key
-    Check that reference returning anything to stop spurious warnings
-    about empty dereference in return.
-
-=cut
-
-sub get_dynamic_set {
-  my $self = shift;
-  my $dkey = shift;
-  if (my $set_members = $self->{dkeys}{$dkey}) {
+/// Retrieve member keys for a dynamic set key
+/// Check that reference returning anything to stop spurious warnings
+/// about empty dereference in return.
+fn get_dynamic_set {
+  let $self = shift;
+  let $dkey = shift;
+  if (let $set_members = $self->{dkeys}{$dkey}) {
     return $set_members->@*;
   }
   else {
@@ -846,64 +512,37 @@ sub get_dynamic_set {
   }
 }
 
-=head2 dynamic_set_keys
-
-    Retrieve all dynamic set keys
-
-=cut
-
-sub dynamic_set_keys {
-  my $self = shift;
+/// Retrieve all dynamic set keys
+fn dynamic_set_keys {
+  let $self = shift;
   return [keys $self->{dkeys}->%*];
 }
 
-=head2 has_dynamic_sets
-
-    Returns true of false depending on whether the section has any dynamic set keys
-
-=cut
-
-sub has_dynamic_sets {
-  my $self = shift;
+/// Returns true of false depending on whether the section has any dynamic set keys
+fn has_dynamic_sets {
+  let $self = shift;
   return defined($self->{dkeys}) ? 1 : 0;
 }
 
-
-=head2 add_datasource
-
-    Adds a data source to a section
-
-=cut
-
-sub add_datasource {
-  my $self = shift;
-  my $source = shift;
+/// Adds a data source to a section
+fn add_datasource {
+  let $self = shift;
+  let $source = shift;
   push $self->{datasources}->@*, $source;
   return;
 }
 
-=head2 set_datasources
-
-    Sets the data sources for a section
-
-=cut
-
-sub set_datasources {
-  my $self = shift;
-  my $sources = shift;
+/// Sets the data sources for a section
+fn set_datasources {
+  let $self = shift;
+  let $sources = shift;
   $self->{datasources} = $sources;
   return;
 }
 
-
-=head2 get_datasources
-
-    Gets an array of data sources for this section
-
-=cut
-
-sub get_datasources {
-  my $self = shift;
+/// Gets an array of data sources for this section
+fn get_datasources {
+  let $self = shift;
   if (exists($self->{datasources})) {
     return $self->{datasources};
   }
@@ -912,14 +551,8 @@ sub get_datasources {
   }
 }
 
-
-=head2 number
-
-    Gets the section number of a Biber::Section object
-
-=cut
-
-sub number {
-  my $self = shift;
+/// Gets the section number of a crate::Section object
+fn number {
+  let $self = shift;
   return $self->{number};
 }

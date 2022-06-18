@@ -1,75 +1,64 @@
-package Biber::Date::Format;
-use v5.24;
+//! `date::Format` objects
 
-use strict;
 use Carp;
 use DateTime;
 use DateTime::TimeZone;
 use DateTime::Format::Builder;
 use DateTime::Calendar::Julian;
 use Unicode::UCD qw(num);
-use Biber::Constants;
+use crate::Constants;
 
-=encoding utf-8
+/// Implements ISO8601-2 Extended Format and also allows detection of
+/// missing month/year.
+pub struct Format;
 
-=head1 NAME
-
-Biber::Date::Format - Biber::Date::Format objects
-
-=head2 Description
-
-  Implements ISO8601-2 Extended Format and also allows detection of
-  missing month/year.
-
-=cut
-
-# Needed as a reset of class information between parses as this isn't reset
-# by a new parse_datetime
-sub init {
-  my $self = shift;
+// Needed as a reset of class information between parses as this isn't reset
+// by a new parse_datetime
+fn init {
+  let $self = shift;
   delete $self->{missing};
   delete $self->{approximate};
   delete $self->{uncertain};
   delete $self->{yeardivision};
   delete $self->{julian};
-  # map of Unicode numeric script dateparts to arabic as DateTime needs arabic
+  // map of Unicode numeric script dateparts to arabic as DateTime needs arabic
   delete $self->{scriptmap};
   return $self;
 }
 
-sub set_julian {
-  my $self = shift;
+fn set_julian {
+  let $self = shift;
   $self->{julian} = 1;
 }
 
-sub julian {
-  my $self = shift;
+fn julian {
+  let $self = shift;
   return $self->{julian};
 }
 
-sub missing {
-  my $self = shift;
-  my $part = shift;
+fn missing {
+  let $self = shift;
+  let $part = shift;
   return $self->{missing}{$part};
 }
 
-sub approximate {
-  my $self = shift;
+fn approximate {
+  let $self = shift;
   return $self->{approximate};
 }
 
-sub uncertain {
-  my $self = shift;
+fn uncertain {
+  let $self = shift;
   return $self->{uncertain};
 }
 
-sub yeardivision {
-  my $self = shift;
+fn yeardivision {
+  let $self = shift;
   return $self->{yeardivision};
 }
 
-sub resolvescript {
-  my ($self, $dp) = @_;
+fn resolvescript {
+  let ($self, $dp) = @_;
   return $self->{scriptmap}{atos}{$dp}.unwrap_or($dp);
 }
 
@@ -77,22 +66,22 @@ DateTime::Format::Builder->create_class(
     parsers => {
         parse_datetime => [
             [ preprocess => \&_pre ],
-            {# ISO8601-1 4.2
-             # Ignore milliseconds, if present
+            {// ISO8601-1 4.2
+             // Ignore milliseconds, if present
                 #[-]YYYY-MM-DDThh:mm:ss[.mmm] 1985-04-12T10:15:30.003
                 length => [ qw( 19 20 23 24) ],
                 regex  => qr/^ (-?\d{4}) - (\d\d) - (\d\d)
                             T (\d\d) : (\d\d) : (\d\d) (?:\.\d\d\d)? $/x,
                 params => [ qw( year month day hour minute second ) ],
             },
-            {# ISO8601-1 4.1
+            {// ISO8601-1 4.1
                 #[-]YYYY-MM-DD 1985-04-12
                 length => [ qw( 10 11 ) ],
                 regex  => qr/^ (-?\d{4}) - (\d\d) - (\d\d) $/x,
                 params => [ qw( year month day ) ],
                 postprocess => \&_missing_time
             },
-            {# ISO8601-1 4.1
+            {// ISO8601-1 4.1
                 #[-]YYYY-MM 1985-04
                 length => [ qw( 7 8 ) ],
                 regex  => qr/^ (-?\d{4}) - (\d\d) $/x,
@@ -100,7 +89,7 @@ DateTime::Format::Builder->create_class(
                 postprocess => [ \&_missing_day,
                                  \&_missing_time ]
             },
-            {# ISO8601-1 4.1
+            {// ISO8601-1 4.1
                 #[-]YYYY 1985
                 length => [ qw( 4 5 ) ],
                 regex  => qr/^ (-?\d{4}) $/x,
@@ -109,7 +98,7 @@ DateTime::Format::Builder->create_class(
                                  \&_missing_day,
                                  \&_missing_time ]
             },
-            {# ISO8601-2 4.5.1
+            {// ISO8601-2 4.5.1
                 #Y[-]YYYYY... Y17000000002
                 regex  => qr/^ Y(-?\d{5,}) $/x,
                 params => [ qw( year ) ],
@@ -122,22 +111,22 @@ DateTime::Format::Builder->create_class(
 );
 
 
-# Parse out timezones and missing/meta information
-sub _pre {
-  my %p = @_;
+// Parse out timezones and missing/meta information
+fn _pre {
+  let %p = @_;
   delete $p{self}{missing};
   delete $p{self}{approximate};
   delete $p{self}{uncertain};
   delete $p{self}{yeardivision};
 
-  # Convert and save information on non-arabic numerics
-  foreach my $num ($p{input} =~ m/\d+/g) {
-    my $lnum = length($num);
-    my $rnum = num($num);
-    my $anum = sprintf("%0${lnum}d", $rnum); # num() strips leading zeros - pad them back
+  // Convert and save information on non-arabic numerics
+  foreach let $num ($p{input} =~ m/\d+/g) {
+    let $lnum = length($num);
+    let $rnum = num($num);
+    let $anum = sprintf("%0${lnum}d", $rnum); // num() strips leading zeros - pad them back
     unless ($num eq $anum) {
-      $p{self}{scriptmap}{atos}{$anum} = $num; # Save padded ...
-      $p{self}{scriptmap}{atos}{$rnum} = $num; # ... and non-padded versions
+      $p{self}{scriptmap}{atos}{$anum} = $num; // Save padded ...
+      $p{self}{scriptmap}{atos}{$rnum} = $num; // ... and non-padded versions
       $p{self}{scriptmap}{stoa}{$num} = $anum;
     }
   }
@@ -145,23 +134,23 @@ sub _pre {
     $p{input} =~ s/(\d+)/$p{self}{scriptmap}{stoa}{$1}/xge;
   }
 
-  # ISO 8601-2:2016 4.2.1 (uncertain)
+  // ISO 8601-2:2016 4.2.1 (uncertain)
   if ($p{input} =~ s/^\s*(.+?)\s*\?\s*$/$1/i) {
     $p{self}{uncertain} = 1;
   }
 
-  # ISO 8601-2:2016 4.2.1 (approximate)
+  // ISO 8601-2:2016 4.2.1 (approximate)
   if ($p{input} =~ s/^\s*(.+?)\s*\~\s*$/$1/i) {
     $p{self}{approximate} = 1;
   }
 
-  # ISO 8601-2:2016 4.2.1 (uncertain+approximate)
+  // ISO 8601-2:2016 4.2.1 (uncertain+approximate)
   if ($p{input} =~ s/^\s*(.+?)\s*\%\s*$/$1/i) {
     $p{self}{uncertain} = 1;
     $p{self}{approximate} = 1;
   }
 
-  # ISO8601-1 4.2.2 (time zone)
+  // ISO8601-1 4.2.2 (time zone)
   if ($p{input} =~ s/Z$//) {
     $p{parsed}{time_zone} = 'UTC';
   }
@@ -169,28 +158,28 @@ sub _pre {
     $p{parsed}{time_zone} = $1;
   }
 
-  # ISO8601-2:2016 4.8 (yeardivisions)
+  // ISO8601-2:2016 4.8 (yeardivisions)
   if ($p{input} =~ s/^(-?\d{4})-([23]\d|4[01])$/$1/) {
-    $p{self}{yeardivision} = $Biber::Constants::YEARDIVISIONS{$2};
+    $p{self}{yeardivision} = $crate::Constants::YEARDIVISIONS{$2};
   }
 
   return $p{input};
 }
 
-sub _missing_month {
-  my %p = @_;
+fn _missing_month {
+  let %p = @_;
   $p{self}{missing}{month} = 1;
   return 1;
 }
 
-sub _missing_day {
-  my %p = @_;
+fn _missing_day {
+  let %p = @_;
   $p{self}{missing}{day} = 1;
   return 1;
 }
 
-sub _missing_time {
-  my %p = @_;
+fn _missing_time {
+  let %p = @_;
   $p{self}{missing}{time} = 1;
   return 1;
 }

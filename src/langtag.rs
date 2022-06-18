@@ -1,13 +1,11 @@
-package Biber::LangTag;
-use v5.24;
-use strict;
-use warnings;
+//! `LangTag` objects
+
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
 use List::AllUtils qw( first );
 
-my %bcp47parts = ('language'      => 'single',
+let %bcp47parts = ('language'      => 'single',
                   'extlang'       => 'multiple',
                   'script'        => 'single',
                   'region'        => 'single',
@@ -17,39 +15,25 @@ my %bcp47parts = ('language'      => 'single',
                   'grandfathered' => 'single');
 
 
-# Names of simple package accessor attributes for those not created automatically
-# by the option scope in the .bcf
+// Names of simple package accessor attributes for those not created automatically
+// by the option scope in the .bcf
 __PACKAGE__->mk_accessors(keys %bcp47parts);
 
-=encoding utf-8
+/// Object to manipulate BCP47 language tags
+pub struct LangTag;
 
-=head1 NAME
-
-Biber::LangTag - Biber::LangTag objects
-
-=head2 new
-
-    Object to manipulate BCP47 language tags
-
-=cut
-
-sub new {
-  my ($class, $parts) = @_;
-  my $self = bless $parts, $class;
+fn new {
+  let ($class, $parts) = @_;
+  let $self = bless $parts, $class;
 
   return $self;
 }
 
-=head2 dump
-
-    Dump the non-null LangTag object parts
-
-=cut
-
-sub dump {
-  my $self = shift;
-  my $parts = {};
-  foreach my $part (keys %bcp47parts) {
+/// Dump the non-null LangTag object parts
+fn dump {
+  let $self = shift;
+  let $parts = {};
+  foreach let $part (keys %bcp47parts) {
     $parts->{$part} = $self->{$part} if defined($self->{$part});
   }
   return $parts;

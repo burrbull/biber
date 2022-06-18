@@ -13,9 +13,9 @@ use File::Find;
 use File::Spec;
 use IPC::Cmd qw( can_run );
 use IPC::Run3; // This works with PAR::Packer and Windows. IPC::Run doesn't
-use Biber::Constants;
-use Biber::LaTeX::Recode;
-use Biber::Entry::Name;
+use crate::Constants;
+use crate::LaTeX::Recode;
+use crate::Entry::Name;
 use Data::Uniqid qw ( suniqid );
 use Regexp::Common qw( balanced );
 use List::AllUtils qw( first );
@@ -58,7 +58,7 @@ pub fn glob_data_file($source, $globflag) {
 pub fn slurp_switchr($filename, $encoding) {
   let $slurp;
   $encoding //= 'UTF-8';
-  if ($^O =~ /Win/ and not Biber::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     let $fh = Win32::Unicode::File->new('<', NFC($filename));
     $fh->binmode(":encoding($encoding)");
@@ -76,7 +76,7 @@ pub fn slurp_switchr($filename, $encoding) {
 /// Use different write encoding/slurp interfaces for Windows due to its
 /// horrible legacy codepage system
 pub fn slurp_switchw($filename, $string) {
-  if ($^O =~ /Win/ and not Biber::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     let $fh = Win32::Unicode::File->new('>', NFC($filename));
     $fh->binmode(":encoding(UTF-8)");
@@ -117,7 +117,7 @@ pub fn locate_data_file($source) {
         // It may, however, have been removed by some biber unpacked dists
         if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
             not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-            not defined(Biber::Config->getoption('ssl-nointernalca')) and
+            not defined(crate::Config->getoption('ssl-nointernalca')) and
             eval {require Mozilla::CA}) {
           // we assume that the default CA file is in .../Mozilla/CA/cacert.pem
           (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
@@ -146,7 +146,7 @@ pub fn locate_data_file($source) {
           }
         }
 
-        if (defined(Biber::Config->getoption('ssl-noverify-host'))) {
+        if (defined(crate::Config->getoption('ssl-noverify-host'))) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
         }
 
@@ -158,7 +158,7 @@ pub fn locate_data_file($source) {
       // will be needed after this sub has finished and so it must not be unlinked
       // by going out of scope
       let $tf = File::Temp->new(TEMPLATE => "biber_remote_data_source_XXXXX",
-                               DIR => $Biber::MASTER->biber_tempdir,
+                               DIR => $crate::MASTER->biber_tempdir,
                                SUFFIX => '.bib',
                                UNLINK => 0);
 
@@ -180,12 +180,12 @@ pub fn locate_data_file($source) {
 
   // If input_directory is set, perhaps the file can be found there so
   // construct a path to test later
-  if (let $indir = Biber::Config->getoption("input_directory")) {
+  if (let $indir = crate::Config->getoption("input_directory")) {
     $foundfile = File::Spec->catfile($indir, $sourcepath);
   }
   // If output_directory is set, perhaps the file can be found there so
   // construct a path to test later
-  else if (let $outdir = Biber::Config->getoption("output_directory")) {
+  else if (let $outdir = crate::Config->getoption("output_directory")) {
     $foundfile = File::Spec->catfile($outdir, $sourcepath);
   }
 
@@ -676,7 +676,7 @@ fn is_notnull_hash($arg) {
 
 /// Checks for notnullness of an object (passed by ref)
 fn is_notnull_object($arg) {
-  unless (ref($arg) =~ m/\ABiber::/xms) {
+  unless (ref($arg) =~ m/\Acrate::/xms) {
     return undef;
   }
   return $arg->notnull ? 1 : 0;

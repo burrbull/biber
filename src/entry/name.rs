@@ -1,12 +1,12 @@
-///! `biber::entry::Name` objects
+///! `crate::entry::Name` objects
 
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
 use Regexp::Common qw( balanced );
-use Biber::Annotation;
-use Biber::Config;
-use Biber::Constants;
+use crate::Annotation;
+use crate::Config;
+use crate::Constants;
 use Data::Dump qw( pp );
 use Data::Uniqid qw (suniqid);
 use Log::Log4perl qw( :no_extra_logdie_message );
@@ -26,9 +26,9 @@ __PACKAGE__->mk_accessors(qw (
                             ));
 
 impl Name {
-  /// Initialise a Biber::Entry::Name object, optionally with key=>value arguments.
+  /// Initialise a crate::Entry::Name object, optionally with key=>value arguments.
   fn new(params) -> Self {
-    let $dm = Biber::Config->get_dm;
+    let $dm = crate::Config->get_dm;
     if (%params) {
       let $name = {};
 
@@ -117,7 +117,7 @@ impl Name {
   /// Create biblatexml data for a name
   fn name_to_biblatexml(self, $out, $xml, $key, $namefield, $count) -> String {
     let $xml_prefix = $out->{xml_prefix};
-    let $dm = Biber::Config->get_dm;
+    let $dm = crate::Config->get_dm;
     let @attrs;
 
 
@@ -138,7 +138,7 @@ impl Name {
     }
 
     // name scope annotation
-    if (let $ann = Biber::Annotation->get_annotation("item", $key, $namefield, $count)) {
+    if (let $ann = crate::Annotation->get_annotation("item", $key, $namefield, $count)) {
       push @attrs, ("annotation" => $ann);
     }
 
@@ -160,7 +160,7 @@ impl Name {
       let @attrs;
 
       // namepart scope annotation
-      if (let $ann = Biber::Annotation->get_annotation("part", $key, $namefield, $count, $npn)) {
+      if (let $ann = crate::Annotation->get_annotation("part", $key, $namefield, $count, $npn)) {
         push @attrs, ("annotation" => $ann);
       }
 
@@ -194,7 +194,7 @@ impl Name {
 
   /// Return bbl data for a name
   fn name_to_bbl(self, un: &str) -> String {
-    let $dm = Biber::Config->get_dm;
+    let $dm = crate::Config->get_dm;
     let @pno; // per-name options
     let @namestrings;
     let $nid = self.{id};

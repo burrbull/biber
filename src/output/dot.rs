@@ -1,45 +1,32 @@
-package Biber::Output::dot;
-use v5.24;
-use strict;
-use warnings;
-use parent qw(Biber::Output::base);
+use parent qw(crate::Output::base);
 
-use Biber::Config;
-use Biber::Constants;
-use Biber::Entry;
-use Biber::Utils;
+use crate::Config;
+use crate::Constants;
+use crate::Entry;
+use crate::Utils;
 use List::AllUtils qw( :all );
 use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Unicode::Normalize;
-my $logger = Log::Log4perl::get_logger('main');
+let $logger = Log::Log4perl::get_logger('main');
 
-=encoding utf-8
+/// Class for Biber output of GraphViz .dot files
+pub struct Dot;
 
-=head1 NAME
+/// Initialize a crate::Output::dot object
 
-Biber::Output::dot - class for Biber output of GraphViz .dot files
+let $graph; // accumulator for .dot string
+let $graph_edges = ''; // accumulator for .dot string. Initialise as can be empty
+let $state; // some state information for building output
+let $in; // indentation string
+let $i; // indentation level
+let $gopts = crate::Config->getoption('dot_include');
+let $linknode; // node to use to do cluster links
 
-=cut
-
-=head2 new
-
-    Initialize a Biber::Output::dot object
-
-=cut
-
-my $graph; # accumulator for .dot string
-my $graph_edges = ''; # accumulator for .dot string. Initialise as can be empty
-my $state; # some state information for building output
-my $in; # indentation string
-my $i; # indentation level
-my $gopts = Biber::Config->getoption('dot_include');
-my $linknode; # node to use to do cluster links
-
-sub new {
-  my $class = shift;
-  my $obj = shift;
-  my $self = $class->SUPER::new($obj);
+fn new {
+  let $class = shift;
+  let $obj = shift;
+  let $self = $class->SUPER::new($obj);
 
   $self->{output_data}{HEAD} = <<~EOF;
     digraph Biberdata {
@@ -57,63 +44,43 @@ sub new {
   return $self;
 }
 
-=head2 set_output_target_file
-
-    Set the output target file of a Biber::Output::dot object
-    A convenience around set_output_target so we can keep track of the
-    filename
-
-=cut
-
-sub set_output_target_file {
-  my $self = shift;
-  my $dotfile = shift;
+/// Set the output target file of a crate::Output::dot object
+/// A convenience around set_output_target so we can keep track of the
+/// filename
+fn set_output_target_file {
+  let $self = shift;
+  let $dotfile = shift;
   $self->{output_target_file} = $dotfile;
   return IO::File->new($dotfile, '>:encoding(UTF-8)');
 }
 
-=head2 set_output_entry
-
-  We don't use this, we output everything in one go at the end
-
-=cut
-
-sub set_output_entry {
+/// We don't use this, we output everything in one go at the end
+fn set_output_entry {
   return;
 }
 
-=head2 create_output_section
-
-  We don't use this, we output everything in one go at the end
-
-=cut
-
-sub create_output_section {
+/// We don't use this, we output everything in one go at the end
+fn create_output_section {
   return;
 }
 
-=head2 output
-
-  Create a graph of the required things and save to .dot format
-
-=cut
-
-sub output {
-  my $self = shift;
-  my $biber = $Biber::MASTER;
-  my $data = $self->{output_data};
-  my $target = $self->{output_target};
-  my $target_string = "Target"; # Default
+/// Create a graph of the required things and save to .dot format
+fn output {
+  let $self = shift;
+  let $biber = $crate::MASTER;
+  let $data = $self->{output_data};
+  let $target = $self->{output_target};
+  let $target_string = "Target"; // Default
   if ($self->{output_target_file}) {
     $target_string = $self->{output_target_file};
   }
 
-  # for debugging mainly
+  // for debugging mainly
   unless ($target) {
     $target = new IO::File '>-';
   }
 
-  if ($logger->is_debug()) {# performance tune
+  if ($logger->is_debug()) {// performance tune
     $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
   }
 
@@ -121,12 +88,12 @@ sub output {
 
   out($target, $data->{HEAD});
 
-  $in = 2; # indentation
-  $i = ' '; # starting indentation
+  $in = 2; // indentation
+  $i = ' '; // starting indentation
 
-  # Loop over sections, sort so we can run tests
-  foreach my $section (sort {$a->number <=> $b->number} $biber->sections->get_sections->@*) {
-    my $secnum = $section->number;
+  // Loop over sections, sort so we can run tests
+  foreach let $section (sort {$a->number <=> $b->number} $biber->sections->get_sections->@*) {
+    let $secnum = $section->number;
     if ($gopts->{section}) {
       $graph .= $i x $in . "subgraph \"cluster_section${secnum}\" {\n";
       $in += 2;
@@ -138,25 +105,25 @@ sub output {
       $graph .= "\n";
     }
 
-    # First create nodes/groups for entries
-    foreach my $be (sort {$a->get_field('citekey') cmp $b->get_field('citekey')} $section->bibentries->entries) {
-      my $citekey = $be->get_field('citekey');
+    // First create nodes/groups for entries
+    foreach let $be (sort {$a->get_field('citekey') cmp $b->get_field('citekey')} $section->bibentries->entries) {
+      let $citekey = $be->get_field('citekey');
       $state->{$secnum}{"${secnum}/${citekey}"} = 1;
-      my $et = uc($be->get_field('entrytype'));
+      let $et = uc($be->get_field('entrytype'));
 
-      # colour depends on whether cited, uncited, dataonly or key alias
-      my $c = $section->has_citekey($citekey) ? '#a0d0ff' : '#deefff';
-      if (my $options = $be->get_field('options')) {
+      // colour depends on whether cited, uncited, dataonly or key alias
+      let $c = $section->has_citekey($citekey) ? '#a0d0ff' : '#deefff';
+      if (let $options = $be->get_field('options')) {
         $c = '#fdffd9' if $options =~ m/skip(?:bib|biblist|lab)/o;
       }
       $c = '#a1edec' if $section->get_citekey_alias($citekey);
 
-      # make a set subgraph if a set member
-      # This will make identically named subgraph sections for
-      # every element in a set but dot is clever enough to merge them by
-      # ID.
-      if (my $sets = Biber::Config->get_graph('set')) {
-        if (my $set = $sets->{memtoset}{$citekey}) { # entry is a set member
+      // make a set subgraph if a set member
+      // This will make identically named subgraph sections for
+      // every element in a set but dot is clever enough to merge them by
+      // ID.
+      if (let $sets = crate::Config->get_graph('set')) {
+        if (let $set = $sets->{memtoset}{$citekey}) { // entry is a set member
           $graph .= $i x $in . "subgraph \"cluster_${secnum}/set_${set}\" {\n";
           $in += 2;
           $graph .= $i x $in . "label=\"$set (SET)\";\n";
@@ -166,19 +133,19 @@ sub output {
           $graph .= $i x $in . "fillcolor=\"#e3dadc\";\n";
           $graph .= "\n";
         }
-        next if $sets->{settomem}{$citekey}; # Don't make normal nodes for sets
+        next if $sets->{settomem}{$citekey}; // Don't make normal nodes for sets
       }
 
-      # Citekey aliases
-      my $aliases = '';
-      foreach my $alias (sort $section->get_citekey_aliases) {
-        my $realkey = $section->get_citekey_alias($alias);
+      // Citekey aliases
+      let $aliases = '';
+      foreach let $alias (sort $section->get_citekey_aliases) {
+        let $realkey = $section->get_citekey_alias($alias);
         if ($realkey eq $citekey) {
           $aliases .= "\\n$alias (alias)";
         }
       }
 
-      if ($gopts->{field}) { # If granularity is at the level of fields
+      if ($gopts->{field}) { // If granularity is at the level of fields
         $graph .= $i x $in . "subgraph \"cluster_section${secnum}/${citekey}\" {\n";
         $in += 2;
         $graph .= $i x $in . "fontsize=\"10\";\n";
@@ -186,47 +153,47 @@ sub output {
         $graph .= $i x $in . "tooltip=\"$citekey ($et)\";\n";
         $graph .= $i x $in . "fillcolor=\"$c\";\n";
         $graph .= "\n";
-        foreach my $field (sort $be->datafields) {
+        foreach let $field (sort $be->datafields) {
           $graph .= $i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . uc($field) . "\" ]\n";
         }
         $in -= 2;
         $graph .= $i x $in . "}\n\n";
 
-        # link node for cluster->cluster links
-        my $middle = int($be->count_datafields / 2);
+        // link node for cluster->cluster links
+        let $middle = int($be->count_datafields / 2);
         $state->{$secnum}{$citekey}{linknode} = ($be->datafields)[$middle];
 
       }
-      else { # Granularity is at the level of entries
+      else { // Granularity is at the level of entries
         $graph .= $i x $in . "\"section${secnum}/${citekey}\" [ label=\"$citekey ($et)$aliases\", fillcolor=\"$c\", tooltip=\"$citekey ($et)\" ]\n";
 
       }
 
 
-      # Close set subgraph if necessary
-      if (my $sets = Biber::Config->get_graph('set')) {
-        if ($sets->{memtoset}{$citekey}) { # entry is a set member
+      // Close set subgraph if necessary
+      if (let $sets = crate::Config->get_graph('set')) {
+        if ($sets->{memtoset}{$citekey}) { // entry is a set member
           $graph .= $i x $in . "}\n\n";
           $in -= 2;
         }
       }
     }
 
-    # Then add the requested links
+    // Then add the requested links
 
-    # crossrefs
+    // crossrefs
     _graph_inheritance('crossref', $secnum) if $gopts->{crossref};
 
-    # xdata
+    // xdata
     _graph_inheritance('xdata', $secnum) if $gopts->{xdata};
 
-    # xref
+    // xref
     _graph_xref($secnum) if $gopts->{xref};
 
-    # related
+    // related
     _graph_related($secnum) if $gopts->{related};
 
-    # Close the section, if any
+    // Close the section, if any
     if ($gopts->{section}) {
       $graph .= $i x $in . "}\n\n";
       $in -= 2;
@@ -245,42 +212,42 @@ sub output {
   return;
 }
 
-# Graph related entries
-sub _graph_related {
-  my $secnum = shift;
-  if (my $gr = Biber::Config->get_graph('related')) {
+// Graph related entries
+fn _graph_related {
+  let $secnum = shift;
+  if (let $gr = crate::Config->get_graph('related')) {
 
-    # related links
-    foreach my $f_entry (sort keys $gr->{clonetotarget}->%*) {
-      my $m = $gr->{clonetotarget}{$f_entry};
-      foreach my $t_entry (sort keys $m->%*) {
+    // related links
+    foreach let $f_entry (sort keys $gr->{clonetotarget}->%*) {
+      let $m = $gr->{clonetotarget}{$f_entry};
+      foreach let $t_entry (sort keys $m->%*) {
         next unless $state->{$secnum}{"${secnum}/${f_entry}"};
         next unless $state->{$secnum}{"${secnum}/${t_entry}"};
 
-        if ($gopts->{field}) { # links between clusters
-          my $f_linknode = $state->{$secnum}{$f_entry}{linknode};
-          my $t_linknode = $state->{$secnum}{$t_entry}{linknode};
+        if ($gopts->{field}) { // links between clusters
+          let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
+          let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
           $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n";
         }
-        else {  # links between nodes
+        else {  // links between nodes
           $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n";
         }
       }
     }
 
-    # clone links
-    foreach my $f_entry (sort keys $gr->{reltoclone}->%*) {
-      my $m = $gr->{reltoclone}{$f_entry};
-      foreach my $t_entry (sort keys $m->%*) {
+    // clone links
+    foreach let $f_entry (sort keys $gr->{reltoclone}->%*) {
+      let $m = $gr->{reltoclone}{$f_entry};
+      foreach let $t_entry (sort keys $m->%*) {
         next unless $state->{$secnum}{"${secnum}/${f_entry}"};
         next unless $state->{$secnum}{"${secnum}/${t_entry}"};
 
-        if ($gopts->{field}) { # links between clusters
-          my $f_linknode = $state->{$secnum}{$f_entry}{linknode};
-          my $t_linknode = $state->{$secnum}{$t_entry}{linknode};
+        if ($gopts->{field}) { // links between clusters
+          let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
+          let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
           $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n";
         }
-        else {  # links between nodes
+        else {  // links between nodes
           $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n";
         }
       }
@@ -288,31 +255,31 @@ sub _graph_related {
   }
 }
 
-# Graph xrefs
-sub _graph_xref {
-  my $secnum = shift;
-  if (my $gr = Biber::Config->get_graph('xref')) {
-    foreach my $f_entry (sort keys $gr->%*) {
-      my $t_entry = $gr->{$f_entry};
+// Graph xrefs
+fn _graph_xref {
+  let $secnum = shift;
+  if (let $gr = crate::Config->get_graph('xref')) {
+    foreach let $f_entry (sort keys $gr->%*) {
+      let $t_entry = $gr->{$f_entry};
       next unless $state->{$secnum}{"${secnum}/${f_entry}"};
       next unless $state->{$secnum}{"${secnum}/${t_entry}"};
 
-      if ($gopts->{field}) { # links between clusters
-        my $f_linknode = $state->{$secnum}{$f_entry}{linknode};
-        my $t_linknode = $state->{$secnum}{$t_entry}{linknode};
+      if ($gopts->{field}) { // links between clusters
+        let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
+        let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
         $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n";
       }
-      else {    # links between nodes
+      else {    // links between nodes
         $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n";
       }
     }
   }
 }
 
-# Graph crossrefs and xdata
-sub _graph_inheritance {
-  my ($type, $secnum) = @_;
-  my $edgecolor;
+// Graph crossrefs and xdata
+fn _graph_inheritance {
+  let ($type, $secnum) = @_;
+  let $edgecolor;
 
   if ($type eq 'crossref') {
     $edgecolor = '#7d7879';
@@ -321,15 +288,15 @@ sub _graph_inheritance {
     $edgecolor = '#2ca314';
   }
 
-  if (my $gr = Biber::Config->get_graph($type)) {
-    # Show fields
+  if (let $gr = crate::Config->get_graph($type)) {
+    // Show fields
     if ($gopts->{field}) {
-      foreach my $f_entry (sort keys $gr->%*) {
-        my $v = $gr->{$f_entry};
-        foreach my $f_field (sort keys $v->%*) {
-          my $w = $v->{$f_field};
-          foreach my $t_entry (sort keys $w->%*) {
-            foreach my $t_field ($w->{$t_entry}->@*) {
+      foreach let $f_entry (sort keys $gr->%*) {
+        let $v = $gr->{$f_entry};
+        foreach let $f_field (sort keys $v->%*) {
+          let $w = $v->{$f_field};
+          foreach let $t_entry (sort keys $w->%*) {
+            foreach let $t_field ($w->{$t_entry}->@*) {
               next unless $state->{$secnum}{"${secnum}/${f_entry}"};
               next unless $state->{$secnum}{"${secnum}/${t_entry}"};
               $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . uc($t_field) . " inherited via " . uc($type) . " from ${f_entry}/" . uc($f_field) . "\" ]\n";
@@ -338,12 +305,12 @@ sub _graph_inheritance {
         }
       }
     }
-    # Just show the entries, no fields
+    // Just show the entries, no fields
     else {
-      foreach my $f_entry (sort keys $gr->%*) {
-        my $v = $gr->{$f_entry};
-        foreach my $w (sort values $v->%*) {
-          foreach my $t_entry (sort keys $w->%*) {
+      foreach let $f_entry (sort keys $gr->%*) {
+        let $v = $gr->{$f_entry};
+        foreach let $w (sort values $v->%*) {
+          foreach let $t_entry (sort keys $w->%*) {
             next unless $state->{$secnum}{"${secnum}/${f_entry}"};
             next unless $state->{$secnum}{"${secnum}/${t_entry}"};
             next if $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"};

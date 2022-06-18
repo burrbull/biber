@@ -1,13 +1,8 @@
-package Biber::Constants;
-use v5.24;
-use strict;
-use warnings;
-
 use Encode;
 use Encode::Alias;
 
 use parent qw(Exporter);
-use Biber::Date::Format;
+use crate::Date::Format;
 use Text::CSV;
 use Scalar::Util qw (blessed looks_like_number);
 use Unicode::UCD qw(num);
@@ -44,24 +39,24 @@ our @EXPORT = qw{
                   %YEARDIVISIONS
               };
 
-# Version of biblatex control file which this release expects. Matched against version
-# passed in control file. Used when checking the .bcf
+// Version of biblatex control file which this release expects. Matched against version
+// passed in control file. Used when checking the .bcf
 our $BCF_VERSION = '3.9';
-# Format version of the .bbl. Used when writing the .bbl
+// Format version of the .bbl. Used when writing the .bbl
 our $BBL_VERSION = '3.2';
 
-# Global flags needed for sorting
+// Global flags needed for sorting
 our $BIBER_SORT_FINAL;
 our $BIBER_SORT_NULL;
 
-# the name of the Biber configuration file, which should be
-# either returned by kpsewhich or located at "$HOME/.$BIBER_CONF_NAME"
+// the name of the Biber configuration file, which should be
+// either returned by kpsewhich or located at "$HOME/.$BIBER_CONF_NAME"
 our $BIBER_CONF_NAME = 'biber.conf';
 
-## Biber CONFIGURATION DEFAULTS
+// Biber CONFIGURATION DEFAULTS
 
-# Locale -  if nothing, set a default
-my $locale;
+// Locale -  if nothing, set a default
+let $locale;
 unless ($locale) {
   if ( $^O =~ /Win/) {
     $locale = 'English_United States.1252';
@@ -71,7 +66,7 @@ unless ($locale) {
   }
 }
 
-# ISO8601-2 4.8 year divisions
+// ISO8601-2 4.8 year divisions
 our %YEARDIVISIONS = ( 21 => 'spring',
                        22 => 'summer',
                        23 => 'autumn',
@@ -94,10 +89,10 @@ our %YEARDIVISIONS = ( 21 => 'spring',
                        40 => 'S1',
                        41 => 'S2' );
 
-# Reverse record of macros so we can reverse these for tool mode output
+// Reverse record of macros so we can reverse these for tool mode output
 our %RSTRINGS = ();
-# Record of macros which are actually used in output in tool mode, so that we don't
-# output unused strings.
+// Record of macros which are actually used in output in tool mode, so that we don't
+// output unused strings.
 our %USEDSTRINGS = ();
 
 our %MONTHS = ('jan' => '1',
@@ -113,103 +108,103 @@ our %MONTHS = ('jan' => '1',
                'nov' => '11',
                'dec' => '12');
 
-# datafieldsets
+// datafieldsets
 our %DATAFIELD_SETS = ();
 
-# datatypes for data model validation
+// datatypes for data model validation
 our %DM_DATATYPES = (
                      integer => sub {
-                       my $v = shift;
+                       let $v = shift;
                        return 1 if looks_like_number(num($v =~ s/^-//r));
                        return 0;
                      },
                      name => sub {
-                       my $v = shift;
-                       return 1 if (blessed($v) and $v->isa('Biber::Entry::Names'));
+                       let $v = shift;
+                       return 1 if (blessed($v) and $v->isa('crate::Entry::Names'));
                        return 0;
                      },
                      range => sub {
-                       my $v = shift;
+                       let $v = shift;
                        return 1 if ref($v) eq 'ARRAY';
                        return 0;
                      },
                      list => sub {
-                       my $v = shift;
+                       let $v = shift;
                        return 1 if ref($v) eq 'ARRAY';
                        return 0;
                      },
                      datepart => sub {
-                       my $v = shift;
-                       my $f = shift;
+                       let $v = shift;
+                       let $f = shift;
                        if ($f =~ /timezone$/) {
-                         # ISO 8601
-                         # <time>Z
-                         # <time>±hh:mm
-                         # <time>±hhmm
-                         # <time>±hh
+                         // ISO 8601
+                         // <time>Z
+                         // <time>±hh:mm
+                         // <time>±hhmm
+                         // <time>±hh
                          unless ($v eq 'Z' or
                                  $v =~ m|^[+-]\d\d(?:\\bibtzminsep\s)?(?:\d\d)?$|) {
                            return 0;
                          }
                        }
-                       elsif ($f =~ /season$/) { # LEGACY
+                       elsif ($f =~ /season$/) { // LEGACY
                          return 0 unless $v =~ m/(?:winter|spring|summer|autumn)/
                        }
                        elsif ($f =~ /yeardivision$/) {
                          return 0 unless grep {$v eq $_} values %YEARDIVISIONS;
                        }
                        else {
-                         # num() doesn't like negatives
+                         // num() doesn't like negatives
                          return 0 unless looks_like_number(num($v =~ s/^-//r));
                        }
                        return 1;
                      },
                      isbn => sub {
-                       my $v = shift;
-                       my $f = shift;
+                       let $v = shift;
+                       let $f = shift;
                        require Business::ISBN;
 
-                       my ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
-                       $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
-                       # Just in case it is already set. We also need to fake this in tests or it will
-                       # look for it in the blib dir
+                       let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
+                       $dir =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
+                       // Just in case it is already set. We also need to fake this in tests or it will
+                       // look for it in the blib dir
                        unless (exists($ENV{ISBN_RANGE_MESSAGE})) {
                          $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
                        }
 
-                       my $isbn = Business::ISBN->new($v);
+                       let $isbn = Business::ISBN->new($v);
                        if (not $isbn) {
                          return 0;
                        }
                        return 1;
                      },
                      issn => sub {
-                       my $v = shift;
+                       let $v = shift;
                        require Business::ISSN;
 
-                       my $issn = Business::ISSN->new($_);
+                       let $issn = Business::ISSN->new($_);
                        unless ($issn and $issn->is_valid) {
                          return 0;
                        }
                        return 1;
                      },
                      ismn => sub {
-                       my $v = shift;
+                       let $v = shift;
                        require Business::ISMN;
-                       my $ismn = Business::ISMN->new($_);
+                       let $ismn = Business::ISMN->new($_);
                        unless ($ismn and $ismn->is_valid) {
                          return 0;
                        }
                        return 1;
                      },
                      default => sub {
-                       my $v = shift;
+                       let $v = shift;
                        return 0 if ref($v);
                        return 1;
                      }
                     );
 
-# Mapping of data source and output types to extensions
+// Mapping of data source and output types to extensions
 our %DS_EXTENSIONS = (
                       bbl        => 'bbl',
                       bblxml     => 'bblxml',
@@ -217,7 +212,7 @@ our %DS_EXTENSIONS = (
                       biblatexml => 'bltxml'
                       );
 
-# Mapping of biblatex uniquename option to disambiguation level
+// Mapping of biblatex uniquename option to disambiguation level
 our %UNIQUENAME_CONTEXTS = ('false' => 'none',
                             'init' => 'init',
                             'full' => 'initorfull',
@@ -226,10 +221,10 @@ our %UNIQUENAME_CONTEXTS = ('false' => 'none',
                             'mininit' => 'init',
                             'minfull' => 'initorfull');
 
-# Mapping of strings to numeric uniquename values for easier biblatex processing
+// Mapping of strings to numeric uniquename values for easier biblatex processing
 our %UNIQUENAME_VALUES = ('none' => 0, 'init' => 1, full => 2);
 
-# Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
+// Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 our $CONFIG_DEFAULT_BIBER = {
   annotation_marker                           => { content => q/+an/ },
   clrmacros                                   => { content => 0 },
@@ -258,9 +253,9 @@ our $CONFIG_DEFAULT_BIBER = {
   noinit                                      => { option => [ {value => q/\b\p{Ll}{2}\p{Pd}(?=\S)/},
                                                                {value => q/[\x{2bf}\x{2018}]/} ] },
   nolabel                                     => { option => [ {value => q/[\p{Pc}\p{Ps}\p{Pe}\p{Pi}\p{Pf}\p{Po}\p{S}\p{C}]+/} ] },
-#  nolabelwidthcount                          => { option =>  }, # default is nothing
+//  nolabelwidthcount                          => { option =>  }, // default is nothing
   nolog                                       => { content => 0 },
-#  nonamestring                               => { option =>  }, # default is nothing
+//  nonamestring                               => { option =>  }, // default is nothing
   noskipduplicates                            => { content => 0 },
   nostdmacros                                 => { content => 0 },
   nosort                                      => { option => [ { name => 'setnames', value => q/\A\p{L}{2}\p{Pd}(?=\S)/ },
@@ -311,24 +306,24 @@ our $CONFIG_DEFAULT_BIBER = {
   xsvsep                                      => { content => q/\s*,\s*/ },
 };
 
-# Set up some re-usable CSV parsers here for efficiency reasons
+// Set up some re-usable CSV parsers here for efficiency reasons
 our $CONFIG_CSV_PARSER = Text::CSV->new ( { binary           => 1,
                                             allow_whitespace => 1,
                                             always_quote     => 1  } );
 
-# Set up some re-usable Date parsers here for efficiency reasons
-# We need two as the missing component data is in these objects, not
-# in the DT objects returned by ->parse_datetime() and this data will
-# likely be different for start/end
-our %CONFIG_DATE_PARSERS = ('start' => Biber::Date::Format->new(),
-                            'end'   => Biber::Date::Format->new());
+// Set up some re-usable Date parsers here for efficiency reasons
+// We need two as the missing component data is in these objects, not
+// in the DT objects returned by ->parse_datetime() and this data will
+// likely be different for start/end
+our %CONFIG_DATE_PARSERS = ('start' => crate::Date::Format->new(),
+                            'end'   => crate::Date::Format->new());
 
 our %CONFIG_META_MARKERS = ();
 
-# default global options for biblatex
-# Used to set:
-# * Some tool-mode defaults (as there is no .bcf and some biblatex options
-#   cannot be set in a biber config file)
+// default global options for biblatex
+// Used to set:
+// * Some tool-mode defaults (as there is no .bcf and some biblatex options
+//   cannot be set in a biber config file)
 our %CONFIG_DEFAULT_BIBLATEX = (
                                 sortingtemplatename    => 'tool',
                                 useauthor     => 1,
@@ -347,10 +342,10 @@ our %CONFIG_DEFAULT_BIBLATEX = (
                                 useprefix     => 0
                                );
 
-# Set up some encoding aliases to map \inputen{c,x} encoding names to Encode
-# It seems that inputen{c,x} has a different idea of nextstep than Encode
-# so we push it to MacRoman
-define_alias('ansinew'        => 'cp1252'); # inputenc alias for cp1252
+// Set up some encoding aliases to map \inputen{c,x} encoding names to Encode
+// It seems that inputen{c,x} has a different idea of nextstep than Encode
+// so we push it to MacRoman
+define_alias('ansinew'        => 'cp1252'); // inputenc alias for cp1252
 define_alias('applemac'       => 'MacRoman');
 define_alias('applemacce'     => 'MacCentralEurRoman');
 define_alias('next'           => 'MacRoman');
@@ -358,11 +353,11 @@ define_alias('x-mac-roman'    => 'MacRoman');
 define_alias('x-mac-centeuro' => 'MacCentralEurRoman');
 define_alias('x-mac-cyrillic' => 'MacCyrillic');
 define_alias('x-nextstep'     => 'MacRoman');
-define_alias('x-ascii'        => 'ascii'); # Encode doesn't resolve this one by default
-define_alias('lutf8'          => 'UTF-8'); # Luatex
-define_alias('utf8x'          => 'UTF-8'); # UCS (old)
+define_alias('x-ascii'        => 'ascii'); // Encode doesn't resolve this one by default
+define_alias('lutf8'          => 'UTF-8'); // Luatex
+define_alias('utf8x'          => 'UTF-8'); // UCS (old)
 
-# maps between bcp47 lang/locales and babel/polyglossia language names
+// maps between bcp47 lang/locales and babel/polyglossia language names
 our %LOCALE_MAP = (
                    'acadian'         => 'fr-CA',
                    'american'        => 'en-US',
@@ -646,12 +641,12 @@ our %LOCALE_MAP_R = (
                      'vi-VN'      => 'vietnamese',
                     );
 
-# Holds the scope of each of the BibLaTeX configuration options from the .bcf
+// Holds the scope of each of the BibLaTeX configuration options from the .bcf
 our %CONFIG_OPTSCOPE_BIBLATEX;
-# Holds the options in a particular scope
+// Holds the options in a particular scope
 our %CONFIG_SCOPEOPT_BIBLATEX;
-# Holds the datatype of an option at a particular scope
+// Holds the datatype of an option at a particular scope
 our %CONFIG_OPTTYPE_BIBLATEX;
-# For per-entry, per-namelist and per-name options, what should be set when we find them and
-# should they be output to the .bbl for biblatex.
+// For per-entry, per-namelist and per-name options, what should be set when we find them and
+// should they be output to the .bbl for biblatex.
 our %CONFIG_BIBLATEX_OPTIONS;
