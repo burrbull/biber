@@ -12,7 +12,7 @@ use std::path::PathBuf;
 /// "bibtex" datasource) and outputs a copy of the datasource with any command-line
 /// or config file options applied.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[clap(author, version, about)]
 struct Args {
     /// Sets the suffix which can be appended to a BibTeX data source field name to
     /// indicate that the value of the field is a data annotation
