@@ -20,7 +20,7 @@ fn new {
   let $class = shift;
   let $obj = shift;
   let $self;
-  if (defined($obj) and ref($obj) eq 'HASH') {
+  if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
   }
   else {
@@ -49,7 +49,7 @@ fn set_output_target_file {
     $self->{xml_prefix} = $bltxml;
 
     let $of;
-    if ($toolfile eq '-') {
+    if ($toolfile == '-') {
       open($of, '>&:encoding(UTF-8)', STDOUT);
     }
     else {
@@ -58,7 +58,7 @@ fn set_output_target_file {
     $of->autoflush;             // Needed for running tests to string refs
 
     let $xml = XML::Writer->new(OUTPUT      => $of,
-                               ENCODING    => 'UTF-8',
+                               ENCODING    => "UTF-8",
                                DATA_MODE   => 1,
                                DATA_INDENT => crate::Config->getoption('output_indent'),
                                NAMESPACES  => 1,
@@ -86,7 +86,7 @@ fn set_output_entry {
   $xml->startTag([$xml_prefix, 'entry'], id => NFC($key), entrytype => NFC($bee));
 
   // Filter aliases which point to this key an insert them
-  if (let @ids = sort grep {$section->get_citekey_alias($_) eq $key} $section->get_citekey_aliases) {
+  if (let @ids = sort grep {$section->get_citekey_alias($_) == $key} $section->get_citekey_aliases) {
     $xml->startTag([$xml_prefix, 'ids']);
     $xml->startTag([$xml_prefix, 'list']);
     foreach let $id (@ids) {
@@ -200,7 +200,7 @@ fn set_output_entry {
 
       let @attrs;
       // Did we have a "more" list?
-      if (lc($lf->[-1]) eq crate::Config->getoption('others_string') ) {
+      if (lc($lf->[-1]) == crate::Config->getoption('others_string') ) {
         push @attrs, (morelist => 1);
         pop $lf->@*;               // remove the last element in the array
       }
@@ -255,8 +255,8 @@ fn set_output_entry {
     if (length($val) or // length() catches '0' values, which we want
       ($dm->field_is_nullok($field) and
        $be->field_exists($field))) {
-      next if $dm->get_fieldformat($field) eq 'xsv';
-      next if $field eq 'crossref'; // this is handled above
+      next if $dm->get_fieldformat($field) == 'xsv';
+      next if $field == 'crossref'; // this is handled above
       let @attrs;
 
       $xml->dataElement([$xml_prefix, $field], NFC($val), @attrs);
@@ -266,8 +266,8 @@ fn set_output_entry {
   // xsv fields
   foreach let $xsvf ($dm->get_fields_of_type('field', 'xsv')->@*) {
     if (let $f = $be->get_field($xsvf)) {
-      next if $xsvf eq 'ids'; // IDS is special
-      next if $xsvf eq 'xdata'; // XDATA is special
+      next if $xsvf == 'ids'; // IDS is special
+      next if $xsvf == 'xdata'; // XDATA is special
 
       // XDATA is special
       if (not crate::Config->getoption('output_resolve_xdata') or
@@ -383,32 +383,32 @@ fn set_output_entry {
       if (let $unspec = $be->get_field("${d}dateunspecified")) {
 
         // 1990/1999 -> 199X
-        if ($unspec eq 'yearindecade') {
+        if ($unspec == 'yearindecade') {
           let ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
           $overridey = "${decade}X";
           $be->del_field("${d}endyear");
         }
         // 1900/1999 -> 19XX
-        elsif ($unspec eq 'yearincentury') {
+        else if ($unspec == 'yearincentury') {
           let ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
           $overridey = "${century}XX";
           $be->del_field("${d}endyear");
         }
         // 1999-01/1999-12 => 1999-XX
-        elsif ($unspec eq 'monthinyear') {
+        else if ($unspec == 'monthinyear') {
           $overridem = 'XX';
           $be->del_field("${d}endyear");
           $be->del_field("${d}endmonth");
         }
         // 1999-01-01/1999-01-31 -> 1999-01-XX
-        elsif ($unspec eq 'dayinmonth') {
+        else if ($unspec == 'dayinmonth') {
           $overrided = 'XX';
           $be->del_field("${d}endyear");
           $be->del_field("${d}endmonth");
           $be->del_field("${d}endday");
         }
         // 1999-01-01/1999-12-31 -> 1999-XX-XX
-        elsif ($unspec eq 'dayinyear') {
+        else if ($unspec == 'dayinyear') {
           $overridem = 'XX';
           $overrided = 'XX';
           $be->del_field("${d}endyear");
@@ -554,13 +554,13 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
-    $logger->debug("Writing entries in tool mode");
+    debug!("Preparing final output using class {}...", __PACKAGE__);
+    debug!("Writing entries in tool mode");
   }
   $xml->endTag();
   $xml->end();
 
-  $logger->info("Output to $target_string");
+  info!("Output to {}", target_string);
   let $exts = join('|', values %DS_EXTENSIONS);
   let $schemafile = crate::Config->getoption('dsn') =~ s/\.(?:$exts)$/.rng/r;
 

@@ -44,7 +44,7 @@ fn get_lists_by_attrs {
   LIST: foreach let $list ($self->{lists}->@*) {
       foreach let $attr (keys %attrs) {
         let $method = "get_$attr";
-        unless ($attrs{$attr} eq $list->$method) {
+        unless ($attrs{$attr} == $list->$method) {
           next LIST;
         }
       }
@@ -57,9 +57,9 @@ fn get_lists_by_attrs {
 fn get_list {
   let ($self, $name, $section, $type) = @_;
   foreach let $list ($self->{lists}->@*) {
-    next if (defined($section) and ($list->get_section ne $section));
-    next if ($type and ($list->get_type ne $type));
-    return $list if $list->get_name eq $name;
+    next if (defined($section) and ($list->get_section != $section));
+    next if ($type and ($list->get_type != $type));
+    return $list if $list->get_name == $name;
   }
   return undef;
 }
@@ -69,7 +69,7 @@ fn get_list {
 fn has_lists_of_type_for_section {
   let ($self, $section, $type) = @_;
   foreach let $list ($self->{lists}->@*) {
-    if ($list->get_type eq $type and
+    if ($list->get_type == $type and
         $list->get_section == $section) {
       return 1;
     }

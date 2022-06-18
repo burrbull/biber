@@ -36,13 +36,13 @@ fn set_output_comment {
   // Make the right casing function
   let $casing;
 
-  if (crate::Config->getoption('output_fieldcase') eq 'upper') {
+  if (crate::Config->getoption('output_fieldcase') == 'upper') {
     $casing = sub {uc(shift)};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'lower') {
+  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
     $casing = sub {lc(shift)};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'title') {
+  else if (crate::Config->getoption('output_fieldcase') == 'title') {
     $casing = sub {ucfirst(shift)};
   }
 
@@ -68,13 +68,13 @@ fn set_output_macro {
   // Make the right casing function
   let $casing;
 
-  if (crate::Config->getoption('output_fieldcase') eq 'upper') {
+  if (crate::Config->getoption('output_fieldcase') == 'upper') {
     $casing = sub {uc(shift)};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'lower') {
+  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
     $casing = sub {lc(shift)};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'title') {
+  else if (crate::Config->getoption('output_fieldcase') == 'title') {
     $casing = sub {ucfirst(shift)};
   }
 
@@ -100,13 +100,13 @@ fn set_output_entry {
 
   // Make the right casing/output mapping function
   let $outmap;
-  if (crate::Config->getoption('output_fieldcase') eq 'upper') {
+  if (crate::Config->getoption('output_fieldcase') == 'upper') {
     $outmap = sub {let $f = shift; uc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'lower') {
+  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
     $outmap = sub {let $f = shift; lc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
-  elsif (crate::Config->getoption('output_fieldcase') eq 'title') {
+  else if (crate::Config->getoption('output_fieldcase') == 'title') {
     $outmap = sub {let $f = shift; ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
 
@@ -258,7 +258,7 @@ fn set_output_entry {
   foreach let $field ($dmh->{xsv}->@*) {
     // keywords is by default field/xsv/keyword but it is in fact
     // output with its own special macro below
-    next if $field eq 'keywords';
+    next if $field == 'keywords';
     if (let $f = $be->get_field($field)) {
       let $fl = join(',', $f->@*);
       unless (crate::Config->getoption('output_resolve_xdata')) {
@@ -325,19 +325,19 @@ fn set_output_entry {
 
 
   foreach let $field (split(/\s*,\s*/, crate::Config->getoption('output_field_order'))) {
-    if ($field eq 'names' or
-        $field eq 'lists' or
-        $field eq 'dates') {
+    if ($field == 'names' or
+        $field == 'lists' or
+        $field == 'dates') {
       let @donefields;
       foreach let $key (sort keys %acc) {
-        if (first {fc($_) eq fc(strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
+        if (first {fc($_) == fc(strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
           $acc .= bibfield($key, $acc{$key}, $max_field_len);
           push @donefields, $key;
         }
       }
       delete @acc{@donefields};
     }
-    elsif (let $value = delete $acc{$outmap->($field)}) {
+    else if (let $value = delete $acc{$outmap->($field)}) {
       $acc .= bibfield($outmap->($field), $value, $max_field_len);
     }
   }
@@ -355,7 +355,7 @@ fn set_output_entry {
   }
   else { // ... or, check for encoding problems and force macros
     let $outenc = crate::Config->getoption('output_encoding');
-    if ($outenc ne 'UTF-8') {
+    if ($outenc != "UTF-8") {
       // Can this entry be represented in the output encoding?
       if (encode($outenc, NFC($acc)) =~ /\?/) { // Malformed data encoding char
         // So convert to macro
@@ -389,7 +389,7 @@ fn output {
     $enc_out = ':encoding(' . crate::Config->getoption('output_encoding') . ')';
   }
 
-  if ($target_string eq '-') {
+  if ($target_string == '-') {
     $target = new IO::File ">-$enc_out";
   }
   else {
@@ -397,11 +397,11 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
+    debug!("Preparing final output using class {}...", __PACKAGE__);
   }
 
-  $logger->info("Writing '$target_string' with encoding '" . crate::Config->getoption('output_encoding') . "'");
-  $logger->info('Converting UTF-8 to TeX macros on output') if crate::Config->getoption('output_safechars');
+  info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption('output_encoding'));
+  info!('Converting UTF-8 to TeX macros on output') if crate::Config->getoption('output_safechars');
 
   out($target, $data->{HEAD});
 
@@ -416,7 +416,7 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug("Writing entries in bibtex format");
+    debug!("Writing entries in bibtex format");
   }
 
   // Bibtex output uses just one special section, always sorted by global sorting spec
@@ -440,7 +440,7 @@ fn output {
 
   out($target, $data->{TAIL});
 
-  $logger->info("Output to $target_string");
+  info!("Output to {}", target_string);
   close $target;
   return;
 }
@@ -484,7 +484,7 @@ fn bibfield {
   let $acc;
   let $inum = crate::Config->getoption('output_indent');
   let $ichar = ' ';
-  if (substr($inum, -1) eq 't') {
+  if (substr($inum, -1) == 't') {
     $ichar = "\t";
     $inum = substr($inum, 0, length($inum)-1);
   }
@@ -498,13 +498,13 @@ fn bibfield {
     // Make the right casing function
     let $casing;
 
-    if (crate::Config->getoption('output_fieldcase') eq 'upper') {
+    if (crate::Config->getoption('output_fieldcase') == 'upper') {
       $casing = sub {uc(shift)};
     }
-    elsif (crate::Config->getoption('output_fieldcase') eq 'lower') {
+    else if (crate::Config->getoption('output_fieldcase') == 'lower') {
       $casing = sub {lc(shift)};
     }
-    elsif (crate::Config->getoption('output_fieldcase') eq 'title') {
+    else if (crate::Config->getoption('output_fieldcase') == 'title') {
       $casing = sub {ucfirst(shift)};
     }
 
@@ -606,32 +606,32 @@ fn construct_datetime {
   if (let $unspec = $be->get_field("${d}dateunspecified")) {
 
     // 1990/1999 -> 199X
-    if ($unspec eq 'yearindecade') {
+    if ($unspec == 'yearindecade') {
       let ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
       $overridey = "${decade}X";
       $be->del_field("${d}endyear");
     }
     // 1900/1999 -> 19XX
-    elsif ($unspec eq 'yearincentury') {
+    else if ($unspec == 'yearincentury') {
       let ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
       $overridey = "${century}XX";
       $be->del_field("${d}endyear");
     }
     // 1999-01/1999-12 => 1999-XX
-    elsif ($unspec eq 'monthinyear') {
+    else if ($unspec == 'monthinyear') {
       $overridem = 'XX';
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
     }
     // 1999-01-01/1999-01-31 -> 1999-01-XX
-    elsif ($unspec eq 'dayinmonth') {
+    else if ($unspec == 'dayinmonth') {
       $overrided = 'XX';
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
       $be->del_field("${d}endday");
     }
     // 1999-01-01/1999-12-31 -> 1999-XX-XX
-    elsif ($unspec eq 'dayinyear') {
+    else if ($unspec == 'dayinyear') {
       $overridem = 'XX';
       $overrided = 'XX';
       $be->del_field("${d}endyear");

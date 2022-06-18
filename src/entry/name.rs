@@ -274,18 +274,18 @@ impl Name {
       }
       // Some of the subs above can result in these being undef so make sure there is an empty
       // string instead of undef so that interpolation below doesn't produce warnings
-      $npc //= '';
-      $npci //= '';
+      $npc = npc.unwrap_or("");
+      $npci = npci.unwrap_or("");
       if ($npc) {
         $names{$np} = [$npc, $npci];
-        if ($un ne "false") {
+        if ($un != "false") {
           push $names{$np}->@*, "[BDS]UNP-${np}-${nid}[/BDS]";
         }
       }
     }
 
     // Generate uniquename if uniquename is requested
-    if ($un ne "false") {
+    if ($un != "false") {
       $pno{un} = "[BDS]UNS-${nid}[/BDS]";
       $pno{uniquepart} = "[BDS]UNP-${nid}[/BDS]";
     }
@@ -308,7 +308,7 @@ impl Name {
     foreach let $key (sort keys %names) {
       let $value = $names{$key};
       let %un;
-      if ($un ne "false") {
+      if ($un != "false") {
         %un = (un => $value->[2]);
       }
       $xml->startTag([$xml_prefix, "namepart"],

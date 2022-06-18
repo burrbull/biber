@@ -100,12 +100,12 @@ fn _initopts {
       crate::Config->setoption($k, $v->{content});
     }
     // mildly complex options
-    elsif (lc($k) eq 'dot_include' or
-           lc($k) eq 'collate_options' or
-           lc($k) eq 'nosort' or
-           lc($k) eq 'nolabel' or
-           lc($k) eq 'nolabelwidthcount' or
-           lc($k) eq 'noinit' ) {
+    else if (lc($k) == 'dot_include' or
+           lc($k) == 'collate_options' or
+           lc($k) == 'nosort' or
+           lc($k) == 'nolabel' or
+           lc($k) == 'nolabelwidthcount' or
+           lc($k) == 'noinit' ) {
       crate::Config->setoption($k, $v->{option});
     }
   }
@@ -137,7 +137,7 @@ fn _initopts {
   foreach let $copt (keys $opts->%*) {
     // This is a tricky option as we need to keep non-overriden defaults
     // If we don't we can get errors when contructing the sorting call to eval() later
-    if (lc($copt) eq 'collate_options') {
+    if (lc($copt) == 'collate_options') {
       let $collopts = crate::Config->getoption('collate_options');
       let $copt_h = eval "{ $opts->{$copt} }" or croak('Bad command-line collation options');
       // Override defaults with any cmdline settings
@@ -174,7 +174,7 @@ fn _initopts {
     $log =~ s/\.blg\z//xms;
     $biberlog = $log . '.blg';
   }
-  elsif (not @ARGV) { // default if no .bcf file specified - mainly in tests
+  else if (not @ARGV) { // default if no .bcf file specified - mainly in tests
     crate::Config->setoption('nolog', 1);
   }
   else {                        // set log to \jobname.blg
@@ -206,13 +206,13 @@ fn _initopts {
   if (crate::Config->getoption('trace')) {
     $LOGLEVEL = 'TRACE'
   }
-  elsif (crate::Config->getoption('debug')) {
+  else if (crate::Config->getoption('debug')) {
     $LOGLEVEL = 'DEBUG'
   }
-  elsif (crate::Config->getoption('quiet') == 1) {
+  else if (crate::Config->getoption('quiet') == 1) {
     $LOGLEVEL = 'ERROR'
   }
-  elsif (crate::Config->getoption('quiet') > 1) {
+  else if (crate::Config->getoption('quiet') > 1) {
     $LOGLEVEL = 'FATAL'
   }
   else {
@@ -239,7 +239,7 @@ fn _initopts {
     if (crate::Config->getoption('quiet') == 1) {
       $LOGLEVEL_S = 'ERROR';
     }
-    elsif (crate::Config->getoption('quiet') > 1) {
+    else if (crate::Config->getoption('quiet') > 1) {
       $LOGLEVEL_S = 'FATAL'
     }
     else {
@@ -259,7 +259,7 @@ fn _initopts {
 |;
 
   // Only want a logfile appender if --nolog isn't set
-  if ($LOGLEVEL_F ne 'OFF') {
+  if ($LOGLEVEL_F != 'OFF') {
     $l4pconf .= qq|
     log4perl.category.logfile                          = $LOGLEVEL_F, Logfile
     log4perl.appender.Logfile                          = Log::Log4perl::Appender::File
@@ -278,10 +278,10 @@ fn _initopts {
   $vn .= ' (beta)' if $BETA_VERSION;
   let $tool = crate::Config->getoption('tool') ? ' running in TOOL mode' : '';
 
-  $logger->info("This is Biber $vn$tool") unless crate::Config->getoption('nolog');
+  info!("This is Biber {}{}", vn, tool) unless crate::Config->getoption('nolog');
 
-  $logger->info("Config file is '" . $opts->{configfile} . "'") if $opts->{configfile};
-  $logger->info("Logfile is '$biberlog'") unless crate::Config->getoption('nolog');
+  info!("Config file is '{}'", $opts->{configfile}) if $opts->{configfile};
+  info!("Logfile is '{}'", biberlog) unless crate::Config->getoption('nolog');
 
   if (crate::Config->getoption('debug')) {
     $screen->info("DEBUG mode: all messages are logged to '$biberlog'")
@@ -394,10 +394,10 @@ fn _config_file_set {
   while (let ($k, $v) = each $userconf->%*) {
     // Has to be an array ref and so must come before
     // the later options tests which assume hash refs
-    if (lc($k) eq 'labelalphatemplate') {
+    if (lc($k) == 'labelalphatemplate') {
       foreach let $t ($v->@*) {
         let $latype = $t->{type};
-        if ($latype eq 'global') {
+        if ($latype == 'global') {
           crate::Config->setblxoption(0, 'labelalphatemplate', $t);
         }
         else {
@@ -408,7 +408,7 @@ fn _config_file_set {
         }
       }
     }
-    elsif (lc($k) eq 'labelalphanametemplate') {
+    else if (lc($k) == 'labelalphanametemplate') {
       foreach let $t ($v->@*) {
         let $lants;
         let $lant;
@@ -425,7 +425,7 @@ fn _config_file_set {
         crate::Config->setblxoption(0, 'labelalphanametemplate', $lants);
       }
     }
-    elsif (lc($k) eq 'uniquenametemplate') {
+    else if (lc($k) == 'uniquenametemplate') {
       let $unts;
       foreach let $unt ($v->@*) {
         let $untval = [];
@@ -439,7 +439,7 @@ fn _config_file_set {
       }
       crate::Config->setblxoption(0, 'uniquenametemplate', $unts);
     }
-    elsif (lc($k) eq 'sortingnamekeytemplate') {
+    else if (lc($k) == 'sortingnamekeytemplate') {
       let $snss;
       foreach let $sns ($v->@*) {
         let $snkps;
@@ -447,7 +447,7 @@ fn _config_file_set {
           let $snps;
           foreach let $snp (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
             let $np;
-            if ($snp->{type} eq 'namepart') {
+            if ($snp->{type} == 'namepart') {
               $np = { type => 'namepart', value => $snp->{content} };
               if (exists($snp->{use})) {
                 $np->{use} = $snp->{use};
@@ -456,7 +456,7 @@ fn _config_file_set {
                 $np->{inits} = $snp->{inits};
               }
             }
-            elsif ($snp->{type} eq 'literal') {
+            else if ($snp->{type} == 'literal') {
               $np = { type => 'literal', value => $snp->{content} };
             }
             push $snps->@*, $np;
@@ -468,9 +468,9 @@ fn _config_file_set {
       }
       crate::Config->setblxoption(0, 'sortingnamekeytemplate', $snss);
     }
-    elsif (lc($k) eq 'transliteration') {
+    else if (lc($k) == 'transliteration') {
       foreach let $tr ($v->@*) {
-        if ($tr->{entrytype}[0] eq '*') { // already array forced for another option
+        if ($tr->{entrytype}[0] == '*') { // already array forced for another option
           crate::Config->setblxoption(0, 'translit', $tr->{translit});
         }
         else {                  // per_entrytype
@@ -484,13 +484,13 @@ fn _config_file_set {
       }
     }
     // mildly complex options - nosort/collate_options
-    elsif (lc($k) eq 'nosort' or
-           lc($k) eq 'noinit' or
-           lc($k) eq 'nolabel' ) {
+    else if (lc($k) == 'nosort' or
+           lc($k) == 'noinit' or
+           lc($k) == 'nolabel' ) {
       crate::Config->setconfigfileoption($k, $v->{option});
     }
     // rather complex options
-    elsif (lc($k) eq 'collate_options') {
+    else if (lc($k) == 'collate_options') {
       let $collopts = crate::Config->getoption('collate_options');
       // Override defaults with any user settings
       foreach let $co ($v->{option}->@*) {
@@ -498,13 +498,13 @@ fn _config_file_set {
       }
       crate::Config->setconfigfileoption($k, $collopts);
     }
-    elsif (lc($k) eq 'sourcemap') {
+    else if (lc($k) == 'sourcemap') {
       let $sms;
       foreach let $sm ($v->{maps}->@*) {
-        if (defined($sm->{level}) and $sm->{level} eq 'driver') {
+        if (defined($sm->{level}) and $sm->{level} == 'driver') {
           carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
         }
-        elsif (defined($sm->{level}) and $sm->{level} eq 'style') {
+        else if (defined($sm->{level}) and $sm->{level} == 'style') {
           carp("You can't set style level sourcemaps via biber - use \\DeclareStyleSourcemap in biblatex. Ignoring map.");
         }
         else {
@@ -513,10 +513,10 @@ fn _config_file_set {
       }
       crate::Config->setconfigfileoption($k, $sms);
     }
-    elsif (lc($k) eq 'inheritance') {// This is a biblatex option
+    else if (lc($k) == 'inheritance') {// This is a biblatex option
       crate::Config->setblxoption(0, $k, $v);
     }
-    elsif (lc($k) eq 'sortexclusion') {// This is a biblatex option
+    else if (lc($k) == 'sortexclusion') {// This is a biblatex option
       foreach let $sex ($v->@*) {
         let $excludes;
         foreach let $ex ($sex->{exclusion}->@*) {
@@ -528,7 +528,7 @@ fn _config_file_set {
                                     $sex->{type});
       }
     }
-    elsif (lc($k) eq 'sortinclusion') {// This is a biblatex option
+    else if (lc($k) == 'sortinclusion') {// This is a biblatex option
       foreach let $sin ($v->@*) {
         let $includes;
         foreach let $in ($sin->{inclusion}->@*) {
@@ -540,7 +540,7 @@ fn _config_file_set {
                                     $sin->{type});
       }
     }
-    elsif (lc($k) eq 'presort') {// This is a biblatex option
+    else if (lc($k) == 'presort') {// This is a biblatex option
       // presort defaults
       foreach let $presort ($v->@*) {
         // Global presort default
@@ -556,17 +556,17 @@ fn _config_file_set {
         }
       }
     }
-    elsif (lc($k) eq 'sortingtemplate') {// This is a biblatex option
+    else if (lc($k) == 'sortingtemplate') {// This is a biblatex option
       let $sorttemplates;
       foreach let $ss ($v->@*) {
         $sorttemplates->{$ss->{name}} = crate::_parse_sort($ss);
       }
       crate::Config->setblxoption(0, 'sortingtemplate', $sorttemplates);
     }
-    elsif (lc($k) eq 'datamodel') {// This is a biblatex option
+    else if (lc($k) == 'datamodel') {// This is a biblatex option
       crate::Config->addtoblxoption(0, 'datamodel', $v);
     }
-    elsif (exists($v->{content})) { // simple option
+    else if (exists($v->{content})) { // simple option
       crate::Config->setconfigfileoption($k, $v->{content});
     }
   }
@@ -596,30 +596,30 @@ fn config_file {
   if ( -f $BIBER_CONF_NAME ) {
     $biberconf = abs_path($BIBER_CONF_NAME);
   }
-  elsif ( -f ".$BIBER_CONF_NAME" ) {
+  else if ( -f ".$BIBER_CONF_NAME" ) {
     $biberconf = abs_path(".$BIBER_CONF_NAME");
   }
-  elsif ( -f File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" ) ) {
+  else if ( -f File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" ) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" );
   }
-  elsif ( defined $ENV{XDG_CONFIG_HOME} and
+  else if ( defined $ENV{XDG_CONFIG_HOME} and
     -f File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME);
   }
  // See https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
-  elsif ( -f File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME) ) {
+  else if ( -f File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME);
   }
-  elsif ( $^O =~ /(?:Mac|darwin)/ and
+  else if ( $^O =~ /(?:Mac|darwin)/ and
     -f File::Spec->catfile($ENV{HOME}, "Library", "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, "Library", "biber", $BIBER_CONF_NAME);
   }
-  elsif ( $^O =~ /Win/ and
+  else if ( $^O =~ /Win/ and
     defined $ENV{APPDATA} and
     -f File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME);
   }
-  elsif ( can_run('kpsewhich') ) {
+  else if ( can_run('kpsewhich') ) {
     let $err;
     run3 [ 'kpsewhich', $BIBER_CONF_NAME ], \undef, \$biberconf, \$err, { return_if_system_error => 1};
     if ($? == -1) {
@@ -670,14 +670,14 @@ fn postprocess_biber_opts {
 
   foreach let $opt ('sortcase', 'sortupper') {
     if (exists($CONFIG->{options}{biber}{$opt})) {
-      if ($CONFIG->{options}{biber}{$opt} eq 'true') {
+      if ($CONFIG->{options}{biber}{$opt} == 'true') {
         $CONFIG->{options}{biber}{$opt} = 1;
       }
-      elsif ($CONFIG->{options}{biber}{$opt} eq 'false') {
+      else if ($CONFIG->{options}{biber}{$opt} == 'false') {
         $CONFIG->{options}{biber}{$opt} = 0;
       }
-      unless ($CONFIG->{options}{biber}{$opt} eq '1' or
-              $CONFIG->{options}{biber}{$opt} eq '0') {
+      unless ($CONFIG->{options}{biber}{$opt} == '1' or
+              $CONFIG->{options}{biber}{$opt} == '0') {
         crate::Utils::biber_error("Invalid value for option '$opt'");
       }
     }
@@ -805,7 +805,7 @@ fn setblxoption {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
     }
   }
-  elsif ($scope eq 'ENTRY') {
+  else if ($scope == 'ENTRY') {
     if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope}) {
       $CONFIG->{options}{biblatex}{$scope}{$scopeval}{$secnum}{$opt} = $val;
     }
@@ -843,12 +843,12 @@ fn getblxoption {
        defined $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt};
   }
-  elsif (defined($entrytype) and
+  else if (defined($entrytype) and
          $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRYTYPE} and
          defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt};
   }
-  elsif ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
+  else if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
     return $CONFIG->{options}{biblatex}{GLOBAL}{$opt};
   }
 }
@@ -869,25 +869,25 @@ fn getblxentryoptions {
 fn set_graph {
   shift; // class method so don't care about class name
   let $type = shift;
-  if ($type eq 'set') {
+  if ($type == 'set') {
     let ($source_key, $target_key) = @_;
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Saving DOT graph information type 'set' with SOURCEKEY=$source_key, TARGETKEY=$target_key");
+      debug!("Saving DOT graph information type 'set' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
     }
     $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
     $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
   }
-  elsif ($type eq 'xref') {
+  else if ($type == 'xref') {
     let ($source_key, $target_key) = @_;
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Saving DOT graph information type 'xref' with SOURCEKEY=$source_key, TARGETKEY=$target_key");
+      debug!("Saving DOT graph information type 'xref' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
     }
     $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
   }
-  elsif ($type eq 'related') {
+  else if ($type == 'related') {
     let ($clone_key, $related_key, $target_key) = @_;
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Saving DOT graph information type 'related' with CLONEKEY=$clone_key, RELATEDKEY=$related_key, TARGETKEY=$target_key");
+      debug!("Saving DOT graph information type 'related' with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}", clone_key, related_key, target_key);
     }
     $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
     $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
@@ -895,7 +895,7 @@ fn set_graph {
   else {
     let ($source_key, $target_key, $source_field, $target_field) = @_;
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Saving DOT graph information type '$type' with SOURCEKEY=$source_key, TARGETKEY=$target_key, SOURCEFIELD=$source_field, TARGETFIELD=$target_field");
+      debug!("Saving DOT graph information type '{}' with SOURCEKEY={}, TARGETKEY={}, SOURCEFIELD={}, TARGETFIELD={}", type, source_key, target_key, source_field, target_field);
     }
     // source can go to more than one target (and does in default rules) so need array here
     push $CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key}->@*, $target_field;
@@ -925,7 +925,7 @@ fn set_inheritance {
 fn get_inheritance {
   shift; // class method so don't care about class name
   let ($type, $source, $target) = @_;
-  return first {$_->{s} eq $source and $_->{t} eq $target} $CONFIG->{state}{$type}->@*;
+  return first {$_->{s} == $source and $_->{t} == $target} $CONFIG->{state}{$type}->@*;
 }
 
 /// Checks for an inheritance path from entry $e1 to $e2
@@ -945,8 +945,8 @@ fn get_inheritance {
 /// ```
 fn is_inheritance_path {
   let ($self, $type, $e1, $e2) = @_;
-  foreach let $dps (grep {$_->{s} eq $e1} $CONFIG->{state}{$type}->@*) {
-    return 1 if $dps->{t} eq $e2;
+  foreach let $dps (grep {$_->{s} == $e1} $CONFIG->{state}{$type}->@*) {
+    return 1 if $dps->{t} == $e2;
     return 1 if is_inheritance_path($self, $type, $dps->{t}, $e2);
   }
   return 0;

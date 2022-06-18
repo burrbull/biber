@@ -120,7 +120,7 @@ fn _getnamehash_u {
     // Use nameuniqueness template to construct hash
     foreach let $nps (crate::Config->getblxoption($secnum, 'uniquenametemplate')->{$untname}->@*) {
       // Same as omitting this
-      next if defined($nps->{disambiguation}) and ($nps->{disambiguation} eq 'none');
+      next if defined($nps->{disambiguation}) and ($nps->{disambiguation} == 'none');
       let $npn = $nps->{namepart};
 
       if (let $np = $n->get_namepart($npn)) {
@@ -129,12 +129,12 @@ fn _getnamehash_u {
         }
         else {
           let $un = $dlist->get_uniquename($nlid, $nid);
-          if (defined($un) and ($un->[0] ne 'base')) {
-            if ($un->[1] eq 'full' or $un->[1] eq 'fullonly') {
+          if (defined($un) and ($un->[0] != 'base')) {
+            if ($un->[1] == 'full' or $un->[1] == 'fullonly') {
               $hashkey .= $np;
             }
             // Use initials for non-base parts if uniquename indicates this will disambiguate
-            elsif ($un->[1] eq 'init') {
+            else if ($un->[1] == 'init') {
               $hashkey .= join('', $n->get_namepart_initial($npn)->@*);
             }
           }
@@ -175,7 +175,7 @@ fn _genpnhash {
   }
 
   if ($logger->is_trace()) { // performance shortcut
-    $logger->trace("Creating MD5 pnhash using '$hashkey'");
+    trace!("Creating MD5 pnhash using '{}'", hashkey);
   }
   // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
   return md5_hex(encode_utf8(NFC(normalise_string_hash($hashkey))));
@@ -213,7 +213,7 @@ fn _dispatch_table_label {
   }
   // Fields which are part of the datamodel
   let $dmf = $dm->get_dm_for_field($field);
-  if ($dmf->{fieldtype} eq 'list' and $dmf->{datatype} eq 'name') {
+  if ($dmf->{fieldtype} == 'list' and $dmf->{datatype} == 'name') {
     return [\&_label_name, [$field]];
   }
   else {
@@ -264,10 +264,10 @@ fn _labelpart {
     if (let $inc = $part->{ifnames}) {
       let $f = $part->{content};
       // resolve labelname
-      if ($f eq 'labelname') {
+      if ($f == 'labelname') {
         $f = ($be->get_labelname_info || '');
       }
-      if ( first {$f eq $_} $dm->get_fields_of_type('list', 'name')->@*) {
+      if ( first {$f == $_} $dm->get_fields_of_type('list', 'name')->@*) {
         let $name = $be->get_field($f) || next; // just in case there is no labelname etc.
         let $total_names = $name->count;
         let $visible_names;
@@ -287,7 +287,7 @@ fn _labelpart {
           if (not defined($incr->[0])) {// range -x
             next unless $visible_names <= $incr->[1];
           }
-          elsif (not defined($incr->[1])) {// range x-
+          else if (not defined($incr->[1])) {// range x-
             next unless $visible_names >= $incr->[0];
           }
           else {// range x-y
@@ -351,7 +351,7 @@ fn _label_basic {
 
   let $f;
   if ($args->[1] and
-      $args->[1] eq 'nostrip') {
+      $args->[1] == 'nostrip') {
     $f = $be->get_field($e);
   }
   else {
@@ -400,7 +400,7 @@ fn _label_name {
   // Careful to extract the information we need about the real name behind labelname
   // as we need this to set the use* options below.
   let $realname;
-  if ($namename eq 'labelname') {
+  if ($namename == 'labelname') {
     $realname = $be->get_labelname_info;
   }
   else {
@@ -443,10 +443,10 @@ fn _label_name {
       $nr_end = $nr->[1];
 
       if (defined($nr_end) and
-          $nr_end eq '+') {// minalphanames cap marker
+          $nr_end == '+') {// minalphanames cap marker
         $nr_end = $visibility;
       }
-      elsif (not defined($nr_end) or
+      else if (not defined($nr_end) or
           $nr_end > $numnames) { // cap at numnames, of course
         $nr_end = $numnames;
       }
@@ -457,7 +457,7 @@ fn _label_name {
     }
 
     if ($logger->is_trace()) {// performance tune
-      $logger->trace("$realname/numnames=$numnames/visibility=$visibility/nr_start=$nr_start/nr_end=$nr_end");
+      trace!("{}/numnames={}/visibility={}/nr_start={}/nr_end={}", realname, numnames, visibility, nr_start, nr_end);
     }
 
     let $parts;
@@ -586,7 +586,7 @@ fn _process_label_attributes {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let @citekeys = $section->get_citekeys;
-  let $nindex = first_index {$_ eq $citekey} @citekeys;
+  let $nindex = first_index {$_ == $citekey} @citekeys;
 
   foreach let $fieldinfo ($fieldstrings->@*) {
     let $field_string = $fieldinfo->[0];
@@ -598,7 +598,7 @@ fn _process_label_attributes {
         // Use the cache if there is one
         if (let $lcache = $section->get_labelcache_v($field)) {
           if ($logger->is_debug()) { // performance tune
-            $logger->debug("Using label disambiguation cache (name) for '$field' in section $secnum");
+            debug!("Using label disambiguation cache (name) for '{}' in section {}", field, secnum);
           }
           // Use the global index override if set (substring_width =~ /f/)
           $field_string = ${$lcache->{$field_string}{data}}[$lcache->{globalindices}{$field_string} || $lcache->{$field_string}{index}];
@@ -669,19 +669,17 @@ fn _process_label_attributes {
           // Use the global index override if set (substring_width =~ /f/)
           $field_string = ${$lcache->{$field_string}{data}}[$lcache->{globalindices}{$field_string} || $lcache->{$field_string}{index}];
           if ($logger->is_trace()) { // performance tune
-            $logger->trace("Label disambiguation cache for '$field' " .
-                           ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : '') .
-                           "in section $secnum:\n " . Data::Dump::pp($lcache));
+            trace!("Label disambiguation cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ''), Data::Dump::pp($lcache));
           }
           $section->set_labelcache_v($field, $lcache);
         }
       }
       // dynamically disambiguated width (list disambiguation)
-      elsif ($labelattrs->{substring_width} =~ /l/ and $field) {
+      else if ($labelattrs->{substring_width} =~ /l/ and $field) {
         // Use the cache if there is one
         if (let $lcache = $section->get_labelcache_l($field)) {
           if ($logger->is_debug()) { // performance tune
-            $logger->debug("Using label disambiguation cache (list) for '$field' in section $secnum");
+            debug!("Using label disambiguation cache (list) for '{}' in section {}", field, secnum);
           }
           $field_string = $lcache->{data}[$nindex][$index];
 
@@ -697,9 +695,7 @@ fn _process_label_attributes {
           $field_string = $lcache->{data}[$nindex][$index];
 
           if ($logger->is_trace()) { // performance tune
-            $logger->trace("Label disambiguation (list) cache for '$field' " .
-                           ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : '') .
-                           "in section $secnum:\n " . Data::Dump::pp($lcache));
+            trace!("Label disambiguation (list) cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ''), Data::Dump::pp($lcache));
           }
           $section->set_labelcache_l($field, $lcache);
         }
@@ -724,7 +720,7 @@ fn _process_label_attributes {
         }
 
         // Set offset depending on subs side
-        if ($subs_side eq 'right') {
+        if ($subs_side == 'right') {
           $subs_offset = 0 - $subs_width;
         }
 
@@ -734,7 +730,7 @@ fn _process_label_attributes {
         let $nolabelwcis;
         if ($nolabelwcs) {
           $nolabelwcis = match_indices([map {$_->{value}} $nolabelwcs->@*], $field_string);
-          $logger->trace('Saved indices for nolabelwidthcount: ' . Data::Dump::pp($nolabelwcis));
+          trace!("Saved indices for nolabelwidthcount: {}", Data::Dump::pp($nolabelwcis));
           // Then remove the nolabelwidthcount chars for now
           foreach let $nolabelwc ($nolabelwcs->@*) {
             let $nlwcopt = $nolabelwc->{value};
@@ -761,10 +757,10 @@ fn _process_label_attributes {
           let $pad_side = ($labelattrs->{pad_side} or 'right');
           let $paddiff = $subs_width - Unicode::GCString->new($field_string)->length;
           if ($paddiff > 0) {
-            if ($pad_side eq 'right') {
+            if ($pad_side == 'right') {
               $field_string .= $padchar x $paddiff;
             }
-            elsif ($pad_side eq 'left') {
+            else if ($pad_side == 'left') {
               $field_string = $padchar x $paddiff . $field_string;
             }
           }
@@ -792,10 +788,10 @@ fn _process_label_attributes {
       $labelattrs->{lowercase}) {
     // do nothing if both are set, for sanity
   }
-  elsif ($labelattrs->{uppercase}) {
+  else if ($labelattrs->{uppercase}) {
     $rfield_string = uc($rfield_string);
   }
-  elsif ($labelattrs->{lowercase}) {
+  else if ($labelattrs->{lowercase}) {
     $rfield_string = lc($rfield_string);
   }
 
@@ -964,7 +960,7 @@ fn _gen_first_disambiguating_name_map {
     for (let $j = 0; $j <= $len; $j++) {
       // if no other name equal to this one in same place, this is the index of the name
       // to use for disambiguation
-      unless (grep {$array->[$i][$j] eq $_} map {$_->[$j]} @check_array) {
+      unless (grep {$array->[$i][$j] == $_} map {$_->[$j]} @check_array) {
         $cache->{name_map}[$indices->[$i]] = $j;
         last;
       }
@@ -1021,28 +1017,28 @@ fn _dispatch_table_sorting {
   }
   // Fields which are part of the datamodel
   let $dmf = $dm->get_dm_for_field($field);
-  if ($dmf->{fieldtype} eq 'list' and $dmf->{datatype} eq 'name') {
+  if ($dmf->{fieldtype} == 'list' and $dmf->{datatype} == 'name') {
     return [\&_sort_name, [$field]];
   }
-  elsif ($dmf->{datatype} eq 'verbatim' or $dmf->{datatype} eq 'uri') {
+  else if ($dmf->{datatype} == 'verbatim' or $dmf->{datatype} == 'uri') {
     return [\&_sort_verbatim, [$field]];
   }
-  elsif ($dmf->{fieldtype} eq 'field' and $dmf->{datatype} eq 'literal' ) {
+  else if ($dmf->{fieldtype} == 'field' and $dmf->{datatype} == 'literal' ) {
     return [\&_sort_literal, [$field]];
   }
-  elsif ($dmf->{fieldtype} eq 'field' and
-         ($dmf->{datatype} eq 'integer' or $dmf->{datatype} eq 'datepart')) {
+  else if ($dmf->{fieldtype} == 'field' and
+         ($dmf->{datatype} == 'integer' or $dmf->{datatype} == 'datepart')) {
     return [\&_sort_integer, [$field]];
   }
-  elsif ($dmf->{fieldtype} eq 'list' and
-         ($dmf->{datatype} eq 'literal' or $dmf->{datatype} eq 'key')) {
+  else if ($dmf->{fieldtype} == 'list' and
+         ($dmf->{datatype} == 'literal' or $dmf->{datatype} == 'key')) {
     return [\&_sort_list, [$field]];
   }
-  elsif ($dmf->{fieldtype} eq 'list' and
-         ($dmf->{datatype} eq 'verbatim' or $dmf->{datatype} eq 'uri')) {
+  else if ($dmf->{fieldtype} == 'list' and
+         ($dmf->{datatype} == 'verbatim' or $dmf->{datatype} == 'uri')) {
     return [\&_sort_list_verbatim, [$field]];
   }
-  elsif ($dmf->{fieldtype} eq 'field' and $dmf->{datatype} eq 'key') {
+  else if ($dmf->{fieldtype} == 'field' and $dmf->{datatype} == 'key') {
     return [\&_sort_literal, [$field]];
   }
 }
@@ -1081,7 +1077,7 @@ fn _dispatch_sorting {
     $code_args_ref = [$sortfield];
   }
   // real sorting field
-  elsif (let $d = _dispatch_table_sorting($sortfield, $dm)) {
+  else if (let $d = _dispatch_table_sorting($sortfield, $dm)) {
     $code_ref = $d->[0];
     $code_args_ref  = $d->[1];
   }
@@ -1112,7 +1108,7 @@ fn _generatesortinfo {
 
     // Did we get a real zero? This messes up tests below unless we are careful
     // Don't try and make this more implicit, it is too subtle a problem
-    if ($s eq 'BIBERZERO') {
+    if ($s == 'BIBERZERO') {
       $szero = 1;
       $s = 0;
     }
@@ -1139,7 +1135,7 @@ fn _generatesortinfo {
   let $ss = join($sorting_sep, $sortobj->@*);
   $dlist->set_sortdata($citekey, [$ss, $sortobj]);
   if ($logger->is_debug()) { // performance shortcut
-    $logger->debug("Sorting object for key '$citekey' -> " . Data::Dump::pp($sortobj));
+    debug!("Sorting object for key '{}' -> {}", citekey, Data::Dump::pp($sortobj));
   }
 
   // Generate sortinit. Skip if there is no sortstring, which is possible in tests
@@ -1197,7 +1193,7 @@ fn _sort_citeorder {
   let $ko = crate::Config->get_keyorder($secnum, $citekey);// only for \cited keys
   if ($section->is_allkeys) {
     let $biborder = (crate::Config->get_keyorder_max($secnum) +
-                    (first_index {$_ eq $citekey} $section->get_orig_order_citekeys) + 1);
+                    (first_index {$_ == $citekey} $section->get_orig_order_citekeys) + 1);
     let $allkeysorder = crate::Config->get_keyorder($secnum, '*');
     if (defined($ko) and defined($allkeysorder) and $allkeysorder < $ko) {
       return $biborder;
@@ -1305,7 +1301,7 @@ fn _sort_labeldate {
       // Don't process attributes as they will be processed in the real sub
       return $self->_dispatch_sorting($ldf, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
     }
-    elsif (exists($ldi->{string})) { // labelyear fallback string
+    else if (exists($ldi->{string})) { // labelyear fallback string
       return '';
     }
   }
@@ -1425,7 +1421,7 @@ fn _sort_string {
 
 fn _process_sort_attributes {
   let ($field_string, $sortelementattributes) = @_;
-  return 'BIBERZERO' if $field_string eq '0'; // preserve real zeros
+  return 'BIBERZERO' if $field_string == '0'; // preserve real zeros
   return $field_string unless $sortelementattributes;
   return $field_string unless $field_string;
   // process substring
@@ -1436,7 +1432,7 @@ fn _process_sort_attributes {
     let $default_substring_side = 'left';
     let $subs_width = ($sortelementattributes->{substring_width} or $default_substring_width);
     let $subs_side = ($sortelementattributes->{substring_side} or $default_substring_side);
-    if ($subs_side eq 'right') {
+    if ($subs_side == 'right') {
       $subs_offset = 0 - $subs_width;
     }
     $field_string = Unicode::GCString->new($field_string)->substr($subs_offset, $subs_width)->as_string;
@@ -1453,10 +1449,10 @@ fn _process_sort_attributes {
     let $pad_char = ($sortelementattributes->{pad_char} or $default_pad_char);
     let $pad_length = $pad_width - Unicode::GCString->new($field_string)->length;
     if ($pad_length > 0) {
-      if ($pad_side eq 'left') {
+      if ($pad_side == 'left') {
         $field_string = ($pad_char x $pad_length) . $field_string;
       }
-      elsif ($pad_side eq 'right') {
+      else if ($pad_side == 'right') {
         $field_string = $field_string . ($pad_char x $pad_length);
       }
     }
@@ -1496,7 +1492,7 @@ fn _namestring {
   // "sortcites" option can require a different visibility for citations and
   // so we have to generate a separate sorting list for this case
   let $visible = $dlist->get_visible_sort($names->get_id);
-  if (defined($tmpsnk) and $tmpsnk->{visibility} eq 'cite') {
+  if (defined($tmpsnk) and $tmpsnk->{visibility} == 'cite') {
     $visible = $dlist->get_visible_cite($names->get_id);
   }
 
@@ -1529,13 +1525,13 @@ fn _namestring {
       let $kps = '';
       for (let $i=0; $i<=$kp->$#*; $i++) {
         let $np = $kp->[$i];
-        if ($np->{type} eq 'namepart') {
+        if ($np->{type} == 'namepart') {
           let $namepart = $np->{value};
           let $useopt = exists($np->{use}) ? "use$namepart" : undef;
           let $useoptval = crate::Config->getblxoption($secnum, $useopt, $bee, $citekey);
 
           // useprefix can be name list or name local
-          if ($useopt and $useopt eq 'useprefix') {
+          if ($useopt and $useopt == 'useprefix') {
             $useoptval = map_boolean('useprefix', $useprefix, 'tonum');
           }
 
@@ -1575,7 +1571,7 @@ fn _namestring {
             }
           }
         }
-        elsif ($np->{type} eq 'literal') {
+        else if ($np->{type} == 'literal') {
           $kps .= $np->{value};
         }
       }
@@ -1653,13 +1649,13 @@ fn _translit {
       // Translit is specific to particular langids
       if (defined($tr->{langids})) {
         next unless let $langid = $entry->get_field('langid');
-        unless (first {fc($langid) eq fc($_)} split(/\s*,\s*/, $tr->{langids})) {
+        unless (first {fc($langid) == fc($_)} split(/\s*,\s*/, $tr->{langids})) {
           next;
         }
       }
-      if (lc($tr->{target}) eq '*' or
-          $tr->{target} eq $target or
-          first {$target eq $_} $DATAFIELD_SETS{$tr->{target}}->@*) {
+      if (lc($tr->{target}) == '*' or
+          $tr->{target} == $target or
+          first {$target == $_} $DATAFIELD_SETS{$tr->{target}}->@*) {
         return call_transliterator($target, $tr->{from}, $tr->{to}, $string);
       }
     }

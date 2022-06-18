@@ -22,7 +22,7 @@ fn new {
   let $class = shift;
   let $obj = shift;
   let $self;
-  if (defined($obj) and ref($obj) eq 'HASH') {
+  if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
   }
   else {
@@ -58,7 +58,7 @@ fn set_output_target_file {
     }
 
     let $of;
-    if ($bblxmlfile eq '-') {
+    if ($bblxmlfile == '-') {
       open($of, '>&:encoding(UTF-8)', STDOUT);
     }
     else {
@@ -67,7 +67,7 @@ fn set_output_target_file {
     $of->autoflush;             // Needed for running tests to string refs
 
     let $xml = XML::Writer->new(OUTPUT      => $of,
-                               ENCODING   => 'UTF-8',
+                               ENCODING   => "UTF-8",
                                DATA_MODE   => 1,
                                DATA_INDENT => crate::Config->getoption('output_indent'),
                                NAMESPACES  => 1,
@@ -111,7 +111,7 @@ fn set_output_entry {
   }
 
   let $xml = XML::Writer->new(OUTPUT      => 'self',
-                             ENCODING    => 'UTF-8',
+                             ENCODING    => "UTF-8",
                              DATA_MODE   => 1,
                              DATA_INDENT => crate::Config->getoption('output_indent'),
                              NAMESPACES  => 1,
@@ -151,7 +151,7 @@ fn set_output_entry {
 
   // Generate set information
   // Set parents are special and need very little
-  if ($bee eq 'set') {// Set parents get <set> entry ...
+  if ($bee == 'set') {// Set parents get <set> entry ...
 
     $xml->dataElement('BDS', 'ENTRYSET');
 
@@ -207,11 +207,11 @@ fn set_output_entry {
 
       let $total = $nf->count;
 
-      if (defined($lni) and $lni eq $namefield) {
+      if (defined($lni) and $lni == $namefield) {
 
         // Add uniquelist if requested
         // Don't use angles in attributes ...
-        if ($ul ne 'false') {
+        if ($ul != 'false') {
           $plo{ul} = "[BDS]UL-${nlid}[/BDS]";
         }
 
@@ -233,7 +233,7 @@ fn set_output_entry {
       foreach let $n ($nf->names->@*) {
 
         // Per-name uniquename if this is labelname
-        if ($lni eq $namefield) {
+        if ($lni == $namefield) {
           if (defined($n->get_uniquename)) {
             $un = $n->get_uniquename;
           }
@@ -254,7 +254,7 @@ fn set_output_entry {
 
       let %plo;
 
-      if ( lc($lf->[-1]) eq crate::Config->getoption('others_string') ) {
+      if ( lc($lf->[-1]) == crate::Config->getoption('others_string') ) {
         // Did we have "and others" in the data?
         $plo{more} = 'true';
         pop $lf->@*; // remove the last element in the array
@@ -355,15 +355,15 @@ fn set_output_entry {
          ($dm->field_is_nullok($field) and
           $be->field_exists($field))) {
       next if $dm->field_is_skipout($field);
-      next if $dm->get_fieldformat($field) eq 'xsv';
+      next if $dm->get_fieldformat($field) == 'xsv';
       // we skip outputting the crossref or xref when the parent is not cited
       // (biblatex manual, section 2.2.3)
       // sets are a special case so always output crossref/xref for them since their
       // children will always be in the .bbl otherwise they make no sense.
-      unless ($bee eq 'set') {
-        next if ($field eq 'crossref' and
+      unless ($bee == 'set') {
+        next if ($field == 'crossref' and
                  not $section->has_citekey($be->get_field('crossref')));
-        next if ($field eq 'xref' and
+        next if ($field == 'xref' and
                  not $section->has_citekey($be->get_field('xref')));
       }
 
@@ -427,7 +427,7 @@ fn set_output_entry {
         // Only output era for date if:
         // The field is "year" and it came from splitting a date
         // The field is any other startyear
-        if ($d eq '' and $be->get_field('datesplit')) {
+        if ($d == '' and $be->get_field('datesplit')) {
           if (let $era = $be->get_field("${d}era")) {
             push @attrs, ('startera', $era);
           }
@@ -453,7 +453,7 @@ fn set_output_entry {
       next if $dm->field_is_skipout($field);
       // keywords is by default field/xsv/keyword but it is in fact
       // output with its own special macro below
-      next if $field eq 'keywords';
+      next if $field == 'keywords';
       $xml->startTag([$xml_prefix, 'field'], name => $field, format => 'xsv');
       foreach let $f ($f->@*) {
         $xml->dataElement([$xml_prefix, 'item'], _bblxml_norm($f));
@@ -494,7 +494,7 @@ fn set_output_entry {
     if ( let $urilf = $be->get_field($uril) ) {
       next if $dm->field_is_skipout($uril);
       let %plo;
-      if ( lc($urilf->[-1]) eq crate::Config->getoption('others_string') ) {
+      if ( lc($urilf->[-1]) == crate::Config->getoption('others_string') ) {
         $plo{$uril} = 'true';
         pop $urilf->@*; // remove the last element in the array
       }
@@ -611,15 +611,15 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
+    debug!("Preparing final output using class {}...", __PACKAGE__);
   }
 
-  $logger->info("Writing '$target_string' with encoding '" . crate::Config->getoption('output_encoding') . "'");
-  $logger->info('Converting UTF-8 to TeX macros on output to .bbl') if crate::Config->getoption('output_safechars');
+  info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
+  info!('Converting UTF-8 to TeX macros on output to .bbl') if crate::Config->getoption('output_safechars');
 
   foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Writing entries for section $secnum");
+      debug!("Writing entries for section {}", secnum);
     }
 
     $xml->startTag([$xml_prefix, 'refsection'], id => $secnum);
@@ -631,10 +631,10 @@ fn output {
     // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
     // but omit the global context list so that we can add this last
     foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-      if ($list->get_sortingtemplatename eq crate::Config->getblxoption(undef, 'sortingtemplatename') and
-          $list->get_sortingnamekeytemplatename eq 'global' and
-          $list->get_labelprefix eq '' and
-          $list->get_type eq 'entry') {
+      if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, 'sortingtemplatename') and
+          $list->get_sortingnamekeytemplatename == 'global' and
+          $list->get_labelprefix == '' and
+          $list->get_type == 'entry') {
         next;
       }
       push @lists, $list;
@@ -657,7 +657,7 @@ fn output {
       let $listname = $list->get_name;
 
       if ($logger->is_debug()) {// performance tune
-        $logger->debug("Writing entries in '$listname' list of type '$listtype' with sortingtemplatename '$listssn', sort name key scheme '$listsnksn' and labelprefix '$listpn'");
+        debug!("Writing entries in '{}' list of type '{}' with sortingtemplatename '{}', sort name key scheme '{}' and labelprefix '{}'", listname, listtype, listssn, listsnksn, listpn);
       }
 
       $xml->startTag([$xml_prefix, 'datalist'], type => $listtype, id => $listname);
@@ -666,7 +666,7 @@ fn output {
       // The order of this array is the sorted order
       foreach let $k ($list->get_keys->@*) {
         if ($logger->is_debug()) {// performance tune
-          $logger->debug("Writing entry for key '$k'");
+          debug!("Writing entry for key '{}'", k);
         }
 
         let $entry = $data->{ENTRIES}{$secnum}{index}{$k};
@@ -706,7 +706,7 @@ fn output {
   }
   $xml->endTag();    // refsection
 
-  $logger->info("Output to $target_string");
+  info!("Output to $target_string");
   $xml->end();
 
 

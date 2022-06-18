@@ -124,7 +124,7 @@ fn _pre {
     let $lnum = length($num);
     let $rnum = num($num);
     let $anum = sprintf("%0${lnum}d", $rnum); // num() strips leading zeros - pad them back
-    unless ($num eq $anum) {
+    unless ($num == $anum) {
       $p{self}{scriptmap}{atos}{$anum} = $num; // Save padded ...
       $p{self}{scriptmap}{atos}{$rnum} = $num; // ... and non-padded versions
       $p{self}{scriptmap}{stoa}{$num} = $anum;
@@ -154,7 +154,7 @@ fn _pre {
   if ($p{input} =~ s/Z$//) {
     $p{parsed}{time_zone} = 'UTC';
   }
-  elsif ($p{input} =~ s/([+-]\d\d:\d\d)$//) {
+  else if ($p{input} =~ s/([+-]\d\d:\d\d)$//) {
     $p{parsed}{time_zone} = $1;
   }
 

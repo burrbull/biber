@@ -80,7 +80,7 @@ fn init_sets {
     else {
       biber_error("Can't run kpsewhich to look for output_safechars data file: $err");
     }
-    $logger->info("Using user-defined recode data file '$mapdata'");
+    info!("Using user-defined recode data file '{}'", mapdata);
   }
   else {
     // we assume that the data file is in the same dir as the module
@@ -110,7 +110,7 @@ fn init_sets {
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
-      next unless first {$set_d eq $_} @set;
+      next unless first {$set_d == $_} @set;
       foreach let $map ($maps->findnodes('map')) {
         let $from = $map->findnodes('from')->shift();
         let $to = $map->findnodes('to')->shift();
@@ -127,7 +127,7 @@ fn init_sets {
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
-      next unless first {$set_e eq $_} @set;
+      next unless first {$set_e == $_} @set;
       foreach let $map ($maps->findnodes('map')) {
         let $from = $map->findnodes('from')->shift();
         let $to = $map->findnodes('to')->shift();
@@ -183,7 +183,7 @@ fn latex_decode {
     let $text = shift;
 
     if ($logger->is_trace()) {// performance tune
-      $logger->trace("String before latex_decode() -> '$text'");
+      trace!("String before latex_decode() -> '{}'", text);
     }
 
     let %opts      = @_;
@@ -203,25 +203,25 @@ fn latex_decode {
       let $re = $remap_d->{$type}{re};
       next unless $re; // Might not be present depending on set
 
-      if ($type eq 'negatedsymbols') {
+      if ($type == 'negatedsymbols') {
         $text =~ s/\\not\\($re)/$map->{$1}/ge;
       }
-      elsif ($type eq 'superscripts') {
+      else if ($type == 'superscripts') {
         $text =~ s/\\textsuperscript\{($re)\}/$map->{$1}/ge;
       }
-      elsif ($type eq 'cmdsuperscripts') {
+      else if ($type == 'cmdsuperscripts') {
         $text =~ s/\\textsuperscript\{\\($re)\}/$map->{$1}/ge;
       }
-      elsif ($type eq 'dings') {
+      else if ($type == 'dings') {
         $text =~ s/\\ding\{([2-9AF][0-9A-F])\}/$map->{$1}/ge;
       }
-      elsif ($type eq 'letters') {
+      else if ($type == 'letters') {
         $text =~ s/\\($re)(?:\{\}|\s+|\b)/$map->{$1}/ge;
       }
-      elsif (first {$type eq $_} ('punctuation', 'symbols', 'greek')) {
+      else if (first {$type == $_} ('punctuation', 'symbols', 'greek')) {
         $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/ge;
       }
-      elsif ($type eq 'diacritics') {
+      else if ($type == 'diacritics') {
 
         // Using Unicode INFORMATION SEPARATOR ONE/TWO
         let $bracemap = {'' => '',
@@ -272,7 +272,7 @@ fn latex_decode {
     }
 
     if ($logger->is_trace()) {// performance tune
-      $logger->trace("String in latex_decode() before brace elimination now -> '$text'");
+      trace!("String in latex_decode() before brace elimination now -> '{}'", text);
     }
 
     // Now remove braces around single letters (which the replace above can
@@ -307,7 +307,7 @@ fn latex_decode {
     $text =~ s/\x{e}/}/g;
 
     if ($logger->is_trace()) {// performance tune
-      $logger->trace("String in latex_decode() now -> '$text'");
+      trace!("String in latex_decode() now -> '{}'", text);
     }
 
     if ($norm) {
@@ -323,33 +323,33 @@ fn latex_encode {
   let $text = shift;
 
   // Optimisation - if virtual null set was specified, do nothing
-  return $text if $set_e eq 'null';
+  return $text if $set_e == 'null';
 
   foreach let $type ('greek', 'dings', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'diacritics', 'letters', 'punctuation', 'symbols') {
     let $map = $remap_e->{$type}{map};
     let $re = $remap_e->{$type}{re};
     next unless $re; // Might not be present depending on set
 
-    if ($type eq 'negatedsymbols') {
+    if ($type == 'negatedsymbols') {
       $text =~ s/($re)/"{\$\\not\\" . $map->{$1} . '$}'/ge;
     }
-    elsif ($type eq 'superscripts') {
+    else if ($type == 'superscripts') {
       $text =~ s/($re)/'\textsuperscript{' . $map->{$1} . '}'/ge;
     }
-    elsif ($type eq 'cmdsuperscripts') {
+    else if ($type == 'cmdsuperscripts') {
       $text =~ s/($re)/"\\textsuperscript{\\" . $map->{$1} . "}"/ge;
     }
-    elsif ($type eq 'dings') {
+    else if ($type == 'dings') {
       $text =~ s/($re)/'\ding{' . $map->{$1} . '}'/ge;
     }
-    elsif ($type eq 'letters') {
+    else if ($type == 'letters') {
       // General macros (excluding special encoding excludes)
       $text =~ s/($re)/($remap_e_raw->{$1} ? '' : "\\") . $map->{$1} . ($remap_e_raw->{$1} ? '' : '{}')/ge;
     }
-    elsif (first {$type eq $_}  ('punctuation', 'symbols', 'greek')) {
+    else if (first {$type == $_}  ('punctuation', 'symbols', 'greek')) {
       $text =~ s/($re)/_wrap($1,$map,$remap_e_raw)/ge;
     }
-    elsif ($type eq 'diacritics') {
+    else if ($type == 'diacritics') {
       // special case such as "i\x{304}" -> '\={\i}' -> "i" needs the dot removing for accents
       $text =~ s/i($re)/"\\" . $map->{$1} . '{\i}'/ge;
 
@@ -379,7 +379,7 @@ fn latex_encode {
     if ($map->{$s} =~ m/^(?:text|guil)/) {
       "\\"  . $map->{$s} . '{}';
     }
-    elsif ($remap_e_raw->{$s}) {
+    else if ($remap_e_raw->{$s}) {
       $map->{$s};
     }
     else {

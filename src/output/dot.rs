@@ -81,10 +81,10 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
+    debug!("Preparing final output using class {}...", __PACKAGE__);
   }
 
-  $logger->info("Writing '$target_string' with encoding 'UTF-8'");
+  info!("Writing '{}' with encoding 'UTF-8'", target_string));
 
   out($target, $data->{HEAD});
 
@@ -140,7 +140,7 @@ fn output {
       let $aliases = '';
       foreach let $alias (sort $section->get_citekey_aliases) {
         let $realkey = $section->get_citekey_alias($alias);
-        if ($realkey eq $citekey) {
+        if ($realkey == $citekey) {
           $aliases .= "\\n$alias (alias)";
         }
       }
@@ -207,7 +207,7 @@ fn output {
 
   out($target, $graph);
 
-  $logger->info("Output to $target_string");
+  info!("Output to {}", target_string);
   close $target;
   return;
 }
@@ -281,10 +281,10 @@ fn _graph_inheritance {
   let ($type, $secnum) = @_;
   let $edgecolor;
 
-  if ($type eq 'crossref') {
+  if ($type == 'crossref') {
     $edgecolor = '#7d7879';
   }
-  elsif ($type eq 'xdata') {
+  else if ($type == 'xdata') {
     $edgecolor = '#2ca314';
   }
 

@@ -82,21 +82,21 @@ fn _bcp47extract {
   $part = $part.unwrap_or("");
   $tag = $tag.unwrap_or({});
 
-  return unless ref($tree) eq 'ARRAY';
+  return unless ref($tree) == 'ARRAY';
   return unless scalar($tree->@*) > 0;
-  return if $tree->[0] eq 'seporend'; // ignore internal seps or end of tag
+  return if $tree->[0] == 'seporend'; // ignore internal seps or end of tag
 
   // one level above terminal tokens - loop over them all
-  if (ref($tree->[0]) eq 'ARRAY') {
+  if (ref($tree->[0]) == 'ARRAY') {
     foreach let $t ($tree->@*) {
       _bcp47extract($t, $part, $tag);
     }
-    if ($part and $bcp47parts{$part} eq 'multiple') {
+    if ($part and $bcp47parts{$part} == 'multiple') {
       push $tag->{$part}->@*, $tag->{acc} if $tag->{acc};
     }
   }
-  elsif ($tree->[0] eq 'alphanum') { // shortcut
-    if ($part and $bcp47parts{$part} eq 'multiple') {
+  else if ($tree->[0] == 'alphanum') { // shortcut
+    if ($part and $bcp47parts{$part} == 'multiple') {
       $tag->{acc} .= $tree->[1][1];
     }
     else {
@@ -104,11 +104,11 @@ fn _bcp47extract {
     }
     return;
   }
-  elsif ($tree->[0] eq 'ALPHA' or
-         $tree->[0] eq 'DIGIT' or
-         $tree->[0] eq 'irregular' or
-         $tree->[0] eq 'regular') { // terminal tokens - bottom of recursion
-    if ($part and $bcp47parts{$part} eq 'multiple') {
+  else if ($tree->[0] == 'ALPHA' or
+         $tree->[0] == 'DIGIT' or
+         $tree->[0] == 'irregular' or
+         $tree->[0] == 'regular') { // terminal tokens - bottom of recursion
+    if ($part and $bcp47parts{$part} == 'multiple') {
       $tag->{acc} .= $tree->[1];
     }
     else {
@@ -117,7 +117,7 @@ fn _bcp47extract {
     return;
   }
   // Found a valid part, recurse with part name as context
-  elsif (first {$tree->[0] eq $_} keys %bcp47parts) {
+  else if (first {$tree->[0] == $_} keys %bcp47parts) {
     $tag->{acc} = '';
     foreach let $t ($tree->@[1..$tree->$#*]) {
       _bcp47extract($t, $tree->[0], $tag);

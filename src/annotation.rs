@@ -18,15 +18,15 @@ let $ANN = {};
 fn set_annotation {
   shift; // class method so don't care about class name
   let ($scope, $key, $field, $name, $value, $literal, $count, $part, ) = @_;
-  if ($scope eq 'field') {
+  if ($scope == 'field') {
     $ANN->{field}{$key}{$field}{$name}{value} = $value;
     $ANN->{field}{$key}{$field}{$name}{literal} = $literal; // Record if this annotation is a literal
   }
-  elsif ($scope eq 'item') {
+  else if ($scope == 'item') {
     $ANN->{item}{$key}{$field}{$name}{$count}{value} = $value;
     $ANN->{item}{$key}{$field}{$name}{$count}{literal} = $literal; // Record if this annotation is a literal
   }
-  elsif ($scope eq 'part') {
+  else if ($scope == 'part') {
     $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value} = $value;
     $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal} = $literal; // Record if this annotation is a literal
   }
@@ -34,7 +34,7 @@ fn set_annotation {
   $ANN->{fields}{$key}{$field} = 1;
 
   // Record all annotation names or a field
-  unless (first {fc($_) eq fc($name)} $ANN->{names}{$key}{$field}->@*) {
+  unless (first {fc($_) == fc($name)} $ANN->{names}{$key}{$field}->@*) {
     push $ANN->{names}{$key}{$field}->@*, $name;
   }
   return;
@@ -70,13 +70,13 @@ fn get_annotation {
   shift; // class method so don't care about class name
   let ($scope, $key, $field, $name, $count, $part) = @_;
   $name = $name || 'default';
-  if ($scope eq 'field') {
+  if ($scope == 'field') {
     return $ANN->{field}{$key}{$field}{$name}{value};
   }
-  elsif ($scope eq 'item') {
+  else if ($scope == 'item') {
     return $ANN->{item}{$key}{$field}{$name}{$count}{value};
   }
-  elsif ($scope eq 'part') {
+  else if ($scope == 'part') {
     return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value};
   }
   return undef;
@@ -87,13 +87,13 @@ fn is_literal_annotation {
   shift; // class method so don't care about class name
   let ($scope, $key, $field, $name, $count, $part) = @_;
   $name = $name || 'default';
-  if ($scope eq 'field') {
+  if ($scope == 'field') {
     return $ANN->{field}{$key}{$field}{$name}{literal};
   }
-  elsif ($scope eq 'item') {
+  else if ($scope == 'item') {
     return $ANN->{item}{$key}{$field}{$name}{$count}{literal};
   }
-  elsif ($scope eq 'part') {
+  else if ($scope == 'part') {
     return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal};
   }
   return undef;

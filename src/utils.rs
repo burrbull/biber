@@ -38,7 +38,7 @@ pub fn glob_data_file($source, $globflag) {
     return @sources;
   }
 
-  info!("Globbing data source '$source'");
+  info!("Globbing data source '{}'", source);
 
   if ($^O =~ /Win/) {
     debug!("Enabling Windows-style globbing");
@@ -49,7 +49,7 @@ pub fn glob_data_file($source, $globflag) {
 
   push @sources, map {biber_decode_utf8($_)} glob NFC(qq("$source"));
 
-  info!("Globbed data source '$source' to '" . join(',', @sources) . "'");
+  info!("Globbed data source '{}' to '{}'", source, sources.join(","));
   return @sources;
 }
 
@@ -57,7 +57,7 @@ pub fn glob_data_file($source, $globflag) {
 /// horrible legacy codepage system
 pub fn slurp_switchr($filename, $encoding) {
   let $slurp;
-  $encoding //= 'UTF-8';
+  $encoding = encoding.unwrap_or("UTF-8");
   if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     let $fh = Win32::Unicode::File->new('<', NFC($filename));
@@ -103,9 +103,9 @@ pub fn locate_data_file($source) {
   let $foundfile;
 
   if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
-    info!("Data source '$source' is a remote BibTeX data source - fetching ...");
+    info!("Data source '{}' is a remote BibTeX data source - fetching ...", source);
     if (let $cf = $REMOTE_MAP{$source}) {
-      info!("Found '$source' in remote source cache");
+      info!("Found '{}' in remote source cache", source);
       $sourcepath = $cf;
     }
     else {
@@ -223,7 +223,7 @@ pub fn locate_data_file($source) {
   // File is in kpse path
   if (can_run("kpsewhich")) {
     if ($logger->is_debug()) {// performance tune
-      debug!("Looking for file '$sourcepath' via kpsewhich");
+      debug!("Looking for file '{}' via kpsewhich", sourcepath);
     }
     let $found;
     let $err;
@@ -234,11 +234,11 @@ pub fn locate_data_file($source) {
       }
     }
     if ($logger->is_trace()) {// performance tune
-      $logger->trace("kpsewhich returned '$found'");
+      trace!("kpsewhich returned '{}'", found);
     }
     if ($found) {
       if ($logger->is_debug()) {// performance tune
-        debug!("Found '$sourcepath' via kpsewhich");
+        debug!("Found '{}' via kpsewhich", sourcepath);
       }
       chomp $found;
       $found =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
@@ -248,7 +248,7 @@ pub fn locate_data_file($source) {
     }
     else {
       if ($logger->is_debug()) {// performance tune
-        debug!("Could not find '$sourcepath' via kpsewhich");
+        debug!("Could not find '{}' via kpsewhich", sourcepath);
       }
     }
   }
@@ -370,11 +370,11 @@ pub fn strip_nosort($string, $fieldname) {
 
   foreach let $nsopt ($nosort->@*) {
     // Specific fieldnames override sets
-    if (fc($nsopt->{name}) eq fc($fieldname)) {
+    if (fc($nsopt->{name}) == fc($fieldname)) {
       push $restrings->@*, $nsopt->{value};
     }
     else if (let $set = $DATAFIELD_SETS{lc($nsopt->{name})} ) {
-      if (first {fc($_) eq fc($fieldname)} $set->@*) {
+      if (first {fc($_) == fc($fieldname)} $set->@*) {
         push $restrings->@*, $nsopt->{value};
       }
     }
@@ -404,11 +404,11 @@ pub fn strip_nonamestring($string, $fieldname) {
 
   foreach let $nnopt ($nonamestring->@*) {
     // Specific fieldnames override sets
-    if (fc($nnopt->{name}) eq fc($fieldname)) {
+    if (fc($nnopt->{name}) == fc($fieldname)) {
       push $restrings->@*, $nnopt->{value};
     }
         else if (let $set = $DATAFIELD_SETS{lc($nnopt->{name})} ) {
-      if (first {fc($_) eq fc($fieldname)} $set->@*) {
+      if (first {fc($_) == fc($fieldname)} $set->@*) {
         push $restrings->@*, $nnopt->{value};
       }
     }
@@ -650,15 +650,15 @@ pub fn is_notnull($arg) {
 
 /// Checks for notnullness of a scalar
 fn is_notnull_scalar($arg) {
-  unless (ref \$arg eq "SCALAR") {
+  unless (ref \$arg == "SCALAR") {
     return undef;
   }
-  return $arg ne '' ? 1 : 0;
+  return $arg != '' ? 1 : 0;
 }
 
 /// Checks for notnullness of an array (passed by ref)
 fn is_notnull_array($arg) {
-  unless (ref $arg eq "ARRAY") {
+  unless (ref $arg == "ARRAY") {
     return undef;
   }
   let @arr = $arg->@*;
@@ -667,7 +667,7 @@ fn is_notnull_array($arg) {
 
 /// Checks for notnullness of an hash (passed by ref)
 fn is_notnull_hash($arg) {
-  unless (ref $arg eq "HASH") {
+  unless (ref $arg == "HASH") {
     return undef;
   }
   let @arr = keys $arg->%*;
@@ -843,7 +843,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
     biber_error("'$file' failed to validate against schema '$schema'\n$@");
   }
   else {
-    info!("'$file' validates against schema '$schema'");
+    info!("'{}' validates against schema '{}'", file, schema);
   }
   undef $xmlparser;
 }
@@ -854,16 +854,16 @@ pub fn map_boolean($bn, $bv, $dir) {
   let $b = lc($bv);
   // Ignore non-booleans
   return $bv unless exists($CONFIG_OPTTYPE_BIBLATEX{$bn});
-  return $bv unless $CONFIG_OPTTYPE_BIBLATEX{$bn} eq "boolean";
+  return $bv unless $CONFIG_OPTTYPE_BIBLATEX{$bn} == "boolean";
 
   let %map = (true  => 1,
              false => 0,
             );
-  if ($dir eq "tonum") {
+  if ($dir == "tonum") {
     return $b if looks_like_number($b);
     return $map{$b};
   }
-  else if ($dir eq "tostring") {
+  else if ($dir == "tostring") {
     return $b if not looks_like_number($b);
     %map = reverse %map;
     return $map{$b};
@@ -898,7 +898,7 @@ pub fn merge_entry_options($opts, $overrideopts) {
     let ($o, $e, $v) = $ov =~ m/^([^=]+)(=?)(.*)$/;
     foreach let $oov ($overrideopts->@*) {
       let ($oo, $eo, $vo) = $oov =~ m/^([^=]+)(=?)(.*)$/;
-      if ($o eq $oo) {
+      if ($o == $oo) {
         $or = 1;
         let $oropt = "$oo" . ($eo.unwrap_or("")) . ($vo.unwrap_or(""));
         push $merged->@*, $oropt;
@@ -913,7 +913,7 @@ pub fn merge_entry_options($opts, $overrideopts) {
 
   // Now push anything in the overrides array which had no conflicts
   foreach let $oov ($overrideopts->@*) {
-    unless(first {$_ eq $oov} $used_overrides->@*) {
+    unless(first {$_ == $oov} $used_overrides->@*) {
       push $merged->@*, $oov;
     }
   }
@@ -933,14 +933,14 @@ pub fn expand_option_input($opt, $val, $cfopt) {
     push $outopts->@*, [$opt, $val];
   }
   // Set all split options
-  else if (ref($cfopt) eq "ARRAY") {
+  else if (ref($cfopt) == "ARRAY") {
     foreach let $k ($cfopt->@*) {
       push $outopts->@*, [$k, $val];
     }
   }
   // ASSUMPTION - only biblatex booleans resolve to hashes (currently, only dataonly)
   // Specify values per all splits
-  else if (ref($cfopt) eq "HASH") {
+  else if (ref($cfopt) == "HASH") {
     foreach let $k (keys $cfopt->%*) {
       let $subval = map_boolean($k, $cfopt->{$k}, "tonum");
 
@@ -953,7 +953,7 @@ pub fn expand_option_input($opt, $val, $cfopt) {
       // uniquelist => DON'T SET ANYTHING (picked up from higher scopes)
       unless ($val) {
         if (exists($CONFIG_OPTTYPE_BIBLATEX{$k}) and
-            $CONFIG_OPTTYPE_BIBLATEX{$k} eq "boolean") {
+            $CONFIG_OPTTYPE_BIBLATEX{$k} == "boolean") {
 
           // The defaults for the sub-options are for when $val=true
           // invert booleans when $val=false
@@ -1050,7 +1050,7 @@ fn parse_date($obj, $string) {
   // Must do this to make sure meta-information from sub-class crate::Date::Format is reset
   $obj->init();
   return 0 unless $string;
-  return 0 if $string eq "..";    // ISO8601-2 4.4 (open date)
+  return 0 if $string == "..";    // ISO8601-2 4.4 (open date)
 
   let $dt = eval {$obj->parse_datetime($string)};
   return $dt unless $dt; // bad parse, don't do anything else
@@ -1260,23 +1260,23 @@ pub fn get_transliterator {
   let ($target, $from, $to) = map {lc} @_;
   let @valid_from = ("iast", "russian");
   let @valid_to   = ("devanagari", "ala-lc", "bgn/pcgn-standard");
-  unless (first {$from eq $_} @valid_from and
-          first {$to eq $_} @valid_to) {
+  unless (first {$from == $_} @valid_from and
+          first {$to == $_} @valid_to) {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
   require Lingua::Translit;
   if ($logger->is_debug()) {// performance tune
-    debug!(format!("Using '{from} -> {to}' transliteration for sorting '{target}"));
+    debug!("Using '{} -> {}' transliteration for sorting '{}'", from, to, target);
   }
 
   // List pairs explicitly as we don't expect there to be to many of these ever
-  if ($from eq 'iast' and $to eq 'devanagari') {
+  if ($from == 'iast' and $to == 'devanagari') {
     return new Lingua::Translit('IAST Devanagari');
   }
-  else if ($from eq 'russian' and $to eq 'ala-lc') {
+  else if ($from == 'russian' and $to == 'ala-lc') {
     return new Lingua::Translit('ALA-LC RUS');
   }
-  else if ($from eq 'russian' and $to eq 'bgn/pcgn-standard') {
+  else if ($from == 'russian' and $to == 'bgn/pcgn-standard') {
     return new Lingua::Translit('BGN/PCGN RUS Standard');
   }
 
@@ -1357,7 +1357,7 @@ pub fn tzformat($tz) {
   if ($tz =~ m/^([+-])(\d{2}):?(\d{2})?/) {
     return "$1$2" . ($3 ? "\\bibtzminsep $3" : '');
   }
-  else if ($tz eq 'UTC') {
+  else if ($tz == 'UTC') {
     return 'Z';
   }
   else {

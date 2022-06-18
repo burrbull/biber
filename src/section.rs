@@ -163,7 +163,7 @@ fn has_badcasekey {
   let ($self, $key) = @_;
   let $ckey = $self->{everykey_lc}{lc($key)};
   return undef unless $ckey;
-  return $ckey ne $key ? $ckey : undef;
+  return $ckey != $key ? $ckey : undef;
 }
 
 /// Check if a key is specifically cited by \cite{key} or \nocite{key}
@@ -399,8 +399,8 @@ fn del_citekey {
   let $self = shift;
   let $key = shift;
   return unless $self->has_citekey($key);
-  $self->{citekeys}            = [ grep {$_ ne $key} $self->{citekeys}->@* ];
-  $self->{orig_order_citekeys} = [ grep {$_ ne $key} $self->{orig_order_citekeys}->@* ];
+  $self->{citekeys}            = [ grep {$_ != $key} $self->{citekeys}->@* ];
+  $self->{orig_order_citekeys} = [ grep {$_ != $key} $self->{orig_order_citekeys}->@* ];
   delete $self->{citekeys_h}{$key};
   return;
 }

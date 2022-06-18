@@ -24,7 +24,7 @@ fn new {
     $collopts{locale} = $thislocale;
     if ($collopts{table}) {
       let $t = delete $collopts{table};
-      $logger->info("Ignoring collation table '$t' as locale is set ($thislocale)");
+      info!("Ignoring collation table '{}' as locale is set ({})", t, thislocale);
     }
   }
 
@@ -43,7 +43,7 @@ fn new {
 
   // Show the collation options when debugging
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Collation options: ' . Data::Dump::pp(%collopts));
+    debug!("Collation options: {}", Data::Dump::pp(%collopts));
   }
 
   // Tailor the collation object and report differences from defaults for locale
@@ -54,8 +54,8 @@ fn new {
     // If we are changing something that has no override tailoring in the locale, it
     // is undef in this hash and we don't care about such things
     next unless defined($coll_changed{$k});
-    if ($coll_changed{$k} ne $collopts{$k}) {
-      $logger->info("Overriding locale '$coll_locale' defaults '$k = $v' with '$k = " . $collopts{$k} . "'");
+    if ($coll_changed{$k} != $collopts{$k}) {
+      info!("Overriding locale '{}' defaults '{} = {}' with '{} = {}'", coll_locale, k, v, k, $collopts{$k});
     }
   }
 

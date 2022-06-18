@@ -176,7 +176,7 @@ fn set_namedis {
   for (let $i=0;$i<=$nds->$#*;$i++) {
     let $se = $nds->[$i];
     // make these explicit for faster lookup since they are static
-    if ($se->[0] eq 'base') {
+    if ($se->[0] == 'base') {
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring} = $nss->[$i];
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts} = $se->[1];
       last;
@@ -191,7 +191,7 @@ fn set_namedis {
 /// template which created the information
 fn is_unbasepart {
   let ($self, $nlid, $nid, $np) = @_;
-  if (first {$_ eq $np} $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}->@*) {
+  if (first {$_ == $np} $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}->@*) {
     return 1;
   }
   else {
@@ -236,13 +236,13 @@ fn get_unsummary {
   let ($self, $nlid, $nid) = @_;
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   return undef unless defined($un);
-  if ($un->[1] eq 'none' or $un->[0] eq 'base') {
+  if ($un->[1] == 'none' or $un->[0] == 'base') {
     return 0;
   }
-  elsif ($un->[1] eq 'init') {
+  else if ($un->[1] == 'init') {
     return 1;
   }
-  elsif ($un->[1] eq 'full' or $un->[1] eq 'fullonly') {
+  else if ($un->[1] == 'full' or $un->[1] == 'fullonly') {
     return 2;
   }
   return 0;
@@ -378,9 +378,9 @@ fn set_uniquelist {
     // Now we know that some disambiguation is needed from other similar list(s)
     $uniquelist = $index+1;// convert zero-based index into 1-based uniquelist value
   }
-  // this is an elsif because for final count > 1, we are setting uniquelist and don't
+  // this is an else if because for final count > 1, we are setting uniquelist and don't
   // want to mess about with it any more
-  elsif ($num_names > $uniquelist and
+  else if ($num_names > $uniquelist and
          not $self->namelist_differs_nth($namelist, $uniquelist, $ul, $labelyear)) {
     // If there are more names than uniquelist, reduce it by one unless
     // there is another list which differs at uniquelist and is at least as long
@@ -1095,7 +1095,7 @@ fn instantiate_entry {
   let $entry_string = $$entry;
 
   // .bbl output
-  if ($format eq 'bbl') {
+  if ($format == 'bbl') {
 
     // entryset
     if (let $es = $self->get_entryfield($key, 'entryset')) {
@@ -1274,7 +1274,7 @@ fn instantiate_entry {
   }
 
   // .bblxml output
-  if ($format eq 'bblxml') {
+  if ($format == 'bblxml') {
 
     // entryset
     if (let $es = $self->get_entryfield($key, 'entryset')) {
@@ -1500,7 +1500,7 @@ fn namelist_differs_index {
     let @l = split("\x{10FFFD}", $l_s);
     next if Compare(\@list, \@l);// Ignore identical lists
     for (let $i=0;$i<=$#list;$i++) {
-      if (defined($list[$i]) and defined($l[$i]) and ($list[$i] eq $l[$i])) {
+      if (defined($list[$i]) and defined($l[$i]) and ($list[$i] == $l[$i])) {
         if (not defined($index) or $i > $index) {
           $index = $i;
         }
@@ -1549,7 +1549,7 @@ fn namelist_differs_nth {
   // uniquelist=minyear should only disambiguate from entries with the
   // same labelyear
   let $unames = $self->{state}{uniquelistcount}{global}{final};
-  if ($ul eq 'minyear') {
+  if ($ul == 'minyear') {
     $unames = $self->{state}{uniquelistcount}{global}{final}{$labelyear};
   }
 
@@ -1558,7 +1558,7 @@ fn namelist_differs_nth {
     // If list is shorter than the list we are checking, it's irrelevant
     next if $#l < $list->$#*;
     // If list matches at $n, it's irrelevant
-    next if ($list_one[$n-1] eq $l[$n-1]);
+    next if ($list_one[$n-1] == $l[$n-1]);
     // If list doesn't match up to $n - 1, it's irrelevant
     next unless Compare([@list_one[0 .. $n-2]], [@l[0 .. $n-2]]);
     return 1;

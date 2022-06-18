@@ -40,7 +40,7 @@ fn new {
 
       // Constants
       foreach let $uc ($udm->{constants}{constant}->@*) {
-        let $uce = firstidx {fc($_->{name}) eq fc($uc->{name})} $dm->{constants}{constant}->@*;
+        let $uce = firstidx {fc($_->{name}) == fc($uc->{name})} $dm->{constants}{constant}->@*;
         if ($uce >= 0) { // since constants are named, we can overwrite easily
           $dm->{constants}{constant}[$uce] = $uc;
         }
@@ -57,7 +57,7 @@ fn new {
       // Entryfields
       foreach let $uef ($udm->{entryfields}->@*) {
         if (let $et = $uef->{entrytype}) {
-          let $ef = firstidx {$_->{entrytype}[0]{content} and (fc($_->{entrytype}[0]{content}) eq fc($et->[0]{content}))} $dm->{entryfields}->@*;
+          let $ef = firstidx {$_->{entrytype}[0]{content} and (fc($_->{entrytype}[0]{content}) == fc($et->[0]{content}))} $dm->{entryfields}->@*;
           if ($ef >= 0) {       // Push fields onto existing type
             push $dm->{entryfields}[$ef]{field}->@*, $uef->{field}->@*;
           }
@@ -80,7 +80,7 @@ fn new {
 
       // Fields
       foreach let $f ($udm->{fields}{field}->@*) {
-        let $df = firstidx {fc($_->{content}) eq fc($f->{content}) } $dm->{fields}{field}->@*;
+        let $df = firstidx {fc($_->{content}) == fc($f->{content}) } $dm->{fields}{field}->@*;
         if ($df >= 0) {
           $dm->{fields}{field}->[$df] = $f;
         }
@@ -110,7 +110,7 @@ fn new {
 
   // Early check for fatal datamodel errors
   // Make sure dates are named *date. A lot of code relies on this.
-  foreach let $date (grep {$_->{datatype} eq 'date'} $dm->{fields}{field}->@*) {
+  foreach let $date (grep {$_->{datatype} == 'date'} $dm->{fields}{field}->@*) {
     unless ($date->{content} =~ m/date$/) {
       biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
     }
@@ -130,12 +130,12 @@ fn new {
     if (let $previous = $self->{fieldsbyname}{$f->{content}}) {
 
       if ($f->{format}) {
-        $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@*;
+        $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@* = grep {$_ != $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{$previous->{format}}->@*;
       }
-      $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@* = grep {$_ ne $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@*;
-      $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@*;
-      $self->{fieldsbydatatype}{$previous->{datatype}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbydatatype}{$previous->{datatype}}->@*;
-      $self->{fieldsbyformat}{$previous->{format}}->@* = grep {$_ ne $f->{content}} $self->{fieldsbyformat}{$previous->{format}}->@*;
+      $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@* = grep {$_ != $f->{content}} $self->{fieldsbytype}{$previous->{fieldtype}}{$previous->{datatype}}{'*'}->@*;
+      $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@* = grep {$_ != $f->{content}} $self->{fieldsbyfieldtype}{$previous->{fieldtype}}->@*;
+      $self->{fieldsbydatatype}{$previous->{datatype}}->@* = grep {$_ != $f->{content}} $self->{fieldsbydatatype}{$previous->{datatype}}->@*;
+      $self->{fieldsbyformat}{$previous->{format}}->@* = grep {$_ != $f->{content}} $self->{fieldsbyformat}{$previous->{format}}->@*;
       delete $self->{fieldsbyname}{$f->{content}};
     }
 
@@ -177,7 +177,7 @@ fn new {
     foreach let $ef ($dm->{entryfields}->@*) {
       // Found a section describing legal fields for entrytype
       if (not exists($ef->{entrytype}) or
-          grep {$_->{content} eq $es} $ef->{entrytype}->@*) {
+          grep {$_->{content} == $es} $ef->{entrytype}->@*) {
         foreach let $f ($ef->{field}->@*) {
           $self->{entrytypesbyname}{$es}{legal_fields}{$f->{content}} = 1;
         }
@@ -188,9 +188,9 @@ fn new {
     foreach let $cd ($dm->{constraints}->@*) {
       // Found a section describing constraints for entrytype
       if (not exists($cd->{entrytype}) or
-          grep {$_->{content} eq $es} $cd->{entrytype}->@*) {
+          grep {$_->{content} == $es} $cd->{entrytype}->@*) {
         foreach let $c ($cd->{constraint}->@*) {
-          if ($c->{type} eq 'mandatory') {
+          if ($c->{type} == 'mandatory') {
             // field
             foreach let $f ($c->{field}->@*) {
               push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $f->{content};
@@ -222,7 +222,7 @@ fn new {
           //   CONSEQUENT_QUANTIFIER
           //   [ CONSEQUENT LIST ]
           // ]
-          elsif ($c->{type} eq 'conditional') {
+          else if ($c->{type} == 'conditional') {
             let $cond;
             $cond->[0] = $c->{antecedent}{quant};
             $cond->[1] = [ map { $_->{content} } $c->{antecedent}{field}->@* ];
@@ -231,7 +231,7 @@ fn new {
             push $self->{entrytypesbyname}{$es}{constraints}{conditional}->@*, $cond;
           }
           // data constraints
-          elsif ($c->{type} eq 'data') {
+          else if ($c->{type} == 'data') {
             let $data;
             $data->{fields} = [ map { $_->{content} } $c->{field}->@* ];
             $data->{datatype} = $c->{datatype};
@@ -265,7 +265,7 @@ fn new {
                       fields    => [sort grep
                                     {
                                       not $self->field_is_skipout($_) and
-                                        not $self->get_fieldformat($_) eq 'xsv'
+                                        not $self->get_fieldformat($_) == 'xsv'
                                     }
                                     $self->get_fields_of_type('field',
                                                               ['entrykey',
@@ -316,7 +316,7 @@ fn new {
   // Mapping of sorting fields to Sort::Key sort data types which are not 'str'
   $self->{sortdataschema} = sub {
     let $f = shift;
-    if (first {$f eq $_} ('citeorder', 'citecount', $self->{helpers}{integers}->@*)) {
+    if (first {$f == $_} ('citeorder', 'citecount', $self->{helpers}{integers}->@*)) {
       return 'int';
     }
     else {
@@ -349,10 +349,10 @@ fn get_constant_type {
 /// Returns a constant value
 fn get_constant_value {
   let ($self, $name) = @_;
-  if ($self->{constants}{$name}{type} eq 'list') {
+  if ($self->{constants}{$name}{type} == 'list') {
     return split(/\s*,\s*/, $self->{constants}{$name}{value});
   }
-  elsif ($self->{constants}{$name}{type} eq 'string') {
+  else if ($self->{constants}{$name}{type} == 'string') {
     return $self->{constants}{$name}{value};
   }
 }
@@ -449,7 +449,7 @@ fn get_fields_of_datatype {
   let ($self, $datatype) = @_;
   let @f;
   // datatype can be array ref of datatypes - makes some calls cleaner
-  if (ref($datatype) eq 'ARRAY') {
+  if (ref($datatype) == 'ARRAY') {
     foreach let $dt ($datatype->@*) {
       if (let $fs = $self->{fieldsbydatatype}{$dt}) {
         push @f, $fs->@*;
@@ -473,7 +473,7 @@ fn get_fields_of_type {
   $format = format.unwrap_or("*");
 
   // datatype can be array ref of datatypes - makes some calls cleaner
-  if (ref($datatype) eq 'ARRAY') {
+  if (ref($datatype) == 'ARRAY') {
     foreach let $dt ($datatype->@*) {
       if (let $fs = $self->{fieldsbytype}{$fieldtype}{$dt}{$format}) {
         push @f, $fs->@*;
@@ -530,13 +530,13 @@ fn get_dm_for_field {
 /// Returns boolean depending on whether a field is a certain biblatex fieldtype
 fn field_is_fieldtype {
   let ($self, $fieldtype, $field) = @_;
-  return $self->{fieldsbyname}{$field}{fieldtype} eq $fieldtype ? 1 : 0;
+  return $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype ? 1 : 0;
 }
 
 /// Returns boolean depending on whether a field is a certain biblatex datatype
 fn field_is_datatype {
   let ($self, $datatype, $field) = @_;
-  return $self->{fieldsbyname}{$field}{datatype} eq $datatype ? 1 : 0;
+  return $self->{fieldsbyname}{$field}{datatype} == $datatype ? 1 : 0;
 }
 
 ///  Returns boolean depending on whether a field is a certain biblatex fieldtype
@@ -544,8 +544,8 @@ fn field_is_datatype {
 fn field_is_type {
   let ($self, $fieldtype, $datatype, $field) = @_;
   if ($self->{fieldsbyname}{$field} and
-      $self->{fieldsbyname}{$field}{fieldtype} eq $fieldtype and
-      $self->{fieldsbyname}{$field}{datatype} eq $datatype) {
+      $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype and
+      $self->{fieldsbyname}{$field}{datatype} == $datatype) {
     return 1;
   }
   else {
@@ -578,16 +578,16 @@ fn check_mandatory_constraints {
   let $ds = $section->get_keytods($key);
 // ["title", ["OR", "url", "doi", "eprint"]]
   foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{mandatory}->@*) {
-    if (ref($c) eq 'ARRAY') {
+    if (ref($c) == 'ARRAY') {
       // Exactly one of a set is mandatory
-      if ($c->[0] eq 'XOR') {
+      if ($c->[0] == 'XOR') {
         let @fs = $c->@[1..$#$c]; // Lose the first element which is the 'XOR'
         let $flag = 0;
         let $xorflag = 0;
         foreach let $of (@fs) {
           if ($be->field_exists($of) and
               // ignore date field if it has been split into parts
-              not ($of eq 'date' and $be->get_field('datesplit'))) {
+              not ($of == 'date' and $be->get_field('datesplit'))) {
             if ($xorflag) {
               push @warnings, "Datamodel: Entry '$key' ($ds): Mandatory fields - only one of '" . join(', ', @fs) . "' must be defined - ignoring field '$of'";
               $be->del_field($of);
@@ -601,7 +601,7 @@ fn check_mandatory_constraints {
         }
       }
       // One or more of a set is mandatory
-      elsif ($c->[0] eq 'OR') {
+      else if ($c->[0] == 'OR') {
         let @fs = $c->@[1..$#$c]; // Lose the first element which is the 'OR'
         let $flag = 0;
         foreach let $of (@fs) {
@@ -644,26 +644,26 @@ fn check_conditional_constraints {
     let $cfs = $c->[3];          // Consequent fields
     let @actual_afs = (grep {$be->field_exists($_)} $afs->@*); // antecedent fields in entry
     // check antecedent
-    if ($aq eq 'all') {
+    if ($aq == 'all') {
       next unless $afs->$#* == $#actual_afs; // ALL -> ? not satisfied
     }
-    elsif ($aq eq 'none') {
+    else if ($aq == 'none') {
       next if @actual_afs;      // NONE -> ? not satisfied
     }
-    elsif ($aq eq 'one') {
+    else if ($aq == 'one') {
       next unless @actual_afs;  // ONE -> ? not satisfied
     }
 
     // check consequent
     let @actual_cfs = (grep {$be->field_exists($_)} $cfs->@*);
-    if ($cq eq 'all') {
+    if ($cq == 'all') {
       unless ($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
             ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
       }
     }
-    elsif ($cq eq 'none') {
+    else if ($cq == 'none') {
       if (@actual_cfs) {        // ? -> NONE not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', @actual_cfs) .
@@ -674,7 +674,7 @@ fn check_conditional_constraints {
         }
       }
     }
-    elsif ($cq eq 'one') {
+    else if ($cq == 'one') {
       unless (@actual_cfs) {    // ? -> ONE not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
@@ -699,12 +699,12 @@ fn check_data_constraints {
 
   foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
     // This is the datatype of the constraint, not the field!
-    if ($c->{datatype} eq 'isbn') {
+    if ($c->{datatype} == 'isbn') {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) eq 'list') {
+          unless ($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -715,12 +715,12 @@ fn check_data_constraints {
         }
       }
     }
-    elsif ($c->{datatype} eq 'issn') {
+    else if ($c->{datatype} == 'issn') {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) eq 'list') {
+          unless ($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -731,12 +731,12 @@ fn check_data_constraints {
         }
       }
     }
-    elsif ($c->{datatype} eq 'ismn') {
+    else if ($c->{datatype} == 'ismn') {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) eq 'list') {
+          unless ($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -747,8 +747,8 @@ fn check_data_constraints {
         }
       }
     }
-    elsif ($c->{datatype} eq 'integer' or
-           $c->{datatype} eq 'datepart') {
+    else if ($c->{datatype} == 'integer' or
+           $c->{datatype} == 'datepart') {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
           if (let $fmin = $c->{rangemin}) {
@@ -768,7 +768,7 @@ fn check_data_constraints {
         }
       }
     }
-    elsif ($c->{datatype} eq 'pattern') {
+    else if ($c->{datatype} == 'pattern') {
       let $patt;
       unless ($patt = $c->{pattern}) {
         push @warnings, "Datamodel: Pattern constraint has no pattern!";
@@ -806,14 +806,14 @@ fn check_datatypes {
     // citekey, entrykey, rawdata, datatype
     next unless defined($fdt);
     let $dt = exists($DM_DATATYPES{$fdt}) ? $DM_DATATYPES{$fdt} : $DM_DATATYPES{default};
-    if (($fft eq 'list' and $fdt ne 'name') or
-        $ffmt eq 'xsv') {
+    if (($fft == 'list' and $fdt != 'name') or
+        $ffmt == 'xsv') {
       $dt = $DM_DATATYPES{list};
     }
 
     // Fields which are allowed to be null and are indeed null are fine
     // These can mess up further tests so weed them out now
-    if ($self->field_is_nullok($f) and $fv eq '') {
+    if ($self->field_is_nullok($f) and $fv == '') {
       next;
     }
 
@@ -845,13 +845,13 @@ fn generate_bltxml_schema {
   let $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
   $rng->autoflush;// Needed for running tests to string refs
 
-  $logger->info("Writing BibLaTeXML RNG schema '$outfile' for datamodel");
+  info!("Writing BibLaTeXML RNG schema '{}' for datamodel", outfile);
   require XML::Writer;
   let $bltx_ns = 'http://biblatex-biber.sourceforge.net/biblatexml';
   let $bltx = 'bltx';
   let $default_ns = 'http://relaxng.org/ns/structure/1.0';
   let $writer = new XML::Writer(NAMESPACES   => 1,
-                               ENCODING     => 'UTF-8',
+                               ENCODING     => "UTF-8",
                                DATA_MODE    => 1,
                                DATA_INDENT  => 2,
                                OUTPUT       => $rng,
@@ -881,7 +881,7 @@ fn generate_bltxml_schema {
   foreach let $ft ($dm->fieldtypes->@*) {
     foreach let $dt ($dm->datatypes->@*) {
       if ($dm->is_fields_of_type($ft, $dt)) {
-        next if $dt eq 'datepart'; // not legal in input, only output
+        next if $dt == 'datepart'; // not legal in input, only output
         $writer->comment("$dt ${ft}s");
         $writer->emptyTag('ref', 'name' => "$dt$ft");
       }
@@ -900,13 +900,13 @@ fn generate_bltxml_schema {
   foreach let $ft ($dm->fieldtypes->@*) {
     foreach let $dt ($dm->datatypes->@*) {
       if ($dm->is_fields_of_type($ft, $dt)) {
-        next if $dt eq 'datepart'; // not legal in input, only output
+        next if $dt == 'datepart'; // not legal in input, only output
         $writer->comment("$dt ${ft}s definition");
         $writer->startTag('define', 'name' => "$dt$ft");
 
         // Name lists element definition
         // =============================
-        if ($ft eq 'list' and $dt eq 'name') {
+        if ($ft == 'list' and $dt == 'name') {
           $writer->startTag('zeroOrMore');// for example, XDATA doesn't need a name
           $writer->startTag('element', 'name' => "$bltx:names");
 
@@ -1012,7 +1012,7 @@ fn generate_bltxml_schema {
           $writer->endTag();    // zeroOrMore
           // ========================
         }
-        elsif ($ft eq 'list') {
+        else if ($ft == 'list') {
           // lists element definition
           // ========================
           $writer->startTag('interleave');
@@ -1041,7 +1041,7 @@ fn generate_bltxml_schema {
           $writer->endTag();// interleave
           // ========================
         }
-        elsif ($ft eq 'field' and $dt eq 'uri') {
+        else if ($ft == 'field' and $dt == 'uri') {
           // uri field element definition
           // ============================
           $writer->startTag('interleave');
@@ -1058,7 +1058,7 @@ fn generate_bltxml_schema {
           $writer->endTag();// interleave
           // ============================
         }
-        elsif ($ft eq 'field' and $dt eq 'range') {
+        else if ($ft == 'field' and $dt == 'range') {
           // range field element definition
           // ==============================
           $writer->startTag('interleave');
@@ -1099,14 +1099,14 @@ fn generate_bltxml_schema {
           $writer->endTag();// interleave
           // ==============================
         }
-        elsif ($ft eq 'field' and $dt eq 'entrykey') {
+        else if ($ft == 'field' and $dt == 'entrykey') {
           // entrykey field element definition
           // =================================
           $writer->startTag('interleave');
           foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
             $writer->startTag('optional');
             // related field is special
-            if ($field eq 'related') {
+            if ($field == 'related') {
               $writer->startTag('element', 'name' => "$bltx:$field");
               $writer->startTag('element', 'name' => "$bltx:list");
               $writer->startTag('oneOrMore');
@@ -1149,7 +1149,7 @@ fn generate_bltxml_schema {
           }
           $writer->endTag();// interleave
         }
-        elsif ($ft eq 'field' and $dt eq 'date') {
+        else if ($ft == 'field' and $dt == 'date') {
           // date field element definition
           // Can't strongly type dates as we allow full ISO8601 meta characters
           // =============================
@@ -1186,7 +1186,7 @@ fn generate_bltxml_schema {
           $writer->endTag(); // zeroOrMore
           // =============================
         }
-        elsif ($ft eq 'field') {
+        else if ($ft == 'field') {
           // field element definition
           // ========================
           $writer->startTag('interleave');
@@ -1281,13 +1281,13 @@ fn generate_bblxml_schema {
   let $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
   $rng->autoflush;// Needed for running tests to string refs
 
-  $logger->info("Writing bblXML RNG schema '$outfile' for datamodel");
+  info!("Writing bblXML RNG schema '{}' for datamodel", outfile);
   require XML::Writer;
   let $bbl_ns = 'https://sourceforge.net/projects/biblatex/bblxml';
   let $bbl = 'bbl';
   let $default_ns = 'http://relaxng.org/ns/structure/1.0';
   let $writer = new XML::Writer(NAMESPACES   => 1,
-                               ENCODING     => 'UTF-8',
+                               ENCODING     => "UTF-8",
                                DATA_MODE    => 1,
                                DATA_INDENT  => 2,
                                OUTPUT       => $rng,
@@ -1554,7 +1554,7 @@ fn generate_bblxml_schema {
 
   // verbatim fields don't need special handling in XML, unlike TeX so they are here
   let @fs2 = grep {
-      not ($dm->get_fieldformat($_) eq 'xsv')
+      not ($dm->get_fieldformat($_) == 'xsv')
         and not $dm->field_is_skipout($_)
       } $dm->get_fields_of_type('field',
                                   ['entrykey',

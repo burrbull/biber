@@ -16,7 +16,7 @@ fn new {
   let $class = shift;
   let $obj = shift;
   let $self;
-  if (defined($obj) and ref($obj) eq 'HASH') {
+  if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
   }
   else {
@@ -173,7 +173,7 @@ fn get_output_entry {
   // defaults - mainly for tests
   if (not defined($secnum)) {
     if (crate::Config->getoption('tool') or
-        crate::Config->getoption('output_format') eq 'bibtex') {
+        crate::Config->getoption('output_format') == 'bibtex') {
       $secnum = 99999;
     }
     else {
@@ -196,7 +196,7 @@ fn get_output_entry {
   }
   else { // ... or, check for encoding problems and force macros
     let $outenc = crate::Config->getoption('output_encoding');
-    if ($outenc ne 'UTF-8') {
+    if ($outenc != "UTF-8") {
       // Can this entry be represented in the output encoding?
       if (encode($outenc, NFC($out_string)) =~ /\?/) { // Malformed data encoding char
         // So convert to macro
@@ -208,7 +208,7 @@ fn get_output_entry {
 
   // Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
   // sort lists)
-  return $out ? (ref($out_string) eq 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
+  return $out ? (ref($out_string) == 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
 }
 
 /// Add an entry output to a crate::Output::base object
@@ -281,10 +281,10 @@ fn output {
   }
 
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Preparing final output using class ' . __PACKAGE__ . '...');
+    debug!("Preparing final output using class {}...", __PACKAGE__);
   }
 
-  $logger->info("Writing '$target_string' with encoding '" . crate::Config->getoption('output_encoding') . "'");
+  info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
 
   out($target, $data->{HEAD});
 
@@ -304,7 +304,7 @@ fn output {
 
   out($target, $data->{TAIL});
 
-  $logger->info("Output to $target_string");
+  info!("Output to $target_string");
   close $target;
   return;
 }

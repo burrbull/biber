@@ -125,12 +125,12 @@ our %DM_DATATYPES = (
                      },
                      range => sub {
                        let $v = shift;
-                       return 1 if ref($v) eq 'ARRAY';
+                       return 1 if ref($v) == 'ARRAY';
                        return 0;
                      },
                      list => sub {
                        let $v = shift;
-                       return 1 if ref($v) eq 'ARRAY';
+                       return 1 if ref($v) == 'ARRAY';
                        return 0;
                      },
                      datepart => sub {
@@ -142,16 +142,16 @@ our %DM_DATATYPES = (
                          // <time>±hh:mm
                          // <time>±hhmm
                          // <time>±hh
-                         unless ($v eq 'Z' or
+                         unless ($v == 'Z' or
                                  $v =~ m|^[+-]\d\d(?:\\bibtzminsep\s)?(?:\d\d)?$|) {
                            return 0;
                          }
                        }
-                       elsif ($f =~ /season$/) { // LEGACY
+                       else if ($f =~ /season$/) { // LEGACY
                          return 0 unless $v =~ m/(?:winter|spring|summer|autumn)/
                        }
-                       elsif ($f =~ /yeardivision$/) {
-                         return 0 unless grep {$v eq $_} values %YEARDIVISIONS;
+                       else if ($f =~ /yeardivision$/) {
+                         return 0 unless grep {$v == $_} values %YEARDIVISIONS;
                        }
                        else {
                          // num() doesn't like negatives
@@ -236,7 +236,7 @@ our $CONFIG_DEFAULT_BIBER = {
   dot_include                                 => { option => {section => 1, xdata => 1, crossref => 1, xref => 1 }},
   fixinits                                    => { content => 0 },
   glob_datasources                            => { content => 0 },
-  input_encoding                              => { content => 'UTF-8' },
+  input_encoding                              => { content => "UTF-8" },
   input_format                                => { content => 'bibtex' },
   isbn10                                      => { content => 0 },
   isbn13                                      => { content => 0 },
@@ -266,7 +266,7 @@ our $CONFIG_DEFAULT_BIBER = {
   output_all_macrodefs                        => { content => 0 },
   output_annotation_marker                    => { content => '+an' },
   output_named_annotation_marker              => { content => ':' },
-  output_encoding                             => { content => 'UTF-8' },
+  output_encoding                             => { content => "UTF-8" },
   output_field_order                          => { content => 'options,abstract,names,lists,dates' },
   output_format                               => { content => 'bbl' },
   output_indent                               => { content => '2' },
@@ -354,8 +354,8 @@ define_alias('x-mac-centeuro' => 'MacCentralEurRoman');
 define_alias('x-mac-cyrillic' => 'MacCyrillic');
 define_alias('x-nextstep'     => 'MacRoman');
 define_alias('x-ascii'        => 'ascii'); // Encode doesn't resolve this one by default
-define_alias('lutf8'          => 'UTF-8'); // Luatex
-define_alias('utf8x'          => 'UTF-8'); // UCS (old)
+define_alias('lutf8'          => "UTF-8"); // Luatex
+define_alias('utf8x'          => "UTF-8"); // UCS (old)
 
 // maps between bcp47 lang/locales and babel/polyglossia language names
 our %LOCALE_MAP = (

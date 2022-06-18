@@ -77,7 +77,7 @@ fn extract_entries {
 
   let @rkeys = $keys->@*;
 
-  $logger->trace("Entering extract_entries() in driver 'biblatexml'");
+  trace!("Entering extract_entries() in driver 'biblatexml'");
 
   // Check for empty files because they confuse btparse
   unless (check_empty($filename)) { // File is empty
@@ -90,22 +90,22 @@ fn extract_entries {
   // Maps are applied in order USER->STYLE->DRIVER
   if (defined(crate::Config->getoption('sourcemap'))) {
     // User maps
-    if (let @m = grep {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'user' } @{crate::Config->getoption('sourcemap')} ) {
+    if (let @m = grep {$_->{datatype} == 'biblatexml' and $_->{level} == 'user' } @{crate::Config->getoption('sourcemap')} ) {
       push $smaps->@*, @m;
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
-    if (let @m = grep {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'style' } @{crate::Config->getoption('sourcemap')} ) {
+    if (let @m = grep {$_->{datatype} == 'biblatexml' and $_->{level} == 'style' } @{crate::Config->getoption('sourcemap')} ) {
       push $smaps->@*, @m;
     }
     // Driver default maps
-    if (let $m = first {$_->{datatype} eq 'biblatexml' and $_->{level} eq 'driver'} @{crate::Config->getoption('sourcemap')} ) {
+    if (let $m = first {$_->{datatype} == 'biblatexml' and $_->{level} == 'driver'} @{crate::Config->getoption('sourcemap')} ) {
       push $smaps->@*, $m;
     }
   }
 
   // Log that we found a data file
-  $logger->info("Found BibLaTeXML data file '$filename'");
+  info!("Found BibLaTeXML data file '{}'", filename);
 
   // Set up XML parser and namespace
   let $xml = slurp_switchr($filename)->$*;
@@ -116,12 +116,12 @@ fn extract_entries {
 
   if ($section->is_allkeys) {
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("All citekeys will be used for section '$secnum'");
+      debug!("All citekeys will be used for section '{}'", secnum);
     }
     // Loop over all entries, creating objects
     foreach let $entry ($xpc->findnodes("/$NS:entries/$NS:entry")) {
       if ($logger->is_debug()) {// performance tune
-        $logger->debug('Parsing BibLaTeXML entry object ' . $entry->nodePath);
+        debug!('Parsing BibLaTeXML entry object {}', $entry->nodePath);
       }
 
       // If an entry has no key, ignore it and warn
@@ -154,7 +154,7 @@ fn extract_entries {
 
         // Warn on conflicting aliases
         if (let $otherid = $section->get_citekey_alias($idstr)) {
-          if ($otherid ne $key) {
+          if ($otherid != $key) {
             biber_warn("Citekey alias '$idstr' already has an alias '$otherid', skipping ...");
           }
         }
@@ -163,7 +163,7 @@ fn extract_entries {
           // will be available
           $section->set_citekey_alias($idstr, $key);
           if ($logger->is_debug()) {// performance tune
-            $logger->debug("Citekey '$idstr' is an alias for citekey '$key'");
+            debug!("Citekey '{}' is an alias for citekey '{}'", idstr, key);
           }
         }
       }
@@ -202,18 +202,18 @@ fn extract_entries {
     // no explicitly cited keys
     $section->add_citekeys(@{$orig_key_order->{$filename}});
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Added all citekeys to section '$secnum': " . join(', ', $section->get_citekeys));
+      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section->get_citekeys));
     }
   }
   else {
     // loop over all keys we're looking for and create objects
     if ($logger->is_debug()) {// performance tune
-      $logger->debug('Wanted keys: ' . join(', ', $keys->@*));
+      debug!("Wanted keys: {}", join(', ', $keys->@*));
     }
     foreach let $wanted_key ($keys->@*) {
 
       if ($logger->is_debug()) {// performance tune
-        $logger->debug("Looking for key '$wanted_key' in BibLaTeXML file '$filename'");
+        debug!("Looking for key '{}' in BibLaTeXML file '{}'", wanted_key, filename);
       }
       if (let @entries = $xpc->findnodes("/$NS:entries/$NS:entry[\@id='$wanted_key']")) {
         // Check to see if there is more than one entry with this key and warn if so
@@ -224,8 +224,8 @@ fn extract_entries {
         let $entry = $entries[0];
 
         if ($logger->is_debug()) {// performance tune
-          $logger->debug("Found key '$wanted_key' in BibLaTeXML file '$filename'");
-          $logger->debug('Parsing BibLaTeXML entry object ' . $entry->nodePath);
+          debug!("Found key '{}' in BibLaTeXML file '{}'", wanted_key, filename);
+          debug!("Parsing BibLaTeXML entry object {}", $entry->nodePath);
         }
         // See comment above about the importance of the case of the key
         // passed to create_entry()
@@ -238,12 +238,12 @@ fn extract_entries {
           create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys);
         }
         // found a key, remove it from the list of keys we want
-        @rkeys = grep {$wanted_key ne $_} @rkeys;
+        @rkeys = grep {$wanted_key != $_} @rkeys;
       }
-      elsif ($xpc->findnodes("/$NS:entries/$NS:entry/$NS:id[text()='$wanted_key']")) {
+      else if ($xpc->findnodes("/$NS:entries/$NS:entry/$NS:id[text()='$wanted_key']")) {
         let $key = $xpc->findnodes("/$NS:entries/$NS:entry/\@id");
         if ($logger->is_debug()) {// performance tune
-          $logger->debug("Citekey '$wanted_key' is an alias for citekey '$key'");
+          debug!("Citekey '{}' is an alias for citekey '{}'", wanted_key, key);
         }
         $section->set_citekey_alias($wanted_key, $key);
 
@@ -260,10 +260,10 @@ fn extract_entries {
         }
 
         // found a key, remove it from the list of keys we want
-        @rkeys = grep {$wanted_key ne $_} @rkeys;
+        @rkeys = grep {$wanted_key != $_} @rkeys;
       }
       if ($logger->is_debug()) {// performance tune
-        $logger->debug('Wanted keys now: ' . join(', ', @rkeys));
+        debug!("Wanted keys now: ", join(', ', @rkeys));
       }
     }
   }
@@ -306,13 +306,13 @@ fn create_entry {
       // Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
       // messier to write than Q
       unless (not exists($map->{per_type}) or
-              first {lc($_->{content}) eq $entry->type} @{$map->{per_type}}) {
+              first {lc($_->{content}) == $entry->type} @{$map->{per_type}}) {
         next;
       }
 
       // Check negated pertype restrictions
       if (exists($map->{per_nottype}) and
-          first {lc($_->{content}) eq $entry->getAttribute('entrytype')} @{$map->{per_nottype}}) {
+          first {lc($_->{content}) == $entry->getAttribute('entrytype')} @{$map->{per_nottype}}) {
         next;
       }
 
@@ -321,7 +321,7 @@ fn create_entry {
       // Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
       // messier to write than Q
       unless (not exists($map->{per_datasource}) or
-              first {$_->{content} eq $datasource} @{$map->{per_datasource}}) {
+              first {$_->{content} == $datasource} @{$map->{per_datasource}}) {
         next;
       }
 
@@ -346,7 +346,7 @@ fn create_entry {
           // entry deletion. Really only useful with allkeys or tool mode
           if ($step->{map_entry_null}) {
             if ($logger->is_debug()) {// performance tune
-              $logger->debug("Source mapping (type=$level, key=$key): Ignoring entry completely");
+              debug!("Source mapping (type={}, key={}): Ignoring entry completely", level, key);
             }
             return 0;           // don't create an entry at all
           }
@@ -359,7 +359,7 @@ fn create_entry {
               next;
             }
             if ($logger->is_debug()) {// performance tune
-              $logger->debug("Source mapping (type=$level, key=$key): Creating new entry with key '$newkey'");
+              debug!("Source mapping (type={}, key={}): Creating new entry with key '$newkey'", level, key);
             }
             let $newentry = XML::LibXML::Element->new("$NS:entry");
             $newentry->setAttribute('id', NFC($newkey));
@@ -367,7 +367,7 @@ fn create_entry {
 
             // found a new entry key, remove it from the list of keys we want since we
             // have "found" it by creating it
-            $rkeys->@* = grep {$newkey ne $_} $rkeys->@*;
+            $rkeys->@* = grep {$newkey != $_} $rkeys->@*;
 
             // for allkeys sections initially
             if ($section->is_allkeys) {
@@ -379,14 +379,14 @@ fn create_entry {
           // entry clone
           if (let $prefix = maploopreplace($step->{map_entry_clone}, $maploop)) {
             if ($logger->is_debug()) {// performance tune
-              $logger->debug("Source mapping (type=$level, key=$key): cloning entry with prefix '$prefix'");
+              debug!("Source mapping (type={}, key={}): cloning entry with prefix '{}'", level, key, prefix);
             }
             // Create entry with no sourcemapping to avoid recursion
             create_entry("$prefix$key", $entry);
 
             // found a prefix clone key, remove it from the list of keys we want since we
             // have "found" it by creating it along with its clone parent
-            $rkeys->@* = grep {"$prefix$key" ne $_} $rkeys->@*;
+            $rkeys->@* = grep {"$prefix$key" != $_} $rkeys->@*;
             // Need to add the clone key to the section if allkeys is set since all keys are cleared
             // for allkeys sections initially
             if ($section->is_allkeys) {
@@ -414,18 +414,18 @@ fn create_entry {
           // Entrytype map
           if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
             $typesource = lc($typesource);
-            unless ($etarget->getAttribute('entrytype') eq $typesource) {
+            unless ($etarget->getAttribute('entrytype') == $typesource) {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Entry type is '" . $etarget->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Entry type is '" . $etarget->getAttribute('entrytype') . "' but map wants '$typesource', skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute('entrytype') . "' but map wants '$typesource', skipping step ...");
                 }
                 next;
               }
@@ -434,7 +434,7 @@ fn create_entry {
             $last_type = $etarget->getAttribute('entrytype');
             let $t = lc(maploopreplace($step->{map_type_target}, $maploop));
             if ($logger->is_debug()) {// performance tune
-              $logger->debug("Source mapping (type=$level, key=$etargetkey): Changing entry type from '$last_type' to $t");
+              debug!("Source mapping (type={}, key={}): Changing entry type from '{}' to {}", level, etargetkey, last_type, t);
             }
             $etarget->setAttribute('entrytype', NFC($t));
           }
@@ -451,14 +451,14 @@ fn create_entry {
             if ($etarget->exists($xp_nfieldsource)) {
               if ($step->{map_final}) {
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_nfieldsource_s' exists and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Field xpath '{}' exists and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_nfieldsource_s);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_nfieldsource_s' exists, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Field xpath '{}' exists, skipping step ...", level, etargetkey, xp_nfieldsource_s);
                 }
                 next;
               }
@@ -476,14 +476,14 @@ fn create_entry {
             if (not $section->is_specificcitekey($key)) { // check if NOT \cited{} and NOT \nocited{}
               if ($step->{map_final}) {
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is neither \\cited nor \\nocited, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited, skipping step ...", level, key);
                 }
                 next;
               }
@@ -495,14 +495,14 @@ fn create_entry {
             if (not $section->is_cite($key)) { // check if NOT cited
               if ($step->{map_final}) {
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not explicitly \\cited and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Key is not explicitly \\cited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not explicitly \\cited, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Key is not explicitly \\cited, skipping step ...", level, key);
                 }
                 next;
               }
@@ -516,14 +516,14 @@ fn create_entry {
                 (not $section->is_nocite($key) and not $section->is_allkeys_nocite)) { // check if NOT nocited
               if ($step->{map_final}) {
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Key is not \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocited, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Key is not \\nocited, skipping step ...", level, key);
                 }
                 next;
               }
@@ -535,14 +535,14 @@ fn create_entry {
             if (not $section->is_allkeys_nocite) { // check if NOT allnoncited
               if ($step->{map_final}) {
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is not \\nocite{*}'ed, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed, skipping step ...", level, key);
                 }
                 next;
               }
@@ -554,14 +554,14 @@ fn create_entry {
             if ($section->is_allkeys_nocite and ($section->is_cite($key) or $section->is_nocite($key))) { // check if NOT nocited
               if ($step->{map_final}) {
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) { // performance tune
-                  $logger->debug("Source mapping (type=$level, key=$key): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited, skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited, skipping step ...", level, key);
                 }
                 next;
               }
@@ -578,14 +578,14 @@ fn create_entry {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): No field xpath '$xp_fieldsource_s' and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): No field xpath '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_fieldsource_s);
                 }
                 next MAP;
               }
               else {
                 // just ignore this step
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): No field xpath '$xp_fieldsource_s', skipping step ...");
+                  debug!("Source mapping (type={}, key={}): No field xpath '{}', skipping step ...", level, etargetkey, xp_fieldsource_s);
                 }
                 next;
               }
@@ -624,13 +624,13 @@ fn create_entry {
               let @ms = split(/\s*,\s*/,$ms);
               let @rs = split(/\s*,\s*/,$step->{map_replace});
               unless (scalar(@ms) == scalar(@rs)) {
-                $logger->debug("Source mapping (type=$level, key=$etargetkey): Different number of fixed matches vs replaces, skipping ...");
+                debug!("Source mapping (type={}, key={}): Different number of fixed matches vs replaces, skipping ...", level, etargetkey);
                 next;
               }
               for (let $i = 0; $i <= $#ms; $i++) {
-                if (($caseinsensitives and fc($last_fieldval) eq fc($ms[$i]))
-                    or ($last_fieldval eq $ms[$i])) {
-                  $etarget->set(encode('UTF-8', NFC($xp_fieldsource_s)), $rs[$i]);
+                if (($caseinsensitives and fc($last_fieldval) == fc($ms[$i]))
+                    or ($last_fieldval == $ms[$i])) {
+                  $etarget->set(encode("UTF-8", NFC($xp_fieldsource_s)), $rs[$i]);
                 }
               }
             }
@@ -640,16 +640,16 @@ fn create_entry {
               if (defined($step->{map_replace})) { // replace can be null
 
                 // Can't modify entrykey
-                if (lc($xp_fieldsource_s) eq './@id') {
+                if (lc($xp_fieldsource_s) == './@id') {
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' is entrykey- cannot remap the value of this field, skipping ...");
+                  debug!("Source mapping (type={}, key={}): Field xpath '{}' is entrykey- cannot remap the value of this field, skipping ...", level, etargetkey, xp_fieldsource_s);
                 }
                 next;
                 }
 
                 let $r = maploopreplace($step->{map_replace}, $maploop);
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Doing match/replace '$m' -> '$r' on field xpath '$xp_fieldsource_s'");
+                  debug!("Source mapping (type={}, key={}): Doing match/replace '{}' -> '{}' on field xpath '{}'", level, etargetkey, m, r, xp_fieldsource_s);
                 }
 
                 unless (_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r, $caseinsensitive)), \$cnerror) {
@@ -667,14 +667,14 @@ fn create_entry {
                   // Skip the rest of the map if this step doesn't match and match is final
                   if ($step->{map_final}) {
                     if ($logger->is_debug()) {// performance tune
-                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' does not match '$m' and step has 'final' set, skipping rest of map ...");
+                      debug!("Source mapping (type={}, key={}): Field xpath '{}' does not match '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_fieldsource_s, m);
                     }
                     next MAP;
                   }
                   else {
                     // just ignore this step
                     if ($logger->is_debug()) {// performance tune
-                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' does not match '$m', skipping step ...");
+                      debug!("Source mapping (type={}, key={}): Field xpath '{}' does not match '{}', skipping step ...", level, etargetkey, xp_fieldsource_s, m);
                     }
                     next;
                   }
@@ -687,9 +687,9 @@ fn create_entry {
               let $xp_target = XML::LibXML::XPathExpression->new($xp_target_s);
 
               // Can't remap entry key pseudo-field
-              if (lc($xp_target_s) eq './@id') {
+              if (lc($xp_target_s) == './@id') {
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' is entrykey - cannot map this to a new field as you must have an entrykey, skipping ...");
+                  debug!("Source mapping (type={}, key={}): Field xpath '{}' is entrykey - cannot map this to a new field as you must have an entrykey, skipping ...", level, etargetkey, xp_fieldsource_s);
                 }
                 next;
               }
@@ -697,12 +697,12 @@ fn create_entry {
             if ($etarget->exists($xp_target)) {
                 if ($map->{map_overwrite}.or($smap->{map_overwrite})) {
                   if ($logger->is_debug()) {// performance tune
-                    $logger->debug("Source mapping (type=$level, key=$etargetkey): Overwriting existing field xpath '$xp_target_s'");
+                    debug!("Source mapping (type={}, key={}): Overwriting existing field xpath '{}'", level, etargetkey, xp_target_s);
                   }
                 }
                 else {
                   if ($logger->is_debug()) {// performance tune
-                    $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_fieldsource_s' is mapped to field xpath '$xp_target_s' but both are defined, skipping ...");
+                    debug!("Source mapping (type={}, key={}): Field xpath '{}' is mapped to field xpath '{}' but both are defined, skipping ...", level, etargetkey, xp_fieldsource_s, xp_target_s);
                   }
                   next;
                 }
@@ -721,7 +721,7 @@ fn create_entry {
             // Deal with special tokens
             if ($step->{map_null}) {
               if ($logger->is_debug()) {// performance tune
-                $logger->debug("Source mapping (type=$level, key=$etargetkey): Deleting field xpath '$xp_node_s'");
+                debug!("Source mapping (type={}, key={}): Deleting field xpath '{}'", level, etargetkey, xp_node_s);
               }
               $etarget->findnodes($xp_node)->get_node(1)->unbindNode();
             }
@@ -731,14 +731,14 @@ fn create_entry {
                   if ($step->{map_final}) {
                     // map_final is set, ignore and skip rest of step
                     if ($logger->is_debug()) {// performance tune
-                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_node_s' exists, overwrite is not set and step has 'final' set, skipping rest of map ...");
+                      debug!("Source mapping (type={}, key={}): Field xpath '{}' exists, overwrite is not set and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_node_s);
                     }
                     next MAP;
                   }
                   else {
                     // just ignore this step
                     if ($logger->is_debug()) {// performance tune
-                      $logger->debug("Source mapping (type=$level, key=$etargetkey): Field xpath '$xp_node_s' exists and overwrite is not set, skipping step ...");
+                      debug!("Source mapping (type={}, key={}): Field xpath '{}' exists and overwrite is not set, skipping step ...", level, etargetkey, xp_node_s);
                     }
                     next;
                   }
@@ -755,26 +755,26 @@ fn create_entry {
               if ($step->{map_origentrytype}) {
                 next unless $last_type;
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting xpath '$xp_node_s' to '${orig}${last_type}'");
+                  debug!("Source mapping (type={}, key={}): Setting xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_type);
                 }
 
                 unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_type), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
                 }
               }
-              elsif ($step->{map_origfieldval}) {
+              else if ($step->{map_origfieldval}) {
                 next unless $last_fieldval;
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_fieldval}'");
+                  debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_fieldval);
                 }
                 unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_fieldval), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
-              elsif ($step->{map_origfield}) {
+              else if ($step->{map_origfield}) {
                 next unless $last_field;
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${last_field}'");
+                  debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_field);
                 }
                 unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_field), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
@@ -787,7 +787,7 @@ fn create_entry {
                 // previous map_match
                 $fv =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
                 if ($logger->is_debug()) {// performance tune
-                  $logger->debug("Source mapping (type=$level, key=$etargetkey): Setting field xpath '$xp_node_s' to '${orig}${fv}'");
+                  debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, fv);
                 }
                 unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $fv), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
@@ -808,17 +808,17 @@ fn create_entry {
     let $k = $e->getAttribute('id');
     $bibentry->set_field('citekey', $k);
     if ($logger->is_debug()) {// performance tune
-      $logger->debug("Creating entry with key '$k'");
+      debug!("Creating entry with key '{}'", k);
     }
 
     // We put all the fields we find modulo field aliases into the object.
     // Validation happens later and is not datasource dependent
-    foreach let $f (uniq map { if (_norm($_->nodeName) eq 'names') { $_->getAttribute('type') }
+    foreach let $f (uniq map { if (_norm($_->nodeName) == 'names') { $_->getAttribute('type') }
                               else { $_->nodeName()} }  $e->findnodes('*')) {
 
       // We have to process local options as early as possible in order
       // to make them available for things that need them like name parsing
-      if (_norm($f) eq 'options') {
+      if (_norm($f) == 'options') {
         if (let $node = $entry->findnodes("./$NS:options")->get_node(1)) {
           process_entry_options($k, [ split(/\s*,\s*/, $node->textContent()) ], $secnum);
         }
@@ -852,7 +852,7 @@ fn _annotation {
       if ($part) {
         crate::Annotation->set_annotation('part', $key, $field, $name, $ann, $literal, $item, $part);
       }
-      elsif ($item) {
+      else if ($item) {
         crate::Annotation->set_annotation('item', $key, $field, $name, $ann, $literal, $item);
       }
       else {
@@ -902,7 +902,7 @@ fn _literal {
   }
 
   // eprint is special case
-  if ($f eq "$NS:eprint") {
+  if ($f == "$NS:eprint") {
     $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
     if (let $ec = $node->getAttribute('class')) {
       $bibentry->set_datafield('eprintclass', $ec);
@@ -921,7 +921,7 @@ fn _xsv {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
   // XDATA is special
-  if (fc(_norm($f)) eq 'xdata') {
+  if (fc(_norm($f)) == 'xdata') {
     // Just split with no XDATA setting on list items
     let $value = _split_list($bibentry, $node, $key, $f, 1);
     $bibentry->add_xdata_ref('xdata', $value);
@@ -1252,7 +1252,7 @@ fn _name {
 fn parsename {
   let ($section, $node, $fieldname, $key, $count) = @_;
   if ($logger->is_debug()) {// performance tune
-    $logger->debug('Parsing BibLaTeXML name object ' . $node->nodePath);
+    debug!("Parsing BibLaTeXML name object {}", $node->nodePath);
   }
 
   let %namec;
@@ -1266,7 +1266,7 @@ fn parsename {
         let @parts = map {$_->textContent()} @npnodes;
         $namec{$n} = join_name_parts(\@parts);
         if ($logger->is_debug()) {// performance tune
-          $logger->debug("Found namepart '$n': " . $namec{$n});
+          debug!("Found namepart '{}': {}", n, $namec{$n});
         }
         let @partinits;
         foreach let $part (@npnodes) {
@@ -1280,10 +1280,10 @@ fn parsename {
         $namec{"${n}-i"} = \@partinits;
       }
       // with no parts
-      elsif (let $t = $npnode->textContent()) {
+      else if (let $t = $npnode->textContent()) {
         $namec{$n} = $t;
         if ($logger->is_debug()) {// performance tune
-          $logger->debug("Found namepart '$n': $t");
+          debug!("Found namepart '{}': {}", n, t);
         }
         if (let $ni = $node->getAttribute('initial')) {
           $namec{"${n}-i"} = [$ni];
@@ -1401,7 +1401,7 @@ fn _changenode {
   // names are special and can be specified by just the string
   if ($dm->is_field($value)) {
     let $dmv = $dm->get_dm_for_field($value);
-    if ($dmv->{fieldtype} eq 'list' and $dmv->{datatype} eq 'name') {
+    if ($dmv->{fieldtype} == 'list' and $dmv->{datatype} == 'name') {
       $value = _getpath($value);
     }
   }
@@ -1424,7 +1424,7 @@ fn _changenode {
       $n->setValue(NFC($value));
     }
     // Set element
-    elsif ($n->nodeType == XML_ELEMENT_NODE) {
+    else if ($n->nodeType == XML_ELEMENT_NODE) {
       // if value is a node, remove target child nodes and replace with value child nodes
       if ($nodeval) {
         $n->removeChildNodes();
@@ -1438,7 +1438,7 @@ fn _changenode {
       }
     }
     // target is a text node, just replace string
-    elsif ($n->nodeType == XML_TEXT_NODE) {
+    else if ($n->nodeType == XML_TEXT_NODE) {
       if ($nodeval) {
         $$error = "Tried to replace '$xp_target_s' Text node with complex data";
         return 0;
@@ -1489,13 +1489,13 @@ fn _changenode {
           }
         }
         // Attribute
-        elsif ($node =~ m/^@/) {
+        else if ($node =~ m/^@/) {
           if ($i == $#nodes) {
             $parent->setAttribute($node =~ s|^@||r, NFC($value));
           }
         }
         // Text
-        elsif ($node =~ m/text\(\)$/) {
+        else if ($node =~ m/text\(\)$/) {
           if ($i == $#nodes) {
             $parent->appendTextNode(NFC($value));
           }
@@ -1517,7 +1517,7 @@ fn _getpath {
   else {
     if ($dm->is_field($string)) {
       let $dms = $dm->get_dm_for_field($string);
-      if ($dms->{fieldtype} eq 'list' and $dms->{datatype} eq 'name') {
+      if ($dms->{fieldtype} == 'list' and $dms->{datatype} == 'name') {
         return "./bltx:names[\@type='$string']";
       }
       else {
