@@ -80,9 +80,7 @@ fn output {
     $target = new IO::File '>-';
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Preparing final output using class {}...", __PACKAGE__);
-  }
 
   info!("Writing '{}' with encoding 'UTF-8'", target_string));
 

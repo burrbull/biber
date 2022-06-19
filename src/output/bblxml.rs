@@ -610,17 +610,13 @@ fn output {
     $target_string = $self->{output_target_file};
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Preparing final output using class {}...", __PACKAGE__);
-  }
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
   info!('Converting UTF-8 to TeX macros on output to .bbl') if crate::Config->getoption('output_safechars');
 
   foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
-    if ($logger->is_debug()) {// performance tune
       debug!("Writing entries for section {}", secnum);
-    }
 
     $xml->startTag([$xml_prefix, 'refsection'], id => $secnum);
 
@@ -656,18 +652,14 @@ fn output {
       let $listtype = $list->get_type;
       let $listname = $list->get_name;
 
-      if ($logger->is_debug()) {// performance tune
         debug!("Writing entries in '{}' list of type '{}' with sortingtemplatename '{}', sort name key scheme '{}' and labelprefix '{}'", listname, listtype, listssn, listsnksn, listpn);
-      }
 
       $xml->startTag([$xml_prefix, 'datalist'], type => $listtype, id => $listname);
       $xml->raw("\n");
 
       // The order of this array is the sorted order
       foreach let $k ($list->get_keys->@*) {
-        if ($logger->is_debug()) {// performance tune
           debug!("Writing entry for key '{}'", k);
-        }
 
         let $entry = $data->{ENTRIES}{$secnum}{index}{$k};
 

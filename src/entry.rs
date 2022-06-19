@@ -50,25 +50,19 @@ fn relclone {
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $dmh = crate::Config->get_dm_helpers;
   if (let $relkeys = $self->get_field('related')) {
-    if ($logger->is_debug()) {// performance tune
       debug!("Found RELATED field in '{}' with contents {}", citekey, join(',', @$relkeys));
-    }
     let @clonekeys;
     foreach let $relkey (@$relkeys) {
       // Resolve any alias
       let $nrelkey = $section->get_citekey_alias($relkey).unwrap_or($relkey);
-      if ($logger->is_debug()) {// performance tune
         debug!("Resolved RELATED key alias '{}' to '{}'", relkey, nrelkey) if $relkey != $nrelkey;
         debug!("Looking at RELATED key '{}'", relkey);
-      }
       $relkey = $nrelkey;
 
       // Loop avoidance, in case we are back in an entry again in the guise of a clone
       // We can record the related clone but don't create it again
       if (let $ck = $section->get_keytorelclone($relkey)) {
-        if ($logger->is_debug()) {// performance tune
           debug!("Found RELATED key '{}' already has clone '{}'", relkey, ck);
-        }
         push @clonekeys, $ck;
 
         // Save graph information if requested
@@ -82,9 +76,7 @@ fn relclone {
         let $clonekey = md5_hex(encode_utf8($relkey));
         push @clonekeys, $clonekey;
         let $relclone = $relentry->clone($clonekey);
-        if ($logger->is_debug()) {// performance tune
           debug!("Created new related clone for '{}' with clone key '{}'", relkey, clonekey);
-        }
 
         // Set related clone options
         if (let $relopts = $self->get_field('relatedoptions')) {
@@ -118,9 +110,7 @@ fn relclone {
         }
 
         // recurse so we can do cascading related entries
-        if ($logger->is_debug()) {// performance tune
           debug!("Recursing into RELATED entry '{}'", clonekey);
-        }
         $relclone->relclone;
       }
     }
@@ -587,9 +577,7 @@ fn resolve_xdata {
               if (crate::Config->getoption('output_format') == 'dot') {
                 crate::Config->set_graph('xdata', $xdataentry->get_field('citekey'), $entry_key, $field, $field);
               }
-              if ($logger->is_debug()) { // performance tune
                 debug!("Setting field '{}' in entry '{}' via XDATA", field, entry_key);
-              }
             }
           }
           else { // Granular XDATA inheritance
@@ -619,9 +607,7 @@ fn resolve_xdata {
                 let $bibentries = $section->bibentries;
                 let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
                 $self->get_field($reffield)->splice($xdataentry->get_field($xdatafield), $refposition);
-                if ($logger->is_debug()) { // performance tune
                   debug!("Inserting at position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
-                }
               }
               else {
                 unless ($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
@@ -632,9 +618,7 @@ fn resolve_xdata {
 
                 $self->get_field($reffield)->replace_name($xdataentry->get_field($xdatafield)->nth_name($xdataposition), $refposition);
 
-                if ($logger->is_debug()) { // performance tune
                   debug!("Setting position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
-                }
               }
             }
             // Non-name lists
@@ -643,9 +627,7 @@ fn resolve_xdata {
                 let $bibentries = $section->bibentries;
                 let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
                 splice($self->get_field($reffield)->@*, $refposition-1, 1, $be->get_field($xdatum->{xdatafield})->@*);
-                if ($logger->is_debug()) { // performance tune
                   debug!("Inserting at position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
-                }
               }
               else {
                 unless ($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
@@ -655,18 +637,14 @@ fn resolve_xdata {
                 }
                 $self->get_field($reffield)->[$refposition-1] =
                   $xdataentry->get_field($xdatafield)->[$refposition-1];
-                if ($logger->is_debug()) { // performance tune
                   debug!("Setting position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
-                }
               }
             }
             // Non-list
             else {
 
               $self->set_datafield($reffield, $xdataentry->get_field($xdatafield));
-              if ($logger->is_debug()) { // performance tune
                 debug!("Setting field '{}' in entry '{}' via XDATA", reffield, entry_key);
-              }
             }
           }
           $xdatum->{resolved} = 1;
@@ -757,9 +735,7 @@ fn inherit_from {
           // Set the field if it doesn't exist or override is requested
           else if (not $self->field_exists($field->{target}) or
                  $field_override_target == 'true') {
-            if ($logger->is_debug()) {// performance tune
               debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, $field->{source}, $field->{target}, source_key);
-            }
 
             $self->set_datafield($field->{target}, $parent->get_field($field->{source}));
 
@@ -842,9 +818,7 @@ fn inherit_from {
 
       // Set the field if it doesn't exist or override is requested
       if (not $self->field_exists($field) or $override_target == 'true') {
-        if ($logger->is_debug()) { // performance tune
           debug!("Entry '{}' is inheriting field '{}' from entry '{}'", target_key, field, source_key);
-        }
 
         $self->set_datafield($field, $parent->get_field($field));
 

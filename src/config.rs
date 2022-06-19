@@ -871,32 +871,24 @@ fn set_graph {
   let $type = shift;
   if ($type == 'set') {
     let ($source_key, $target_key) = @_;
-    if ($logger->is_debug()) {// performance tune
       debug!("Saving DOT graph information type 'set' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
-    }
     $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
     $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
   }
   else if ($type == 'xref') {
     let ($source_key, $target_key) = @_;
-    if ($logger->is_debug()) {// performance tune
       debug!("Saving DOT graph information type 'xref' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
-    }
     $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
   }
   else if ($type == 'related') {
     let ($clone_key, $related_key, $target_key) = @_;
-    if ($logger->is_debug()) {// performance tune
       debug!("Saving DOT graph information type 'related' with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}", clone_key, related_key, target_key);
-    }
     $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
     $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
   }
   else {
     let ($source_key, $target_key, $source_field, $target_field) = @_;
-    if ($logger->is_debug()) {// performance tune
       debug!("Saving DOT graph information type '{}' with SOURCEKEY={}, TARGETKEY={}, SOURCEFIELD={}, TARGETFIELD={}", type, source_key, target_key, source_field, target_field);
-    }
     // source can go to more than one target (and does in default rules) so need array here
     push $CONFIG->{state}{graph}{$type}{$source_key}{$source_field}{$target_key}->@*, $target_field;
   }

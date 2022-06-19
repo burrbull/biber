@@ -222,24 +222,16 @@ pub fn locate_data_file($source) {
 
   // File is in kpse path
   if (can_run("kpsewhich")) {
-    if ($logger->is_debug()) {// performance tune
       debug!("Looking for file '{}' via kpsewhich", sourcepath);
-    }
     let $found;
     let $err;
     run3  [ "kpsewhich", $sourcepath ], \undef, \$found, \$err, { return_if_system_error => 1};
     if ($?) {
-      if ($logger->is_debug()) {// performance tune
         debug!("kpsewhich returned error: $err ($!)");
-      }
     }
-    if ($logger->is_trace()) {// performance tune
       trace!("kpsewhich returned '{}'", found);
-    }
     if ($found) {
-      if ($logger->is_debug()) {// performance tune
         debug!("Found '{}' via kpsewhich", sourcepath);
-      }
       chomp $found;
       $found =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
       // filename can be UTF-8 and run3() isn't clever with UTF-8
@@ -247,9 +239,7 @@ pub fn locate_data_file($source) {
       return $f;
     }
     else {
-      if ($logger->is_debug()) {// performance tune
         debug!("Could not find '{}' via kpsewhich", sourcepath);
-      }
     }
   }
 
@@ -834,9 +824,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
   // Validate against schema. Dies if it fails.
   eval { $xmlschema->validate($doc) };
   if (ref($@)) {
-    if ($logger->is_debug()) {// performance tune
       debug!( $@->dump() );
-    }
     biber_error("'$file' failed to validate against schema '$schema'");
   }
   else if ($@) {
@@ -1265,9 +1253,7 @@ pub fn get_transliterator {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
   require Lingua::Translit;
-  if ($logger->is_debug()) {// performance tune
     debug!("Using '{} -> {}' transliteration for sorting '{}'", from, to, target);
-  }
 
   // List pairs explicitly as we don't expect there to be to many of these ever
   if ($from == 'iast' and $to == 'devanagari') {

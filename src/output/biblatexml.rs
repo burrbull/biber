@@ -553,10 +553,8 @@ fn output {
     $target_string = $self->{output_target_file};
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Preparing final output using class {}...", __PACKAGE__);
     debug!("Writing entries in tool mode");
-  }
   $xml->endTag();
   $xml->end();
 

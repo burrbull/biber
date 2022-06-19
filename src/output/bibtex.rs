@@ -396,9 +396,7 @@ fn output {
     $target = IO::File->new($target_string, ">$enc_out");
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Preparing final output using class {}...", __PACKAGE__);
-  }
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption('output_encoding'));
   info!('Converting UTF-8 to TeX macros on output') if crate::Config->getoption('output_safechars');
@@ -415,9 +413,7 @@ fn output {
     }
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Writing entries in bibtex format");
-  }
 
   // Bibtex output uses just one special section, always sorted by global sorting spec
   foreach let $key ($crate::MASTER->datalists->get_lists_by_attrs(section => 99999,

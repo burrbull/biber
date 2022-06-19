@@ -280,9 +280,7 @@ fn output {
     $target_string = $self->{output_target_file};
   }
 
-  if ($logger->is_debug()) {// performance tune
     debug!("Preparing final output using class {}...", __PACKAGE__);
-  }
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
 

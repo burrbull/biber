@@ -182,9 +182,7 @@ fn init_sets {
 fn latex_decode {
     let $text = shift;
 
-    if ($logger->is_trace()) {// performance tune
       trace!("String before latex_decode() -> '{}'", text);
-    }
 
     let %opts      = @_;
     let $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
@@ -271,9 +269,7 @@ fn latex_decode {
       }
     }
 
-    if ($logger->is_trace()) {// performance tune
       trace!("String in latex_decode() before brace elimination now -> '{}'", text);
-    }
 
     // Now remove braces around single letters (which the replace above can
     // result in). Things like '{á}' can break kerning/brace protection. We
@@ -306,9 +302,7 @@ fn latex_decode {
     $text =~ s/\x{f}/{/g;
     $text =~ s/\x{e}/}/g;
 
-    if ($logger->is_trace()) {// performance tune
       trace!("String in latex_decode() now -> '{}'", text);
-    }
 
     if ($norm) {
       return Unicode::Normalize::normalize($norm_form, $text);

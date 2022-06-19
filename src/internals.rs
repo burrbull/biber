@@ -174,9 +174,7 @@ fn _genpnhash {
     }
   }
 
-  if ($logger->is_trace()) { // performance shortcut
     trace!("Creating MD5 pnhash using '{}'", hashkey);
-  }
   // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
   return md5_hex(encode_utf8(NFC(normalise_string_hash($hashkey))));
 }
@@ -456,9 +454,7 @@ fn _label_name {
       $nr_end = $visibility; // Else use bib visibility
     }
 
-    if ($logger->is_trace()) {// performance tune
       trace!("{}/numnames={}/visibility={}/nr_start={}/nr_end={}", realname, numnames, visibility, nr_start, nr_end);
-    }
 
     let $parts;
     let $opts;
@@ -597,9 +593,7 @@ fn _process_label_attributes {
       if ($labelattrs->{substring_width} =~ /v/ and $field) {
         // Use the cache if there is one
         if (let $lcache = $section->get_labelcache_v($field)) {
-          if ($logger->is_debug()) { // performance tune
             debug!("Using label disambiguation cache (name) for '{}' in section {}", field, secnum);
-          }
           // Use the global index override if set (substring_width =~ /f/)
           $field_string = ${$lcache->{$field_string}{data}}[$lcache->{globalindices}{$field_string} || $lcache->{$field_string}{index}];
         }
@@ -668,9 +662,7 @@ fn _process_label_attributes {
 
           // Use the global index override if set (substring_width =~ /f/)
           $field_string = ${$lcache->{$field_string}{data}}[$lcache->{globalindices}{$field_string} || $lcache->{$field_string}{index}];
-          if ($logger->is_trace()) { // performance tune
             trace!("Label disambiguation cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ''), Data::Dump::pp($lcache));
-          }
           $section->set_labelcache_v($field, $lcache);
         }
       }
@@ -678,9 +670,7 @@ fn _process_label_attributes {
       else if ($labelattrs->{substring_width} =~ /l/ and $field) {
         // Use the cache if there is one
         if (let $lcache = $section->get_labelcache_l($field)) {
-          if ($logger->is_debug()) { // performance tune
             debug!("Using label disambiguation cache (list) for '{}' in section {}", field, secnum);
-          }
           $field_string = $lcache->{data}[$nindex][$index];
 
         }
@@ -694,9 +684,7 @@ fn _process_label_attributes {
 
           $field_string = $lcache->{data}[$nindex][$index];
 
-          if ($logger->is_trace()) { // performance tune
             trace!("Label disambiguation (list) cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ''), Data::Dump::pp($lcache));
-          }
           $section->set_labelcache_l($field, $lcache);
         }
       }
@@ -1134,9 +1122,7 @@ fn _generatesortinfo {
   // for debugging purposes
   let $ss = join($sorting_sep, $sortobj->@*);
   $dlist->set_sortdata($citekey, [$ss, $sortobj]);
-  if ($logger->is_debug()) { // performance shortcut
     debug!("Sorting object for key '{}' -> {}", citekey, Data::Dump::pp($sortobj));
-  }
 
   // Generate sortinit. Skip if there is no sortstring, which is possible in tests
   if ($ss or $szero) {
