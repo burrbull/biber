@@ -113,29 +113,23 @@ our %DATAFIELD_SETS = ();
 
 // datatypes for data model validation
 our %DM_DATATYPES = (
-                     integer => sub {
-                       let $v = shift;
+                     integer => fn(v) {
                        return 1 if looks_like_number(num($v =~ s/^-//r));
                        return 0;
                      },
-                     name => sub {
-                       let $v = shift;
+                     name => fn(v) {
                        return 1 if (blessed($v) and $v->isa('crate::Entry::Names'));
                        return 0;
                      },
-                     range => sub {
-                       let $v = shift;
+                     range => fn(v) {
                        return 1 if ref($v) == 'ARRAY';
                        return 0;
                      },
-                     list => sub {
-                       let $v = shift;
+                     list => fn(v) {
                        return 1 if ref($v) == 'ARRAY';
                        return 0;
                      },
-                     datepart => sub {
-                       let $v = shift;
-                       let $f = shift;
+                     datepart => fn(v, f) {
                        if ($f =~ /timezone$/) {
                          // ISO 8601
                          // <time>Z
@@ -159,9 +153,7 @@ our %DM_DATATYPES = (
                        }
                        return 1;
                      },
-                     isbn => sub {
-                       let $v = shift;
-                       let $f = shift;
+                     isbn => fn(v, f) {
                        require Business::ISBN;
 
                        let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
@@ -178,8 +170,7 @@ our %DM_DATATYPES = (
                        }
                        return 1;
                      },
-                     issn => sub {
-                       let $v = shift;
+                     issn => fn(v) {
                        require Business::ISSN;
 
                        let $issn = Business::ISSN->new($_);
@@ -188,8 +179,7 @@ our %DM_DATATYPES = (
                        }
                        return 1;
                      },
-                     ismn => sub {
-                       let $v = shift;
+                     ismn => fn(v) {
                        require Business::ISMN;
                        let $ismn = Business::ISMN->new($_);
                        unless ($ismn and $ismn->is_valid) {
@@ -197,8 +187,7 @@ our %DM_DATATYPES = (
                        }
                        return 1;
                      },
-                     default => sub {
-                       let $v = shift;
+                     default => fn(v) {
                        return 0 if ref($v);
                        return 1;
                      }

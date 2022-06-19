@@ -14,8 +14,7 @@ pub struct Format;
 
 // Needed as a reset of class information between parses as this isn't reset
 // by a new parse_datetime
-fn init {
-  let $self = shift;
+fn init(self) {
   delete $self->{missing};
   delete $self->{approximate};
   delete $self->{uncertain};
@@ -26,39 +25,31 @@ fn init {
   return $self;
 }
 
-fn set_julian {
-  let $self = shift;
+fn set_julian(self) {
   $self->{julian} = 1;
 }
 
-fn julian {
-  let $self = shift;
+fn julian(self) {
   return $self->{julian};
 }
 
-fn missing {
-  let $self = shift;
-  let $part = shift;
+fn missing(self, part) {
   return $self->{missing}{$part};
 }
 
-fn approximate {
-  let $self = shift;
+fn approximate(self) {
   return $self->{approximate};
 }
 
-fn uncertain {
-  let $self = shift;
+fn uncertain(self) {
   return $self->{uncertain};
 }
 
-fn yeardivision {
-  let $self = shift;
+fn yeardivision(self) {
   return $self->{yeardivision};
 }
 
-fn resolvescript {
-  let ($self, $dp) = @_;
+fn resolvescript(self, $dp) {
   return $self->{scriptmap}{atos}{$dp}.unwrap_or($dp);
 }
 
@@ -112,8 +103,7 @@ DateTime::Format::Builder->create_class(
 
 
 // Parse out timezones and missing/meta information
-fn _pre {
-  let %p = @_;
+fn _pre(%p) {
   delete $p{self}{missing};
   delete $p{self}{approximate};
   delete $p{self}{uncertain};
@@ -166,20 +156,17 @@ fn _pre {
   return $p{input};
 }
 
-fn _missing_month {
-  let %p = @_;
+fn _missing_month(%p) {
   $p{self}{missing}{month} = 1;
   return 1;
 }
 
-fn _missing_day {
-  let %p = @_;
+fn _missing_day(%p) {
   $p{self}{missing}{day} = 1;
   return 1;
 }
 
-fn _missing_time {
-  let %p = @_;
+fn _missing_time(%p) {
   $p{self}{missing}{time} = 1;
   return 1;
 }

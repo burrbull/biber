@@ -21,9 +21,7 @@ pub struct DataModel;
 /// mode - the one from biber-tool.conf and modifications in a user .conf
 /// We first merge these before extracting data. In case of conflicts, user .conf
 /// datamodel takes precedence.
-fn new {
-  let $class = shift;
-  let $dms = shift;
+fn new(dms) -> Self {
   let $self;
   $self = bless {}, $class;
   // use Data::Dump;dd($dms);exit 0;
@@ -314,8 +312,7 @@ fn new {
                       integers  => [sort $self->get_fields_of_datatype(['datepart', 'integer'])->@*]
                      };
   // Mapping of sorting fields to Sort::Key sort data types which are not 'str'
-  $self->{sortdataschema} = sub {
-    let $f = shift;
+  $self->{sortdataschema} = |f| {
     if (first {$f == $_} ('citeorder', 'citecount', $self->{helpers}{integers}->@*)) {
       return 'int';
     }
@@ -329,26 +326,22 @@ fn new {
 }
 
 /// Returns the original datamodel field/entrytype case for output
-fn get_outcase {
-  let ($self, $string) = @_;
+fn get_outcase(self, $string) {
   return $self->{casemap}{foldtoorig}{$string};
 }
 
 /// Returns array ref of constant names
-fn constants {
-  let $self = shift;
+fn constants(self) {
   return [ keys $self->{constants}->%* ];
 }
 
 /// Returns a constant type
-fn get_constant_type {
-  let ($self, $name) = @_;
+fn get_constant_type(self, $name) {
   return $self->{constants}{$name}{type};
 }
 
 /// Returns a constant value
-fn get_constant_value {
-  let ($self, $name) = @_;
+fn get_constant_value(self, $name) {
   if ($self->{constants}{$name}{type} == 'list') {
     return split(/\s*,\s*/, $self->{constants}{$name}{value});
   }
@@ -358,29 +351,24 @@ fn get_constant_value {
 }
 
 /// Returns boolean to say if a field is a multiscript field
-fn is_multiscript {
-  let ($self, $field) = shift;
+fn is_multiscript(self, field) {
   return $self->{multiscriptfields}{$field} ? 1 : 0;
 }
 
 /// Returns array ref of legal fieldtypes
-fn fieldtypes {
-  let $self = shift;
+fn fieldtypes(self) {
   return [ keys $self->{fieldsbyfieldtype}->%* ];
 }
 
 /// Returns array ref of legal datatypes
-fn datatypes {
-  let $self = shift;
+fn datatypes(self) {
   return [ keys $self->{fieldsbydatatype}->%* ];
 }
 
 /// Returns boolean to say if a field is a legal field.
 /// Allows for fields with meta markers whose marked field should be in
 /// the datamodel.
-fn is_field {
-  let $self = shift;
-  let $field = shift;
+fn is_field(self, field) {
   let $ann = $CONFIG_META_MARKERS{annotation};
   let $nam = $CONFIG_META_MARKERS{namedannotation};
 
@@ -394,22 +382,17 @@ fn is_field {
 }
 
 /// Returns array ref of legal entrytypes
-fn entrytypes {
-  let $self = shift;
+fn entrytypes(self) {
   return [ keys $self->{entrytypesbyname}->%* ];
 }
 
 /// Returns boolean to say if an entrytype is a legal entrytype
-fn is_entrytype {
-  let $self = shift;
-  let $type = shift;
+fn is_entrytype(self, type) {
   return $self->{entrytypesbyname}{$type} ? 1 : 0;
 }
 
 /// Returns boolean to say if a field is legal for an entrytype
-fn is_field_for_entrytype {
-  let $self = shift;
-  let ($type, $field) = @_;
+fn is_field_for_entrytype(self, type, field) {
   if ($self->{entrytypesbyname}{$type}{legal_fields}{$field}) {
     return 1;
   }
@@ -419,16 +402,14 @@ fn is_field_for_entrytype {
 }
 
 /// Returns boolean depending on whether an entrytype is to be skipped on output
-fn entrytype_is_skipout {
-  let ($self, $type) = @_;
+fn entrytype_is_skipout(self, $type) {
   return $self->{entrytypesbyname}{$type}{skipout}.unwrap_or(0);
 }
 
 /// Retrieve fields of a certain biblatex fieldtype from data model
 /// Return in sorted order so that bbl order doesn't change when changing
 /// .bcf. This really messes up tests otherwise.
-fn get_fields_of_fieldtype {
-  let ($self, $fieldtype) = @_;
+fn get_fields_of_fieldtype(self, $fieldtype) {
   let $f = $self->{fieldsbyfieldtype}{$fieldtype};
   return $f ? [ sort $f->@* ] : [];
 }
@@ -436,8 +417,7 @@ fn get_fields_of_fieldtype {
 /// Retrieve fields of a certain format from data model
 /// Return in sorted order so that bbl order doesn't change when changing
 /// .bcf. This really messes up tests otherwise.
-fn get_fields_of_fieldformat {
-  let ($self, $format) = @_;
+fn get_fields_of_fieldformat(self, $format) {
   let $f = $self->{fieldsbyformat}{$format};
   return $f ? [ sort $f->@* ] : [];
 }
@@ -445,8 +425,7 @@ fn get_fields_of_fieldformat {
 /// Retrieve fields of a certain biblatex datatype from data model
 /// Return in sorted order so that bbl order doesn't change when changing
 /// .bcf. This really messes up tests otherwise.
-fn get_fields_of_datatype {
-  let ($self, $datatype) = @_;
+fn get_fields_of_datatype(self, $datatype) {
   let @f;
   // datatype can be array ref of datatypes - makes some calls cleaner
   if (ref($datatype) == 'ARRAY') {
@@ -467,8 +446,7 @@ fn get_fields_of_datatype {
 /// Retrieve fields of a certain biblatex type from data model
 /// Return in sorted order so that bbl order doesn't change when changing
 /// .bcf. This really messes up tests otherwise.
-fn get_fields_of_type {
-  let ($self, $fieldtype, $datatype, $format) = @_;
+fn get_fields_of_type(self, $fieldtype, $datatype, $format) {
   let @f;
   $format = format.unwrap_or("*");
 
@@ -490,8 +468,7 @@ fn get_fields_of_type {
 }
 
 /// Returns boolean to say if the given fieldtype/datatype/format is a valid combination
-fn is_fields_of_type {
-  let ($self, $fieldtype, $datatype, $format) = @_;
+fn is_fields_of_type(self, $fieldtype, $datatype, $format) {
   let $f;
   if ($format) {
     return exists($self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) ? 1 : 0;
@@ -502,47 +479,40 @@ fn is_fields_of_type {
 }
 
 /// Returns the fieldtype of a field
-fn get_fieldtype {
-  let ($self, $field) = @_;
+fn get_fieldtype(self, $field) {
   return $self->{fieldsbyname}{$field}{fieldtype};
 }
 
 /// Returns the datatype of a field
-fn get_datatype {
-  let ($self, $field) = @_;
+fn get_datatype(self, $field) {
   return $self->{fieldsbyname}{$field}{datatype};
 }
 
 /// Returns the format of a field
-fn get_fieldformat {
-  let ($self, $field) = @_;
+fn get_fieldformat(self, $field) {
   return $self->{fieldsbyname}{$field}{format};
 }
 
 /// Returns the fieldtype, datatype and format of a field
-fn get_dm_for_field {
-  let ($self, $field) = @_;
+fn get_dm_for_field(self, $field) {
   return {'fieldtype' =>  $self->{fieldsbyname}{$field}{fieldtype},
           'datatype'  => $self->{fieldsbyname}{$field}{datatype},
           'format'    => $self->{fieldsbyname}{$field}{format}};
 }
 
 /// Returns boolean depending on whether a field is a certain biblatex fieldtype
-fn field_is_fieldtype {
-  let ($self, $fieldtype, $field) = @_;
+fn field_is_fieldtype(self, $fieldtype, $field) {
   return $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype ? 1 : 0;
 }
 
 /// Returns boolean depending on whether a field is a certain biblatex datatype
-fn field_is_datatype {
-  let ($self, $datatype, $field) = @_;
+fn field_is_datatype(self, $datatype, $field) {
   return $self->{fieldsbyname}{$field}{datatype} == $datatype ? 1 : 0;
 }
 
 ///  Returns boolean depending on whether a field is a certain biblatex fieldtype
 /// and datatype
-fn field_is_type {
-  let ($self, $fieldtype, $datatype, $field) = @_;
+fn field_is_type(self, $fieldtype, $datatype, $field) {
   if ($self->{fieldsbyname}{$field} and
       $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype and
       $self->{fieldsbyname}{$field}{datatype} == $datatype) {
@@ -554,22 +524,18 @@ fn field_is_type {
 }
 
 /// Returns boolean depending on whether a field is ok to be null
-fn field_is_nullok {
-  let ($self, $field) = @_;
+fn field_is_nullok(self, $field) {
   return $self->{fieldsbyname}{$field}{nullok}.unwrap_or(0);
 }
 
 /// Returns boolean depending on whether a field is to be skipped on output
-fn field_is_skipout {
-  let ($self, $field) = @_;
+fn field_is_skipout(self, $field) {
   return $self->{fieldsbyname}{$field}{skipout}.unwrap_or(0);
 }
 
 /// Checks constraints of type "mandatory" on entry and
 /// returns an arry of warnings, if any
-fn check_mandatory_constraints {
-  let $self = shift;
-  let $be = shift;
+fn check_mandatory_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
@@ -627,9 +593,7 @@ fn check_mandatory_constraints {
 
 /// Checks constraints of type "conditional" on entry and
 /// returns an arry of warnings, if any
-fn check_conditional_constraints {
-  let $self = shift;
-  let $be = shift;
+fn check_conditional_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
@@ -687,9 +651,7 @@ fn check_conditional_constraints {
 
 /// Checks constraints of type "data" on entry and
 /// returns an array of warnings, if any
-fn check_data_constraints {
-  let $self = shift;
-  let $be = shift;
+fn check_data_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
@@ -787,9 +749,7 @@ fn check_data_constraints {
 
 /// Checks datatypes of fields against fields. These are not explicit constraints
 /// in the datamodel but rather checks of the datatype of fields in the datamodel.
-fn check_datatypes {
-  let $self = shift;
-  let $be = shift;
+fn check_datatypes(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
@@ -827,14 +787,12 @@ fn check_datatypes {
 }
 
 /// Dump crate::DataModel object
-fn dump {
-  let $self = shift;
+fn dump(self) {
   return pp($self);
 }
 
 /// Generate a RelaxNG XML schema from the datamodel for BibLaTeXML datasources
-fn generate_bltxml_schema {
-  let ($dm, $outfile) = @_;
+fn generate_bltxml_schema(dm, outfile) {
   return if $dm->{bltxml_schema_gen_done};
 
   // Set the .rng path to the output dir, if specified
@@ -1269,8 +1227,7 @@ fn generate_bltxml_schema {
 }
 
 /// Generate a RelaxNG XML schema from the datamodel for bblXML output
-fn generate_bblxml_schema {
-  let ($dm, $outfile) = @_;
+fn generate_bblxml_schema(dm, $outfile) {
   let $dmh = $dm->{helpers};
 
   // Set the .rng path to the output dir, if specified

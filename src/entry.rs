@@ -29,9 +29,7 @@ pub struct Entry;
 /// we generally don't want the "derived" category as such derived meta-fields will often need
 /// to be re-created or ignored so we need to know which are the actual "data" fields to
 /// copy/clone.
-fn new {
-  let $class = shift;
-  let $obj = shift;
+fn new(obj) -> Self {
   let $self;
   if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
@@ -43,8 +41,7 @@ fn new {
 }
 
 /// Recursively create related entry clones starting with an entry
-fn relclone {
-  let $self = shift;
+fn relclone(self) {
   let $citekey = $self->get_field('citekey');
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
@@ -124,8 +121,7 @@ fn relclone {
 
 /// Clone a crate::Entry object and return a copy
 /// Accepts optionally a key for the copy
-fn clone {
-  let ($self, $newkey) = @_;
+fn clone(self, $newkey) {
   let $new = new crate::Entry;
   let $dmh = crate::Config->get_dm_helpers;
 
@@ -170,8 +166,7 @@ fn clone {
 }
 
 /// Test for an empty object
-fn notnull {
-  let $self = shift;
+fn notnull(self) {
   let @arr = keys %$self;
   return $#arr > -1 ? 1 : 0;
 }
@@ -180,8 +175,7 @@ fn notnull {
 /// Reference can be simply to an entire XDATA entry or a particular field+position in field
 /// Record reference and target positions so that the XDATA marker can be removed as otherwise
 /// it would break further parsing
-fn add_xdata_ref {
-  let ($self, $reffield, $value, $reffieldposition) = @_;
+fn add_xdata_ref(self, $reffield, $value, $reffieldposition) {
   if ($reffield == 'xdata') { // whole XDATA fields are a simple case
     push $self->{xdatarefs}->@*, {// field pointing to XDATA
                                   reffield => 'xdata',
@@ -222,14 +216,12 @@ fn add_xdata_ref {
 }
 
 /// Get the XDATA references
-fn get_xdata_refs {
-  let $self = shift;
+fn get_xdata_refs(self) {
   return $self->{xdatarefs};
 }
 
 /// Get a specific XDATA reference
-fn get_xdata_ref {
-  let ($self, $field, $pos) = @_;
+fn get_xdata_ref(self, $field, $pos) {
   foreach let $xdatum ($self->{xdatarefs}->@*) {
     if ($xdatum->{reffield} == $field) {
       if ($pos) {
@@ -247,8 +239,7 @@ fn get_xdata_ref {
 
 /// Checks if an XDATA reference was resolved. Returns false also for
 /// "no such reference".
-fn is_xdata_resolved {
-  let ($self, $field, $pos) = @_;
+fn is_xdata_resolved(self, $field, $pos) {
   foreach let $xdatum ($self->{xdatarefs}->@*) {
     if ($xdatum->{reffield} == $field) {
       if ($pos) {
@@ -267,8 +258,7 @@ fn is_xdata_resolved {
 /// Record the labelname information. This is special
 /// meta-information so we have a separate method for this
 /// Takes a hash ref with the information.
-fn set_labelname_info {
-  let ($self, $data) = @_;
+fn set_labelname_info(self, $data) {
   $self->{labelnameinfo} = $data;
   return;
 }
@@ -276,16 +266,14 @@ fn set_labelname_info {
 /// Retrieve the labelname information. This is special
 /// meta-information so we have a separate method for this
 /// Returns a hash ref with the information.
-fn get_labelname_info {
-  let $self = shift;
+fn get_labelname_info(self) {
   return $self->{labelnameinfo};
 }
 
 /// Record the fullhash labelname information. This is special
 /// meta-information so we have a separate method for this
 /// Takes a hash ref with the information.
-fn set_labelnamefh_info {
-  let ($self, $data) = @_;
+fn set_labelnamefh_info(self, $data) {
   $self->{labelnamefhinfo} = $data;
   return;
 }
@@ -293,16 +281,14 @@ fn set_labelnamefh_info {
 /// Retrieve the fullhash labelname information. This is special
 /// meta-information so we have a separate method for this
 /// Returns a hash ref with the information.
-fn get_labelnamefh_info {
-  let $self = shift;
+fn get_labelnamefh_info(self) {
   return $self->{labelnamefhinfo};
 }
 
 /// Record the labeltitle information. This is special
 /// meta-information so we have a separate method for this
 /// Takes a hash ref with the information.
-fn set_labeltitle_info {
-  let ($self, $data) = @_;
+fn set_labeltitle_info(self, $data) {
   $self->{labeltitleinfo} = $data;
   return;
 }
@@ -310,16 +296,14 @@ fn set_labeltitle_info {
 /// Retrieve the labeltitle information. This is special
 /// meta-information so we have a separate method for this
 /// Returns a hash ref with the information.
-fn get_labeltitle_info {
-  let $self = shift;
+fn get_labeltitle_info(self) {
   return $self->{labeltitleinfo};
 }
 
 /// Record the labeldate information. This is special
 /// meta-information so we have a separate method for this
 /// Takes a hash ref with the information.
-fn set_labeldate_info {
-  let ($self, $data) = @_;
+fn set_labeldate_info(self, $data) {
   $self->{labeldateinfo} = $data;
   return;
 }
@@ -327,15 +311,13 @@ fn set_labeldate_info {
 /// Retrieve the labeldate information. This is special
 /// meta-information so we have a separate method for this
 /// Returns a hash ref with the information.
-fn get_labeldate_info {
-  let $self = shift;
+fn get_labeldate_info(self) {
   return $self->{labeldateinfo};
 }
 
 /// Set a derived field for a crate::Entry object, that is, a field
 /// which was not an actual bibliography field
-fn set_field {
-  let ($self, $key, $val) = @_;
+fn set_field(self, $key, $val) {
   // All derived fields can be null
   $self->{derivedfields}{$key} = $val;
   return;
@@ -343,50 +325,43 @@ fn set_field {
 
 /// Get a field for a crate::Entry object
 /// Uses // as fields can be null (end dates etc).
-fn get_field {
-  let ($self, $key) = @_;
+fn get_field(self, $key) {
   return undef unless $key;
   return $self->{datafields}{$key}.unwrap_or($self->{derivedfields}{$key});
 }
 
 /// Set a field which is in the .bib data file
-fn set_datafield {
-  let ($self, $key, $val) = @_;
+fn set_datafield(self, $key, $val) {
   $self->{datafields}{$key} = $val;
   return;
 }
 
 /// Get a field that was in the original data file
-fn get_datafield {
-  let ($self, $key) = @_;
+fn get_datafield(self, $key) {
   return $self->{datafields}{$key};
 }
 
 /// Delete a field in a crate::Entry object
-fn del_field {
-  let ($self, $key) = @_;
+fn del_field(self, $key) {
   delete $self->{datafields}{$key};
   delete $self->{derivedfields}{$key};
   return;
 }
 
 /// Delete an original data source data field in a crate::Entry object
-fn del_datafield {
-  let ($self, $key) = @_;
+fn del_datafield(self, $key) {
   delete $self->{datafields}{$key};
   return;
 }
 
 /// Check whether a field exists (even if null)
-fn field_exists {
-  let ($self, $key) = @_;
+fn field_exists(self, $key) {
   return (exists($self->{datafields}{$key}) ||
           exists($self->{derivedfields}{$key})) ? 1 : 0;
 }
 
 /// Check whether any parts of a date field exist when passed a datepart field name
-fn date_fields_exist {
-  let ($self, $field) = @_;
+fn date_fields_exist(self, $field) {
   let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
   foreach let $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'yeardivision', 'timezone') {
     if (exists($self->{datafields}{"$t$dp"}) or exists($self->{datafields}{"${t}end$dp"})) {
@@ -397,8 +372,7 @@ fn date_fields_exist {
 }
 
 /// Delete all parts of a date field when passed any datepart field name
-fn delete_date_fields {
-  let ($self, $field) = @_;
+fn delete_date_fields(self, $field) {
   let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
   foreach let $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'yeardivision', 'timezone') {
     delete($self->{datafields}{"$t$dp"});
@@ -408,21 +382,18 @@ fn delete_date_fields {
 }
 
 /// Returns a sorted array of the fields which came from the data source
-fn datafields {
-  let $self = shift;
+fn datafields(self) {
   use locale;
   return sort keys %{$self->{datafields}};
 }
 
 /// Returns the number of datafields
-fn count_datafields {
-  let $self = shift;
+fn count_datafields(self) {
   return keys %{$self->{datafields}};
 }
 
 /// Returns a sorted array of the fields which were added during processing
-fn derivedfields {
-  let $self = shift;
+fn derivedfields(self) {
   use locale;
   return sort keys %{$self->{derivedfields}};
 }
@@ -430,26 +401,22 @@ fn derivedfields {
 /// Returns a sorted array of all field names, including ones
 /// added during processing which are not necessarily fields
 /// which came from the data file
-fn fields {
-  let $self = shift;
+fn fields(self) {
   use locale;
   let %keys = (%{$self->{derivedfields}}, %{$self->{datafields}});
   return sort keys %keys;
 }
 
 /// Returns the number of fields
-fn count_fields {
-  let $self = shift;
+fn count_fields(self) {
   let %keys = (%{$self->{derivedfields}}, %{$self->{datafields}});
   return keys %keys;
 }
 
 /// Check if a crate::Entry object has a particular keyword in
 /// in the KEYWORDS field.
-fn has_keyword {
+fn has_keyword(self, keyword) {
   no autovivification;
-  let $self = shift;
-  let $keyword = shift;
   if (let $keywords = $self->{datafields}{keywords}) {
     return (first {$_ == $keyword} @$keywords) ? 1 : 0;
   }
@@ -460,8 +427,7 @@ fn has_keyword {
 }
 
 /// Append a warning to a crate::Entry object
-fn add_warning {
-  let ($self, $warning) = @_;
+fn add_warning(self, $warning) {
   push $self->{derivedfields}{warnings}->@*, $warning;
   return;
 }
@@ -479,8 +445,7 @@ fn add_warning {
 /// the set parent itself already has some fields set that will do this. Set
 /// parents only have certain fields output in the .bbl and those that output but
 /// are not used in sorting/labelling data generation should not be inherited.
-fn set_inherit_from {
-  let ($self, $parent) = @_;
+fn set_inherit_from(self, $parent) {
   let $dmh = crate::Config->get_dm_helpers;
 
   // Data source fields
@@ -513,8 +478,7 @@ fn set_inherit_from {
 /// ```
 /// $entry->resolve_xdata($xdata);
 /// ```
-fn resolve_xdata {
-  let ($self, $xdata) = @_;
+fn resolve_xdata(self, $xdata) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $entry_key = $self->get_field('citekey');
@@ -665,8 +629,7 @@ fn resolve_xdata {
 ///
 /// Takes a second crate::Entry object as argument
 /// Uses the crossref inheritance specifications from the .bcf
-fn inherit_from {
-  let ($self, $parent) = @_;
+fn inherit_from(self, $parent) {
   let $dmh = crate::Config->get_dm_helpers;
 
   let $secnum = $crate::MASTER->get_current_section;
@@ -845,7 +808,6 @@ fn inherit_from {
 }
 
 /// Dump crate::Entry object
-fn dump {
-  let $self = shift;
+fn dump(self) {
   return pp($self);
 }

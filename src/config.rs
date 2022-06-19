@@ -79,9 +79,7 @@ fn _init {
 }
 
 /// Initialise default options, optionally with config file as argument
-fn _initopts {
-  shift; // class method so don't care about class name
-  let $opts = shift;
+fn _initopts(opts) {
   let $userconf;
 
   // For testing, need to be able to force ignore of conf file in case user
@@ -291,8 +289,7 @@ fn _initopts {
 }
 
 // read a config file and set options from it
-fn _config_file_set {
-  let $conf = shift;
+fn _config_file_set(conf) {
   let $userconf;
 
   // Can't use logcroak here because logging isn't initialised yet
@@ -642,9 +639,7 @@ fn config_file {
 ///////////////////////////////
 
 /// Track uniqueness ignore settings found in inheritance data
-fn add_uniq_ignore {
-  shift; // class method so don't care about class name
-  let ($key, $field, $uniqs) = @_;
+fn add_uniq_ignore(key, field, uniqs) {
   return unless $uniqs;
   foreach let $u (split(/\s*,\s*/, $uniqs)) {
     push $CONFIG->{state}{uniqignore}{$key}{$u}->@*, $field;
@@ -653,17 +648,14 @@ fn add_uniq_ignore {
 }
 
 /// Retrieve uniqueness ignore settings found in inheritance data
-fn get_uniq_ignore {
+fn get_uniq_ignore(key) {
   no autovivification;
-  shift; // class method so don't care about class name
-  let $key = shift;
   return $CONFIG->{state}{uniqignore}{$key};
 }
 
 /// Place to postprocess biber options when they have been
 /// gathered from all the possible places that set them
-fn postprocess_biber_opts {
-  shift; // class method so don't care about class name
+fn postprocess_biber_opts() {
   // Turn sortcase and sortupper into booleans if they are not already
   // They are not booleans on the command-line/config file so that they
   // mirror biblatex option syntax for users, for example
@@ -685,66 +677,52 @@ fn postprocess_biber_opts {
 }
 
 /// Sets the data model information object
-fn set_dm {
-  shift;
-  let $obj = shift;
+fn set_dm(obj) {
   $CONFIG->{dm} = $obj;
   return;
 }
 
 /// Gets the data model information object
-fn get_dm {
-  shift;
+fn get_dm() {
   return $CONFIG->{dm};
 }
 
 /// Sets the datamodel helper lists
-fn get_dm_helpers {
-  shift;
+fn get_dm_helpers() {
   return $CONFIG->{dm}{helpers};
 }
 
 /// Stores the path to the control file
-fn set_ctrlfile_path {
-  shift;
-  $CONFIG->{control_file_location} = shift;
+fn set_ctrlfile_path(path) {
+  $CONFIG->{control_file_location} = path;
   return;
 }
 
 /// Retrieved the path to the control file
-fn get_ctrlfile_path {
-  shift;
+fn get_ctrlfile_path() {
   return $CONFIG->{control_file_location};
 }
 
 /// Store a Biber config option
-fn setoption {
-  shift; // class method so don't care about class name
-  let ($opt, $val) = @_;
+fn setoption(opt, val) {
   $CONFIG->{options}{biber}{$opt} = $val;
   return;
 }
 
 /// Get a Biber option
-fn getoption {
-  shift; // class method so don't care about class name
-  let $opt = shift;
+fn getoption(opt) {
   return $CONFIG->{options}{biber}{$opt};
 }
 
 /// Store a Biber command-line option
-fn setcmdlineoption {
-  shift; // class method so don't care about class name
-  let ($opt, $val) = @_;
+fn setcmdlineoption(opt, val) {
   // Command line options are also options ...
   $CONFIG->{options}{biber}{$opt} = $CONFIG->{cmdlineoptions}{$opt} = $val;
   return;
 }
 
 /// Store a Biber config-file option
-fn setconfigfileoption {
-  shift; // class method so don't care about class name
-  let ($opt, $val) = @_;
+fn setconfigfileoption(opt, val) {
   // Config file options are also options ...
   $CONFIG->{options}{biber}{$opt} = $CONFIG->{configfileoptions}{$opt} = $val;
 
@@ -757,26 +735,20 @@ fn setconfigfileoption {
 }
 
 /// Check if an option is explicitly set by user on the command line
-fn iscmdlineoption {
-  shift; // class method so don't care about class name
-  let $opt = shift;
+fn iscmdlineoption(opt) {
   return 1 if defined($CONFIG->{cmdlineoptions}{$opt});
   return 0;
 }
 
 /// Check if an option is explicitly set by user in their config file
-fn isconfigfileoption {
-  shift; // class method so don't care about class name
-  let $opt = shift;
+fn isconfigfileoption(opt) {
   return 1 if defined($CONFIG->{configfileoptions}{$opt});
   return 0;
 }
 
 /// Check if an option is explicitly set by user on the command
 /// line or in the config file
-fn isexplicitoption {
-  let $self = shift;
-  let $opt = shift;
+fn isexplicitoption(self, opt) {
   return 1 if ($self->iscmdlineoption($opt) || $self->isconfigfileoption($opt));
   return 0;
 }
@@ -787,9 +759,7 @@ fn isexplicitoption {
 //////////////////////////////////
 
 /// Add to an array global biblatex option
-fn addtoblxoption {
-  shift; // class method so don't care about class name
-  let ($secnum, $opt, $val) = @_;
+fn addtoblxoption(secnum, opt, val) {
   if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
     push $CONFIG->{options}{biblatex}{GLOBAL}{$opt}->@*, $val;
   }
@@ -797,9 +767,7 @@ fn addtoblxoption {
 }
 
 /// Set a biblatex option on the appropriate scope
-fn setblxoption {
-  shift; // class method so don't care about class name
-  let ($secnum, $opt, $val, $scope, $scopeval) = @_;
+fn setblxoption(secnum, opt, val, scope, scopeval) {
   if (not defined($scope)) { // global is the default
     if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
@@ -829,10 +797,8 @@ fn setblxoption {
 ///
 /// section number needs to be present only for per-entry options as these might
 /// differ between sections
-fn getblxoption {
+fn getblxoption(secnum, opt, entrytype, citekey) {
   no autovivification;
-  shift; // class method so don't care about class name
-  let ($secnum, $opt, $entrytype, $citekey) = @_;
   // Set impossible defaults
   $secnum = secnum.unwrap_or("\x{10FFFD}");
   $opt = opt.unwrap_or("\x{10FFFD}");
@@ -854,10 +820,8 @@ fn getblxoption {
 }
 
 /// Get all per-entry options for an entry
-fn getblxentryoptions {
+fn getblxentryoptions(secnum, key) {
   no autovivification;
-  shift; // class method so don't care about class name
-  let ($secnum, $key) = @_;
   return keys $CONFIG->{options}{biblatex}{ENTRY}{$key}{$secnum}->%*;
 }
 
@@ -866,9 +830,7 @@ fn getblxentryoptions {
 //////////////////////////////
 
 /// Record node and arc connection types for .dot output
-fn set_graph {
-  shift; // class method so don't care about class name
-  let $type = shift;
+fn set_graph(type) {
   if ($type == 'set') {
     let ($source_key, $target_key) = @_;
       debug!("Saving DOT graph information type 'set' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
@@ -896,27 +858,21 @@ fn set_graph {
 }
 
 /// Return an inheritance graph data structure for an inheritance type
-fn get_graph {
-  shift; // class method so don't care about class name
-  let $type = shift;
+fn get_graph(type) {
   return $CONFIG->{state}{graph}{$type};
 }
 
 /// Record that $target inherited information from $source
 /// Can be used for crossrefs and xdata. This just records that an entry
 /// inherited from another entry, for loop detection.
-fn set_inheritance {
-  shift; // class method so don't care about class name
-  let ($type, $source, $target) = @_;
+fn set_inheritance(type, source, target) {
   push $CONFIG->{state}{$type}->@*, {s => $source, t => $target};
   return;
 }
 
 /// Check if $target directly inherited information from $source
 /// Can be used for crossrefs and xdata
-fn get_inheritance {
-  shift; // class method so don't care about class name
-  let ($type, $source, $target) = @_;
+fn get_inheritance(type, source, target) {
   return first {$_->{s} == $source and $_->{t} == $target} $CONFIG->{state}{$type}->@*;
 }
 
@@ -935,8 +891,7 @@ fn get_inheritance {
 ///           t => 'D'}
 ///];
 /// ```
-fn is_inheritance_path {
-  let ($self, $type, $e1, $e2) = @_;
+fn is_inheritance_path(self, $type, $e1, $e2) {
   foreach let $dps (grep {$_->{s} == $e1} $CONFIG->{state}{$type}->@*) {
     return 1 if $dps->{t} == $e2;
     return 1 if is_inheritance_path($self, $type, $dps->{t}, $e2);
@@ -945,67 +900,51 @@ fn is_inheritance_path {
 }
 
 /// Set some key order information
-fn set_keyorder {
-  shift; // class method so don't care about class name
-  let ($section, $key, $keyorder) = @_;
+fn set_keyorder(section, key, keyorder) {
   $CONFIG->{state}{keyorder}{$section}{$key} = $keyorder;
   return;
 }
 
 /// Get some key order information
-fn get_keyorder {
-  shift; // class method so don't care about class name
-  let ($section, $key) = @_;
+fn get_keyorder(section, key) {
   return $CONFIG->{state}{keyorder}{$section}{$key};
 }
 
 /// Get maximum key order number for a section
-fn get_keyorder_max {
-  shift; // class method so don't care about class name
-  let $section = shift;
+fn get_keyorder_max(section) {
   return (max values $CONFIG->{state}{keyorder}{$section}->%*) || 0;
 }
 
 /// Reset keyorder - for use in tests where we switch to allkeys
-fn reset_keyorder {
-  shift; // class method so don't care about class name
-  let $section = shift;
+fn reset_keyorder(section) {
   delete $CONFIG->{state}{keyorder}{$section};
   return;
 }
 
 /// Return ref to array of keys which are crossref targets
-fn get_crossrefkeys {
-  shift; // class method so don't care about class name
+fn get_crossrefkeys() {
   return [ keys $CONFIG->{state}{crossrefkeys}->%* ];
 }
 
 /// Return ref to array of keys which are xref targets
-fn get_xrefkeys {
-  shift; // class method so don't care about class name
+fn get_xrefkeys() {
   return [ keys $CONFIG->{state}{xrefkeys}->%* ];
 }
 
 /// Return an integer representing the number of times a
 /// crossref target key has been ref'ed
-fn get_crossrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn get_crossrefkey(k) {
   return $CONFIG->{state}{crossrefkeys}{$k};
 }
 
 /// Return an integer representing the number of times a
 /// xref target key has been ref'ed
-fn get_xrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn get_xrefkey(k) {
   return $CONFIG->{state}{xrefkeys}{$k};
 }
 
 /// Remove a crossref target key from the crossrefkeys state
-fn del_crossrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn del_crossrefkey(k) {
   if (exists($CONFIG->{state}{crossrefkeys}{$k})) {
     delete $CONFIG->{state}{crossrefkeys}{$k};
   }
@@ -1013,9 +952,7 @@ fn del_crossrefkey {
 }
 
 /// Remove a xref target key from the xrefkeys state
-fn del_xrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn del_xrefkey(k) {
   if (exists($CONFIG->{state}{xrefkeys}{$k})) {
     delete $CONFIG->{state}{xrefkeys}{$k};
   }
@@ -1023,23 +960,18 @@ fn del_xrefkey {
 }
 
 /// Increment the crossreferences count for a target crossref key
-fn incr_crossrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn incr_crossrefkey(k) {
   $CONFIG->{state}{crossrefkeys}{$k}++;
   return;
 }
 
 /// Increment the xreferences count for a target xref key
-fn incr_xrefkey {
-  shift; // class method so don't care about class name
-  let $k = shift;
+fn incr_xrefkey(k) {
   $CONFIG->{state}{xrefkeys}{$k}++;
   return;
 }
 
 /// Dump config information (for debugging)
 fn dump {
-  shift; // class method so don't care about class name
   dd($CONFIG);
 }

@@ -53,9 +53,7 @@ use vars qw( $remap_d $remap_e $remap_e_raw $set_d $set_e );
 
 /// Initialise recoding sets. We can't do this on loading the module as we don't have the config
 /// information to do this yet
-fn init_sets {
-  shift; // class method
-  ($set_d, $set_e) = @_;
+fn init_sets(set_d, set_e) {
   no autovivification;
 
   // Reset these, mostly for tests which call init_sets more than once
@@ -179,12 +177,9 @@ fn init_sets {
 ///
 /// * normalization => <normalization form> (default 'NFD')
 ///     and if yes, the normalization form to use (see the Unicode::Normalize documentation)
-fn latex_decode {
-    let $text = shift;
-
+fn latex_decode(text, %opts) {
       trace!("String before latex_decode() -> '{}'", text);
 
-    let %opts      = @_;
     let $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
     let $norm_form = exists $opts{normalization} ? $opts{normalization} : 'NFD';
 
@@ -313,9 +308,7 @@ fn latex_decode {
 }
 
 /// Converts UTF-8 to LaTeX
-fn latex_encode {
-  let $text = shift;
-
+fn latex_encode(text) {
   // Optimisation - if virtual null set was specified, do nothing
   return $text if $set_e == 'null';
 
@@ -368,8 +361,7 @@ fn latex_encode {
     }
   }
 
-  fn _wrap {
-    let ($s, $map, $remap_e_raw) = @_;
+  fn _wrap(s, map, remap_e_raw) {
     if ($map->{$s} =~ m/^(?:text|guil)/) {
       "\\"  . $map->{$s} . '{}';
     }

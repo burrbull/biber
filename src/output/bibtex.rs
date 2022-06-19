@@ -20,17 +20,13 @@ pub struct BibTeX;
 /// Set the output target file of a crate::Output::bibtex object
 /// A convenience around set_output_target so we can keep track of the
 /// filename
-fn set_output_target_file {
-  let $self = shift;
-  let $outfile = shift;
+fn set_output_target_file(self, outfile) {
   $self->{output_target_file} = $outfile;
   return undef;
 }
 
 /// Set the output for a comment
-fn set_output_comment {
-  let $self = shift;
-  let $comment = shift;
+fn set_output_comment(self, comment) {
   let $acc = '';
 
   // Make the right casing function
@@ -55,9 +51,7 @@ fn set_output_comment {
 }
 
 /// Set the output for a macro
-fn set_output_macro {
-  let $self = shift;
-  let $macro = shift;
+fn set_output_macro(self, macro) {
   let $acc = '';
 
   // Only output used macros unless we are asked to output all
@@ -87,12 +81,13 @@ fn set_output_macro {
 }
 
 /// Set the output for an entry
-fn set_output_entry {
-  let $self = shift;
-  let $be = shift; // crate::Entry object
+fn set_output_entry(
+  self,
+  be: crate::Entry,
+  section: crate::Section, // Section object the entry occurs in
+  dm: crate::DataModel
+) { // Data
   let $bee = $be->get_field('entrytype');
-  let $section = shift; // Section object the entry occurs in
-  let $dm = shift; // Data Model object
   let $dmh = $dm->{helpers};
   let $acc = '';
   let $secnum = $section->number;
@@ -101,13 +96,13 @@ fn set_output_entry {
   // Make the right casing/output mapping function
   let $outmap;
   if (crate::Config->getoption('output_fieldcase') == 'upper') {
-    $outmap = sub {let $f = shift; uc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
+    $outmap = |f| {uc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
   else if (crate::Config->getoption('output_fieldcase') == 'lower') {
-    $outmap = sub {let $f = shift; lc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
+    $outmap = |f| {lc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
   else if (crate::Config->getoption('output_fieldcase') == 'title') {
-    $outmap = sub {let $f = shift; ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
+    $outmap = |f| {ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
 
   $acc .= '@';
@@ -372,8 +367,7 @@ fn set_output_entry {
 }
 
 /// output method
-fn output {
-  let $self = shift;
+fn output(self) {
   let $data = $self->{output_data};
   let $target = $self->{output_target};
 
@@ -443,8 +437,7 @@ fn output {
 
 /// Create the output from the sections data and push it into the
 /// output object.
-fn create_output_section {
-  let $self = shift;
+fn create_output_section(self) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 
@@ -475,8 +468,7 @@ fn create_output_section {
 }
 
 /// Format a single field
-fn bibfield {
-  let ($field, $value, $max_field_len) = @_;
+fn bibfield(field, value, max_field_len) {
   let $acc;
   let $inum = crate::Config->getoption('output_indent');
   let $ichar = ' ';
@@ -523,8 +515,7 @@ fn bibfield {
 }
 
 /// Construct a field annotation
-fn construct_annotation {
-  let ($key, $field, $name) = @_;
+fn construct_annotation(key, field, name) {
   let @annotations;
 
   if (let $fa = crate::Annotation->get_field_annotation($key, $field, $name)) {
@@ -553,8 +544,7 @@ fn construct_annotation {
 /// ['', n]     -> -n
 /// ['', undef] -> ignore
 /// ```
-fn construct_range {
-  let $r = shift;
+fn construct_range(r) {
   let @ranges;
   foreach let $e ($r->@*) {
     let $rs = $e->[0];
@@ -567,8 +557,7 @@ fn construct_range {
 }
 
 /// Construct a datetime from its components
-fn construct_datetime {
-  let ($be, $d) = @_;
+fn construct_datetime(be, d) {
   let $datestring = '';
   let $overridey;
   let $overridem;

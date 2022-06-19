@@ -22,16 +22,14 @@ __PACKAGE__->mk_accessors(keys %bcp47parts);
 /// Object to manipulate BCP47 language tags
 pub struct LangTag;
 
-fn new {
-  let ($class, $parts) = @_;
+fn new($parts) -> Self {
   let $self = bless $parts, $class;
 
   return $self;
 }
 
 /// Dump the non-null LangTag object parts
-fn dump {
-  let $self = shift;
+fn dump(self) {
   let $parts = {};
   foreach let $part (keys %bcp47parts) {
     $parts->{$part} = $self->{$part} if defined($self->{$part});

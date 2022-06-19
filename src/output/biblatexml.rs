@@ -16,9 +16,7 @@ let $logger = Log::Log4perl::get_logger('main');
 pub struct BibLaTeXML;
 
 /// Initialize a crate::Output::biblatexml object
-fn new {
-  let $class = shift;
-  let $obj = shift;
+fn new(obj) {
   let $self;
   if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
@@ -33,8 +31,7 @@ fn new {
 /// Set the output target file of a crate::Output::biblatexml object
 /// A convenience around set_output_target so we can keep track of the
 /// filename
-fn set_output_target_file {
-  let ($self, $toolfile, $init) = @_;
+fn set_output_target_file(self, $toolfile, $init) {
 
   // biblatexml output is only in tool mode and so we are looking at a data source name in
   // $ARGV[0]
@@ -73,8 +70,7 @@ fn set_output_target_file {
 }
 
 /// Set the output for an entry
-fn set_output_entry {
-  let ($self, $be, $section, $dm) = @_;
+fn set_output_entry(self, $be, $section, $dm) {
   let $bee = $be->get_field('entrytype');
   let $dmh = crate::Config->get_dm_helpers;
   let $secnum = $section->number;
@@ -543,8 +539,7 @@ fn set_output_entry {
 }
 
 /// Tool output method
-fn output {
-  let $self = shift;
+fn output(self) {
   let $data = $self->{output_data};
   let $xml = $self->{output_target};
   let $target_string = "Target"; // Default
@@ -576,8 +571,7 @@ fn output {
 
 /// Create the output from the sections data and push it into the
 /// output object.
-fn create_output_section {
-  let $self = shift;
+fn create_output_section(self) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 

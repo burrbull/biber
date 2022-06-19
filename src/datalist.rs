@@ -9,101 +9,87 @@ use List::Util qw( first );
 pub struct DataLists;
 
 /// Initialize a crate::DataList object
-fn new {
-  let ($class, %params) = @_;
+fn new(%params) -> Self {
   let $self = bless {%params}, $class;
   return $self;
 }
 
 /// Sets the section of a data list
-fn set_section {
-  let $self = shift;
-  let $section = shift;
+fn set_section(self, section) {
   $self->{section} = lc($section);
   return;
 }
 
 /// Gets the section of a data list
-fn get_section {
-  let $self = shift;
+fn get_section(self) {
   return $self->{section};
 }
 
 /// Resets all state data. Used mainly in tests which call crate::prepare()
 /// multiple times without re-creating datalists
-fn reset_state {
-  shift->{state} = {};
+fn reset_state(self) {
+  $self->{state} = {};
   return;
 }
 
 /// Increment the count of occurrences of a primary author base name
 /// if it has a different non-base part. How many variants of the basename
 /// are there in the dlist?
-fn incr_seenpa {
-  let ($self, $base, $hash) = @_;
+fn incr_seenpa(self, $base, $hash) {
   $self->{state}{seenpa}{$base}{$hash} = 1; // increment the number of base variants
   return;
 }
 
 /// Get the count of unique (i.e. with different hash) occurrences of a primary
 /// author base name
-fn get_seenpa {
-  let ($self, $base) = @_;
+fn get_seenpa(self, $base) {
   return scalar keys %{$self->{state}{seenpa}{$base}};
 }
 
 /// Resets all entryfield data in a list
-fn reset_entryfields {
-  let $self = shift;
+fn reset_entryfields(self) {
   $self->{state}{fields} = {};
   return;
 }
 
 /// Retrieves per-list datafield information for an entry
-fn get_entryfield {
-  let ($self, $citekey, $f) = @_;
+fn get_entryfield(self, $citekey, $f) {
   return $self->{state}{fields}{$citekey}{$f};
 }
 
 /// Records per-list datafield information for an entry
-fn set_entryfield {
-  let ($self, $citekey, $f, $v) = @_;
+fn set_entryfield(self, $citekey, $f, $v) {
   $self->{state}{fields}{$citekey}{$f} = $v;
   return;
 }
 
 /// Add a name to the list of name contexts which have the name in it
 /// (only called for visible names)
-fn add_uniquenamecount {
-  let ($self, $name, $namecontext, $key) = @_;
+fn add_uniquenamecount(self, $name, $namecontext, $key) {
   $self->{state}{uniquenamecount}{$name}{$namecontext}{$key}++;
   return;
 }
 
 /// Add a name to the list of name contexts which have the name in it
 /// (called for all names)
-fn add_uniquenamecount_all {
-  let ($self, $name, $namecontext, $key) = @_;
+fn add_uniquenamecount_all(self, $name, $namecontext, $key) {
   $self->{state}{uniquenamecount_all}{$name}{$namecontext}{$key}++;
   return;
 }
 
 /// Get the number of uniquelist entries for a (possibly partial) list
-fn get_uniquelistcount {
-  let ($self, $namelist) = @_;
+fn get_uniquelistcount(self, $namelist) {
   return $self->{state}{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)};
 }
 
 /// Increment the count for a list part to the data for a name
-fn add_uniquelistcount {
-  let ($self, $namelist) = @_;
+fn add_uniquelistcount(self, $namelist) {
   $self->{state}{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)}++;
   return;
 }
 
 /// Increment the count for a complete list to the data for a name
-fn add_uniquelistcount_final {
-  let ($self, $namelist, $labelyear) = @_;
+fn add_uniquelistcount_final(self, $namelist, $labelyear) {
   $self->{state}{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)}++;
   if ($labelyear) { // uniquelist=minyear
     $self->{state}{uniquelistcount}{global}{final}{$labelyear}{join("\x{10FFFD}", $namelist->@*)}++;
@@ -113,8 +99,7 @@ fn add_uniquelistcount_final {
 
 /// Increment the count for a list and year for a name
 /// Used to track uniquelist = minyear
-fn add_uniquelistcount_minyear {
-  let ($self, $minyearnamelist, $year, $namelist) = @_;
+fn add_uniquelistcount_minyear(self, $minyearnamelist, $year, $namelist) {
   // Allow year a default in case labelyear is undef
   $self->{state}{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.unwrap_or("0")}{join("\x{10FFFD}", $namelist->@*)}++;
   return;
@@ -122,54 +107,46 @@ fn add_uniquelistcount_minyear {
 
 /// Get the count for a list and year for a name
 /// Used to track uniquelist = minyear
-fn get_uniquelistcount_minyear {
-  let ($self, $minyearnamelist, $year) = @_;
+fn get_uniquelistcount_minyear(self, $minyearnamelist, $year) {
   return scalar keys $self->{state}{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.uniquework("0")}->%*;
 }
 
 /// Get the number of uniquelist entries for a full list
-fn get_uniquelistcount_final {
-  let ($self, $namelist) = @_;
+fn get_uniquelistcount_final(self, $namelist) {
   let $c = $self->{state}{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)};
   return $c.unwrap_or(0);
 }
 
 /// Reset the count for list parts and complete lists
-fn reset_uniquelistcount {
-  let $self = shift;
+fn reset_uniquelistcount(self) {
   $self->{state}{uniquelistcount} = {};
   return;
 }
 
 /// Reset the list of names which have the name part in it
-fn reset_uniquenamecount {
-  let $self = shift;
+fn reset_uniquenamecount(self) {
   $self->{state}{uniquenamecount} = {};
   $self->{state}{uniquenamecount_all} = {};
   return;
 }
 
 /// Get a basenamestring for a particular name
-fn get_basenamestring {
-  let ($self, $nlid, $nid) = @_;
+fn get_basenamestring(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring};
 }
 
 /// Get a namestring for a particular name
-fn get_namestring {
-  let ($self, $nlid, $nid) = @_;
+fn get_namestring(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{namestring};
 }
 
 /// Get namestrings for a particular name
-fn get_namestrings {
-  let ($self, $nlid, $nid) = @_;
+fn get_namestrings(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{namestrings};
 }
 
 /// Set name disambiguation metadata
-fn set_namedis {
-  let ($self, $nlid, $nid, $ns, $nss, $nds) = @_;
+fn set_namedis(self, $nlid, $nid, $ns, $nss, $nds) {
   $self->{state}{namelistdata}{$nlid}{$nid}{namestring} = $ns;
   $self->{state}{namelistdata}{$nlid}{$nid}{namestrings} = $nss;
 
@@ -189,8 +166,7 @@ fn set_namedis {
 
 /// Return boolean to say if a namepart is a base part according to
 /// template which created the information
-fn is_unbasepart {
-  let ($self, $nlid, $nid, $np) = @_;
+fn is_unbasepart(self, $nlid, $nid, $np) {
   if (first {$_ == $np} $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}->@*) {
     return 1;
   }
@@ -200,40 +176,34 @@ fn is_unbasepart {
 }
 
 /// Get hash for a name
-fn get_namehash {
-  let ($self, $nlid, $nid) = @_;
+fn get_namehash(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{hash};
 }
 
 /// Set hash for a name
-fn set_namehash {
-  let ($self, $nlid, $nid, $s) = @_;
+fn set_namehash(self, $nlid, $nid, $s) {
   $self->{state}{namelistdata}{$nlid}{$nid}{hash} = $s;
   return;
 }
 
 /// Get uniquename minimalness info for a name
-fn get_unmininfo {
-  let ($self, $nlid, $nid) = @_;
+fn get_unmininfo(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo};
 }
 
 /// Set uniquename minimalness info for a name
-fn set_unmininfo {
-  let ($self, $nlid, $nid, $s) = @_;
+fn set_unmininfo(self, $nlid, $nid, $s) {
   $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo} = $s;
   return;
 }
 
 /// Get a name disambiguation schema for a name
-fn get_namedisschema {
-  let ($self, $nlid, $nid) = @_;
+fn get_namedisschema(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{namedisschema};
 }
 
 /// Get legacy uniquename summary for a name
-fn get_unsummary {
-  let ($self, $nlid, $nid) = @_;
+fn get_unsummary(self, $nlid, $nid) {
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   return undef unless defined($un);
   if ($un->[1] == 'none' or $un->[0] == 'base') {
@@ -249,43 +219,37 @@ fn get_unsummary {
 }
 
 /// Get uniquename summary part for a name
-fn get_unpart {
-  let ($self, $nlid, $nid) = @_;
+fn get_unpart(self, $nlid, $nid) {
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   return undef unless defined($un);
   return $un->[0]
 }
 
 /// Get uniquename parts for a name
-fn get_unparts {
-  let ($self, $nlid, $nid, $np) = @_;
+fn get_unparts(self, $nlid, $nid, $np) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np};
 }
 
 /// Set uniquename parts for a name
-fn set_unparts {
-  let ($self, $nlid, $nid, $np, $s) = @_;
+fn set_unparts(self, $nlid, $nid, $np, $s) {
   $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np} = $s;
   return;
 }
 
 /// Get the list of name contexts which contain a name
 /// Mainly for use in tests
-fn _get_uniquename {
-  let ($self, $name, $namecontext) = @_;
+fn _get_uniquename(self, $name, $namecontext) {
   let @list = sort keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
   return \@list;
 }
 
 /// Get uniquename for a name
-fn get_uniquename {
-  let ($self, $nlid, $nid) = @_;
+fn get_uniquename(self, $nlid, $nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{un};
 }
 
 /// Set uniquename for a name
-fn set_uniquename {
-  let ($self, $nlid, $nid, $s) = @_;
+fn set_uniquename(self, $nlid, $nid, $s) {
 
   let $currval = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   // Set modified flag to positive if we changed something
@@ -297,42 +261,36 @@ fn set_uniquename {
 }
 
 /// Reset uniquename for a name
-fn reset_uniquename {
-  let ($self, $nlid, $nid) = @_;
+fn reset_uniquename(self, nlid, nid) {
   $self->{state}{namelistdata}{$nlid}{$nid}{un} = ['base', $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}];
   return;
 }
 
 /// Get uniquename for a name, regardless of visibility
-fn get_uniquename_all {
-  let ($self, $nlid, $nid) = @_;
+fn get_uniquename_all(self, nlid, nid) {
   return $self->{state}{namelistdata}{$nlid}{$nid}{unall};
 }
 
 /// Set uniquename for a name, regardless of visibility
-fn set_uniquename_all {
-  let ($self, $nlid, $nid, $s) = @_;
+fn set_uniquename_all(self, nlid, nid, s) {
   $self->{state}{namelistdata}{$nlid}{$nid}{unall} = $s;
   return;
 }
 
 /// Count the names in a string used to determine uniquelist.
-fn count_uniquelist {
-  let ($self, $namelist) = @_;
+fn count_uniquelist(self, namelist) {
   return $namelist->$#* + 1;
 }
 
 /// Gets a uniquelist setting for a namelist
-fn get_uniquelist {
-  let ($self, $nlid) = @_;
+fn get_uniquelist(self, $nlid) {
   return $self->{state}{namelistdata}{$nlid}{ul};
 }
 
 /// Sets a uniquelist setting for a namelist
-fn set_uniquelist {
+fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
   // $nl is the namelist object
   // $namelist is the extracted string concatenation from $nl which forms the tracking key
-  let ($self, $nl, $namelist, $labelyear, $ul, $maxcn, $mincn) = @_;
   let $nlid = $nl->get_id;
   let $uniquelist = $self->count_uniquelist($namelist);
   let $num_names = $nl->count;
@@ -408,85 +366,72 @@ fn set_uniquelist {
 }
 
 /// Gets citation name list visibility
-fn get_visible_cite {
-  let ($self, $nlid) = @_;
+fn get_visible_cite(self, $nlid) {
   return $self->{state}{namelistdata}{$nlid}{viscite};
 }
 
 /// Gets citation name list visibility
-fn set_visible_cite {
-  let ($self, $nlid, $s) = @_;
+fn set_visible_cite(self, $nlid, $s) {
   $self->{state}{namelistdata}{$nlid}{viscite} = $s;
   return;
 }
 
 /// Gets bib name list visibility
-fn get_visible_bib {
-  let ($self, $nlid) = @_;
+fn get_visible_bib(self, $nlid) {
   return $self->{state}{namelistdata}{$nlid}{visbib};
 }
 
 /// Gets bib name list visibility
-fn set_visible_bib {
-  let ($self, $nlid, $s) = @_;
+fn set_visible_bib(self, $nlid, $s) {
   $self->{state}{namelistdata}{$nlid}{visbib} = $s;
   return;
 }
 
 /// Gets sort name list visibility
-fn get_visible_sort {
-  let ($self, $nlid) = @_;
+fn get_visible_sort(self, $nlid) {
   return $self->{state}{namelistdata}{$nlid}{vissort};
 }
 
 /// Gets sort name list visibility
-fn set_visible_sort {
-  let ($self, $nlid, $s) = @_;
+fn set_visible_sort(self, $nlid, $s) {
   $self->{state}{namelistdata}{$nlid}{vissort} = $s;
   return;
 }
 
 /// Gets alpha name list visibility
-fn get_visible_alpha {
-  let ($self, $nlid) = @_;
+fn get_visible_alpha(self, $nlid) {
   return $self->{state}{namelistdata}{$nlid}{visalpha};
 }
 
 /// Gets alpha name list visibility
-fn set_visible_alpha {
-  let ($self, $nlid, $s) = @_;
+fn set_visible_alpha(self, $nlid, $s) {
   $self->{state}{namelistdata}{$nlid}{visalpha} = $s;
   return;
 }
 
 /// Get the number of uniquenames entries for a visible name
-fn get_numofuniquenames {
-  let ($self, $name, $namecontext) = @_;
+fn get_numofuniquenames(self, $name, $namecontext) {
   return scalar keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
 }
 
 /// Get the number of uniquenames entries for a name
-fn get_numofuniquenames_all {
-  let ($self, $name, $namecontext) = @_;
+fn get_numofuniquenames_all(self, $name, $namecontext) {
   return scalar keys $self->{state}{uniquenamecount_all}{$name}{$namecontext}->%*;
 }
 
 /// Return a boolean saying whether uniquenename+uniquelist processing is finished
-fn get_unul_done {
-  let $self = shift;
+fn get_unul_done(self) {
   return $self->{unulchanged} ? 0 : 1;
 }
 
 /// Set a boolean saying whether uniquename+uniquelist has changed
-fn set_unul_changed {
-  let ($self, $val) = @_;
+fn set_unul_changed(self, $val) {
   $self->{unulchanged} = $val;
   return;
 }
 
 /// Reset the counters for extra*
-fn reset_seen_extra {
-  let $self = shift;
+fn reset_seen_extra(self) {
   $self->{state}{seen_extradate} = {};
   $self->{state}{seen_extraname} = {};
   $self->{state}{seen_extratitle} = {};
@@ -500,38 +445,32 @@ fn reset_seen_extra {
 }
 
 /// Increment and return the counter for extradate
-fn incr_seen_extradate {
-  let ($self, $ey) = @_;
+fn incr_seen_extradate(self, $ey) {
   return ++$self->{state}{seen_extradate}{$ey};
 }
 
 /// Increment and return the counter for extraname
-fn incr_seen_extraname {
-  let ($self, $en) = @_;
+fn incr_seen_extraname(self, $en) {
   return ++$self->{state}{seen_extraname}{$en};
 }
 
 /// Increment and return a counter used to track extraname
-fn incr_seen_labelname {
-  let ($self, $ln) = @_;
+fn incr_seen_labelname(self, $ln) {
   return ++$self->{state}{seen_labelname}{$ln};
 }
 
 /// Increment and return the counter for extratitle
-fn incr_seen_extratitle {
-  let ($self, $et) = @_;
+fn incr_seen_extratitle(self, $et) {
   return ++$self->{state}{seen_extratitle}{$et};
 }
 
 /// Increment and return the counter for extratitleyear
-fn incr_seen_extratitleyear {
-  let ($self, $ety) = @_;
+fn incr_seen_extratitleyear(self, $ety) {
   return ++$self->{state}{seen_extratitleyear}{$ety};
 }
 
 /// Increment and return the counter for extraalpha
-fn incr_seen_extraalpha {
-  let ($self, $ea) = @_;
+fn incr_seen_extraalpha(self, $ea) {
   return ++$self->{state}{seen_extraalpha}{$ea};
 }
 
@@ -539,8 +478,7 @@ fn incr_seen_extraalpha {
 /// extradate. It uses labelyear plus name as we need to disambiguate
 /// entries with different labelyear (like differentiating 1984--1986 from
 /// just 1984)
-fn get_seen_namedateparts {
-  let ($self, $ny) = @_;
+fn get_seen_namedateparts(self, $ny) {
   return $self->{state}{seen_namedateparts}{$ny}.unwrap_or(0);
 }
 
@@ -550,8 +488,7 @@ fn get_seen_namedateparts {
 /// be careful and only increment this counter beyond 1 if there is
 /// a name component. Otherwise, extradate gets defined for all
 /// entries with no name but the same year etc.
-fn incr_seen_namedateparts {
-  let ($self, $ns, $ys) = @_;
+fn incr_seen_namedateparts(self, $ns, $ys) {
   let $tmp = "$ns,$ys";
   // We can always increment this to 1
   unless (exists($self->{state}{seen_namedateparts}{$tmp})) {
@@ -571,15 +508,13 @@ fn incr_seen_namedateparts {
 }
 
 /// Get the count of a labelname hash for tracking extraname
-fn get_seen_labelname {
-  let ($self, $ln) = @_;
+fn get_seen_labelname(self, $ln) {
   return $self->{state}{seen_labelname}{$ln}.unwrap_or(0);
 }
 
 /// Get the count of an labelname/labeltitle combination for tracking
 /// extratitle.
-fn get_seen_nametitle {
-  let ($self, $nt) = @_;
+fn get_seen_nametitle(self, $nt) {
   return $self->{state}{seen_nametitle}{$nt}.unwrap_or(0);
 }
 
@@ -589,8 +524,7 @@ fn get_seen_nametitle {
 /// be careful and only increment this counter beyond 1 if there is
 /// a title component. Otherwise, extratitle gets defined for all
 /// entries with no title.
-fn incr_seen_nametitle {
-  let ($self, $ns, $ts) = @_;
+fn incr_seen_nametitle(self, $ns, $ts) {
   let $tmp = "$ns,$ts";
   // We can always increment this to 1
   unless ($self->{state}{seen_nametitle}{$tmp}) {
@@ -609,8 +543,7 @@ fn incr_seen_nametitle {
 
 /// Get the count of an labeltitle/labelyear combination for tracking
 /// extratitleyear
-fn get_seen_titleyear {
-  let ($self, $ty) = @_;
+fn get_seen_titleyear(self, $ty) {
   return $self->{state}{seen_titleyear}{$ty}.unwrap_or(0);
 }
 
@@ -620,8 +553,7 @@ fn get_seen_titleyear {
 /// be careful and only increment this counter beyond 1 if there is
 /// a title component. Otherwise, extratitleyear gets defined for all
 /// entries with no title.
-fn incr_seen_titleyear {
-  let ($self, $ts, $ys) = @_;
+fn incr_seen_titleyear(self, $ts, $ys) {
   let $tmp = "$ts,$ys";
   // We can always increment this to 1
   unless ($self->{state}{seen_titleyear}{$tmp}) {
@@ -639,8 +571,7 @@ fn incr_seen_titleyear {
 }
 
 /// Reset various work uniqueness counters
-fn reset_workuniqueness {
-  let $self = shift;
+fn reset_workuniqueness(self) {
   $self->{state}{seenname} = {};
   $self->{state}{seentitle} = {};
   $self->{state}{seenbaretitle} = {};
@@ -649,84 +580,71 @@ fn reset_workuniqueness {
 }
 
 /// Get the count of occurrences of a labelname or labeltitle
-fn get_seenname {
-  let ($self, $identifier) = @_;
+fn get_seenname(self, $identifier) {
   return $self->{state}{seenname}{$identifier};
 }
 
 /// Increment the count of occurrences of a labelname or labeltitle
-fn incr_seenname {
-  let ($self, $identifier) = @_;
+fn incr_seenname(self, $identifier) {
   $self->{state}{seenname}{$identifier}++;
   return;
 }
 
 /// Get the count of occurrences of a labeltitle
-fn get_seentitle {
-  let ($self, $identifier) = @_;
+fn get_seentitle(self, $identifier) {
   return $self->{state}{seentitle}{$identifier};
 }
 
 /// Increment the count of occurrences of a labeltitle
-fn incr_seentitle {
-  let ($self, $identifier) = @_;
+fn incr_seentitle(self, $identifier) {
   $self->{state}{seentitle}{$identifier}++;
   return;
 }
 
 /// Get the count of occurrences of a labeltitle when there is
 /// no labelname
-fn get_seenbaretitle {
-  let ($self, $identifier) = @_;
+fn get_seenbaretitle(self, $identifier) {
   return $self->{state}{seenbaretitle}{$identifier};
 }
 
 /// Increment the count of occurrences of a labeltitle
 /// when there is no labelname
-fn incr_seenbaretitle {
-  let ($self, $identifier) = @_;
+fn incr_seenbaretitle(self, $identifier) {
   $self->{state}{seenbaretitle}{$identifier}++;
   return;
 }
 
 /// Get the count of occurrences of a labelname and labeltitle
-fn get_seenwork {
-  let ($self, $identifier) = @_;
+fn get_seenwork(self, $identifier) {
   return $self->{state}{seenwork}{$identifier};
 }
 
 /// Increment the count of occurrences of a labelname and labeltitle
-fn incr_seenwork {
-  let ($self, $identifier) = @_;
+fn incr_seenwork(self, $identifier) {
   $self->{state}{seenwork}{$identifier}++;
   return;
 }
 
 /// Increment a counter to say we have seen this labelalpha
-fn incr_la_disambiguation {
-  let ($self, $la) = @_;
+fn incr_la_disambiguation(self, $la) {
   $self->{state}{ladisambiguation}{$la}++;
   return;
 }
 
 /// Get the disambiguation counter for this labelalpha.
 /// Return a 0 for undefs to avoid spurious errors.
-fn get_la_disambiguation {
-  let ($self, $la) = @_;
+fn get_la_disambiguation(self, $la) {
   return $self->{state}{ladisambiguation}{$la}.unwrap_or(0);
 }
 
 /// Sets the sortingtemplate name of a data list
-fn set_sortingtemplatename {
-  let $self = shift;
-  let $stn = shift;
+fn set_sortingtemplatename(self, stn) {
   $self->{sortingtemplatename} = lc($stn);
   return;
 }
 
 /// Gets the attributes of a data list
-fn get_attrs {
-  let $self = shift;
+fn get_attrs(self) {
   return join('/', ($self->{sortingtemplatename},
                     $self->{sortingnamekeytemplatename},
                     $self->{labelprefix},
@@ -735,343 +653,288 @@ fn get_attrs {
 }
 
 /// Gets the sortingtemplatename of a data list
-fn get_sortingtemplatename {
-  let $self = shift;
+fn get_sortingtemplatename(self) {
   return $self->{sortingtemplatename};
 }
 
 /// Sets the sortingnamekeytemplate name of a data list
-fn set_sortingnamekeytemplatename {
-  let $self = shift;
-  let $snksn = shift;
+fn set_sortingnamekeytemplatename(self, snksn) {
   $self->{sortingnamekeytemplatename} = lc($snksn);
   return;
 }
 
 /// Gets the sortingnamekeytemplatename of a data list
-fn get_sortingnamekeytemplatename {
-  let $self = shift;
+fn get_sortingnamekeytemplatename(self) {
   return $self->{sortingnamekeytemplatename};
 }
 
 /// Sets the uniquenametemplate name of a data list
-fn set_uniquenametemplatename {
-  let $self = shift;
-  let $untn = shift;
+fn set_uniquenametemplatename(self, untn) {
   $self->{uniquenametemplatename} = lc($untn);
   return;
 }
 
 /// Gets the uniquenametemplate name of a data list
-fn get_uniquenametemplatename {
-  let $self = shift;
+fn get_uniquenametemplatename(self) {
   return $self->{uniquenametemplatename};
 }
 
 /// Sets the labelalphanametemplate name of a data list
-fn set_labelalphanametemplatename {
-  let $self = shift;
-  let $latn = shift;
+fn set_labelalphanametemplatename(self, latn) {
   $self->{labelalphanametemplatename} = lc($latn);
   return;
 }
 
 /// Gets the labelalphanametemplate name of a data list
-fn get_labelalphanametemplatename {
-  let $self = shift;
+fn get_labelalphanametemplatename(self) {
   return $self->{labelalphanametemplatename};
 }
 
 /// Sets the sortinit collator for this list
-fn set_sortinit_collator {
-  let $self = shift;
-  $self->{sortinitcollator} = shift;;
+fn set_sortinit_collator(self, collator) {
+  $self->{sortinitcollator} = collator;
   return;
 }
 
 /// Gets the sortinit collator for this list
-fn get_sortinit_collator {
-  let $self = shift;
+fn get_sortinit_collator(self) {
   return $self->{sortinitcollator};
 }
 
 /// Gets the labelprefix setting of a data list
-fn get_labelprefix {
-  let $self = shift;
+fn get_labelprefix(self) {
   return $self->{labelprefix};
 }
 
 /// Sets the labelprefix setting of a data list
-fn set_labelprefix {
-  let $self = shift;
-  let $pn = shift;
+fn set_labelprefix(self, pn) {
   $self->{labelprefix} = $pn;
   return
 }
 
 /// Sets the name of a data list
-fn set_name {
-  let $self = shift;
-  let $name = shift;
+fn set_name(self, name) {
   $self->{name} = $name;
   return;
 }
 
 /// Gets the name of a data list
-fn get_name {
-  let $self = shift;
+fn get_name(self) {
   return $self->{name};
 }
 
 /// Sets the type of a data list
-fn set_type {
-  let $self = shift;
-  let $type = shift;
+fn set_type(self, type) {
   $self->{type} = lc($type);
   return;
 }
 
 /// Gets the type of a section list
-fn get_type {
-  let $self = shift;
+fn get_type(self) {
   return $self->{type};
 }
 
 /// Sets the keys for the list
-fn set_keys {
-  let ($self, $keys) = @_;
+fn set_keys(self, $keys) {
   $self->{keys} = $keys;
   return;
 }
 
 /// Gets the keys for the list
-fn get_keys {
-  let $self = shift;
+fn get_keys(self) {
   return $self->{keys};
 }
 
 /// Count the keys for the list
-fn count_keys {
-  let $self = shift;
+fn count_keys(self) {
   return $#{$self->{keys}} + 1;
 }
 
 /// Gets  name list data
-fn get_namelistdata {
-  return shift->{state}{namelistdata};
+fn get_namelistdata(self) {
+  return $self->{state}{namelistdata};
 }
 
 /// Saves name list data
-fn set_namelistdata {
-  let ($self, $nld) = @_;
+fn set_namelistdata(self, $nld) {
   $self->{state}{namelistdata} = $nld;
   return;
 }
 
 /// Gets labelalpha field data
-fn get_labelalphadata {
-  return shift->{state}{labelalphadata};
+fn get_labelalphadata(self) {
+  return $self->{state}{labelalphadata};
 }
 
 /// Saves labelalpha data
-fn set_labelalphadata {
-  let ($self, $lad) = @_;
+fn set_labelalphadata(self, $lad) {
   $self->{state}{labelalphadata} = $lad;
   return;
 }
 
 /// Gets labelalpha field data for a key
-fn get_labelalphadata_for_key {
-  let ($self, $key) = @_;
+fn get_labelalphadata_for_key(self, $key) {
   return $self->{state}{labelalphadata}{$key};
 }
 
 /// Saves labelalpha field data for a key
-fn set_labelalphadata_for_key {
-  let ($self, $key, $la) = @_;
+fn set_labelalphadata_for_key(self, $key, $la) {
   return unless defined($key);
   $self->{state}{labelalphadata}{$key} = $la;
   return;
 }
 
 /// Saves extradate field data for a key
-fn set_extradatedata_for_key {
-  let ($self, $key, $ed) = @_;
+fn set_extradatedata_for_key(self, $key, $ed) {
   return unless defined($key);
   $self->{state}{extradatedata}{$key} = $ed;
   return;
 }
 
 /// Saves extraname field data for a key
-fn set_extranamedata_for_key {
-  let ($self, $key, $en) = @_;
+fn set_extranamedata_for_key(self, $key, $en) {
   return unless defined($key);
   $self->{state}{extranamedata}{$key} = $en;
   return;
 }
 
 /// Gets the extraname field data for a key
-fn get_extranamedata_for_key {
-  let ($self, $key) = @_;
+fn get_extranamedata_for_key(self, $key) {
   return unless defined($key);
   return $self->{state}{extranamedata}{$key};
 }
 
 /// Saves extradate field data for all keys
-fn set_extradatedata {
-  let ($self, $ed) = @_;
+fn set_extradatedata(self, $ed) {
   $self->{state}{extradatedata} = $ed;
   return;
 }
 
 /// Gets the extradate field data for a key
-fn get_extradatedata_for_key {
-  let ($self, $key) = @_;
+fn get_extradatedata_for_key(self, $key) {
   return unless defined($key);
   return $self->{state}{extradatedata}{$key};
 }
 
 /// Saves extratitle field data for a key
-fn set_extratitledata_for_key {
-  let ($self, $key, $ed) = @_;
+fn set_extratitledata_for_key(self, $key, $ed) {
   return unless defined($key);
   $self->{state}{extratitledata}{$key} = $ed;
   return;
 }
 
 /// Saves extratitle field data for all keys
-fn set_extratitledata {
-  let ($self, $ed) = @_;
+fn set_extratitledata(self, $ed) {
   $self->{state}{extratitledata} = $ed;
   return;
 }
 
 /// Gets the extratitle field data for a key
-fn get_extratitledata_for_key {
-  let ($self, $key) = @_;
+fn get_extratitledata_for_key(self, $key) {
   return unless defined($key);
   return $self->{state}{extratitledata}{$key};
 }
 
 /// Saves extratitleyear field data for a key
-fn set_extratitleyeardata_for_key {
-  let ($self, $key, $ed) = @_;
+fn set_extratitleyeardata_for_key(self, $key, $ed) {
   return unless defined($key);
   $self->{state}{extratitleyeardata}{$key} = $ed;
   return;
 }
 
 /// Saves extratitleyear field data for all keys
-fn set_extratitleyeardata {
-  let ($self, $ed) = @_;
+fn set_extratitleyeardata(self, $ed) {
   $self->{state}{extratitleyeardata} = $ed;
   return;
 }
 
 /// Gets the extratitleyear field data for a key
-fn get_extratitleyeardata_for_key {
-  let ($self, $key) = @_;
+fn get_extratitleyeardata_for_key(self, $key) {
   return unless defined($key);
   return $self->{state}{extratitleyeardata}{$key};
 }
 
 /// Saves extraalpha field data for a key
-fn set_extraalphadata_for_key {
-  let ($self, $key, $ed) = @_;
+fn set_extraalphadata_for_key(self, $key, $ed) {
   return unless defined($key);
   $self->{state}{extraalphadata}{$key} = $ed;
   return;
 }
 
 /// Saves extraalpha field data for all keys
-fn set_extraalphadata {
-  let ($self, $ed) = @_;
+fn set_extraalphadata(self, $ed) {
   $self->{state}{extraalphadata} = $ed;
   return;
 }
 
 /// Gets the extraalpha field data for a key
-fn get_extraalphadata_for_key {
-  let ($self, $key) = @_;
+fn get_extraalphadata_for_key(self, $key) {
   return unless defined($key);
   return $self->{state}{extraalphadata}{$key};
 }
 
 /// Gets the sortdata schema for a sortlist
-fn get_sortdataschema {
-  let ($self) = @_;
+fn get_sortdataschema(self) {
   return $self->{sortdataschema};
 }
 
 /// Saves the sortdata schema for a sortlist
-fn set_sortdataschema {
-  let ($self, $ss) = @_;
+fn set_sortdataschema(self, $ss) {
   $self->{sortdataschema} = $ss;
   return;
 }
 
 /// Saves sorting data in a list for a key
-fn set_sortdata {
-  let ($self, $key, $sd) = @_;
+fn set_sortdata(self, $key, $sd) {
   return unless defined($key);
   $self->{sortdata}{$key} = $sd;
   return;
 }
 
 /// Gets the sorting data in a list for a key
-fn get_sortdata_for_key {
-  let ($self, $key) = @_;
+fn get_sortdata_for_key(self, $key) {
   return unless defined($key);
   return $self->{sortdata}{$key};
 }
 
 /// Saves sortinit data for a specific key
-fn set_sortinitdata_for_key {
-  let ($self, $key, $init) = @_;
+fn set_sortinitdata_for_key(self, $key, $init) {
   return unless defined($key);
   $self->{sortinitdata}{$key} = {init => $init};
   return;
 }
 
 /// Saves sortinit data for all keys
-fn set_sortinitdata {
-  let ($self, $sid) = @_;
+fn set_sortinitdata(self, $sid) {
   $self->{sortinitdata} = $sid;
   return;
 }
 
 /// Gets the sortinit in a list for a key
-fn get_sortinit_for_key {
-  let ($self, $key) = @_;
+fn get_sortinit_for_key(self, $key) {
   return unless defined($key);
   return $self->{sortinitdata}{$key}{init};
 }
 
 /// Sets the sortingtemplate of a list
-fn set_sortingtemplate {
-  let $self = shift;
-  let $sortingtemplate = shift;
+fn set_sortingtemplate(self, sortingtemplate) {
   $self->{sortingtemplate} = $sortingtemplate;
   return;
 }
 
 /// Gets the sortingtemplate of a list
-fn get_sortingtemplate {
-  let $self = shift;
+fn get_sortingtemplate(self) {
   return $self->{sortingtemplate};
 }
 
 /// Adds a filter to a list object
-fn add_filter {
-  let $self = shift;
-  let ($filter) = @_;
+fn add_filter(self, filter) {
   push $self->{filters}->@*, $filter;
   return;
 }
 
 /// Gets all filters for a list object
-fn get_filters {
-  let $self = shift;
+fn get_filters(self) {
   return $self->{filters};
 }
 
@@ -1081,8 +944,7 @@ fn get_filters {
 /// of the reference context and not the entry per se so it cannot be stored
 /// statically in the entry and must be retrieved from the specific datalist
 /// when outputting the entry.
-fn instantiate_entry {
-  let ($self, $section, $entry, $key, $format) = @_;
+fn instantiate_entry(self, $section, $entry, $key, $format) {
   let $be = $section->bibentry($key);
   let $bee = $be->get_field('entrytype');
 
@@ -1492,9 +1354,7 @@ fn instantiate_entry {
 /// namelist_differs_index([a, b, c, d, e]) -> 2
 /// namelist_differs_index([a]) -> 1
 /// ```
-fn namelist_differs_index {
-  let $self = shift;
-  let @list = shift->@*;
+fn namelist_differs_index(self, @list) {
   let $index;
   foreach let $l_s (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
     let @l = split("\x{10FFFD}", $l_s);
@@ -1537,9 +1397,7 @@ fn namelist_differs_index {
 /// [a, b, d, e, f]
 /// [a, b, e, z, z, y]
 /// ```
-fn namelist_differs_nth {
-  let $self = shift;
-  let ($list, $n, $ul, $labelyear) = @_;
+fn namelist_differs_nth(self, list, n, ul, labelyear) {
   let @list_one = $list->@*;
   // Loop over all final lists, looking for ones which match:
   // * up to n - 1

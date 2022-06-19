@@ -68,9 +68,8 @@ let $handlers = {
 /// preprocesses the file and then looks for the passed keys,
 /// creating entries when it finds them and passes out an
 /// array of keys it didn't find.
-fn extract_entries {
+fn extract_entries(filename, _encoding, keys) {
   // $encoding is ignored as it is always assumed to be UTF-8 for XML
-  let ($filename, $encoding, $keys) = @_;
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -254,8 +253,7 @@ fn extract_entries {
 }
 
 /// Create a crate::Entry object from an entry found in a biblatexml data source
-fn create_entry {
-  let ($key, $entry, $datasource, $smaps, $rkeys) = @_;
+fn create_entry(key, entry, datasource, smaps, rkeys) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 
@@ -749,8 +747,7 @@ fn create_entry {
 }
 
 // Annotations are special - there is a literal field and also more complex annotations
-fn _annotation {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _annotation(bibentry, entry, f, key) {
   foreach let $node ($entry->findnodes("./$f")) {
     let $field = $node->getAttribute('field');
     let $name = $node->getAttribute('name') || 'default';
@@ -777,8 +774,7 @@ fn _annotation {
 }
 
 // Related entries
-fn _related {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _related(bibentry, entry, f, key) {
   let $Srx = crate::Config->getoption('xsvsep');
   let $S = qr/$Srx/;
   let $node = $entry->findnodes("./$f")->get_node(1);
@@ -797,8 +793,7 @@ fn _related {
 }
 
 // literal fields
-fn _literal {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _literal(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
   let $setval = $node->textContent();
   let $xdmi = crate::Config->getoption('xdatamarker');
@@ -826,8 +821,7 @@ fn _literal {
 }
 
 // xSV field
-fn _xsv {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _xsv(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
   // XDATA is special
@@ -846,8 +840,7 @@ fn _xsv {
 
 
 // uri fields
-fn _uri {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _uri(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
   let $setval = $node->textContent();
   let $xdmi = crate::Config->getoption('xdatamarker');
@@ -875,8 +868,7 @@ fn _uri {
 
 
 // List fields
-fn _list {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _list(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
   $bibentry->set_datafield(_norm($f), _split_list($bibentry, $node, $key, $f));
@@ -885,8 +877,7 @@ fn _list {
 }
 
 // Range fields
-fn _range {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _range(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
   let $xdmi = crate::Config->getoption('xdatamarker');
   let $xnsi = crate::Config->getoption('xnamesep');
@@ -914,8 +905,7 @@ fn _range {
 // Date fields
 // NOTE - the biblatex options controlling era, approximate and uncertain meta-information
 // output are in the .bcf but biber does not used them as it always outputs this information
-fn _datetime {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _datetime(bibentry, entry, f, key) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $ds = $section->get_keytods($key);
@@ -1087,8 +1077,7 @@ fn _datetime {
 }
 
 // Name fields
-fn _name {
-  let ($bibentry, $entry, $f, $key) = @_;
+fn _name(bibentry, entry, f, key) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $bee = $bibentry->get_field('entrytype');
@@ -1138,29 +1127,25 @@ fn _name {
   return;
 }
 
-=head2 parsename
-
-    Given a name node, this function returns a crate::Entry::Name object
-
-    Returns an object which internally looks a bit like this:
-
-    { given             => {string => 'John', initial => ['J']},
-      family            => {string => 'Doe', initial => ['D']},
-      middle            => {string => 'Fred', initial => ['F']},
-      prefix            => {string => undef, initial => undef},
-      suffix            => {string => undef, initial => undef},
-      basenamestring    => 'Doe',
-      namestring        => 'Doe, John Fred',
-      nameinitstring    => 'Doe_JF',
-      gender            => sm,
-      useprefix         => 1,
-      sortingnamekeytemplatename => 'templatename'
-    }
-
-=cut
-
-fn parsename {
-  let ($section, $node, $fieldname, $key, $count) = @_;
+/// Given a name node, this function returns a crate::Entry::Name object
+///
+/// Returns an object which internally looks a bit like this:
+///
+/// ```
+/// { given             => {string => 'John', initial => ['J']},
+///   family            => {string => 'Doe', initial => ['D']},
+///   middle            => {string => 'Fred', initial => ['F']},
+///   prefix            => {string => undef, initial => undef},
+///   suffix            => {string => undef, initial => undef},
+///   basenamestring    => 'Doe',
+///   namestring        => 'Doe, John Fred',
+///   nameinitstring    => 'Doe_JF',
+///   gender            => sm,
+///   useprefix         => 1,
+///   sortingnamekeytemplatename => 'templatename'
+/// }
+/// ```
+fn parsename(section, node, fieldname, key, count) {
     debug!("Parsing BibLaTeXML name object {}", $node->nodePath);
 
   let %namec;
@@ -1231,8 +1216,7 @@ fn parsename {
 }
 
 // parses a range and returns a ref to an array of start and end values
-fn _parse_range_list {
-  let $rangenode = shift;
+fn _parse_range_list(rangenode) {
   let $start = '';
   let $end = '';
   if (let $s = $rangenode->findnodes("./$NS:start")) {
@@ -1244,11 +1228,8 @@ fn _parse_range_list {
   return [$start, $end];
 }
 
-
-
 // Splits a list field into an array ref
-fn _split_list {
-  let ($bibentry, $node, $key, $f, $noxdata) = @_;
+fn _split_list(bibentry, node, key, f, noxdata) {}
   let $xdmi = crate::Config->getoption('xdatamarker');
   let $xnsi = crate::Config->getoption('xnamesep');
 
@@ -1284,9 +1265,7 @@ fn _norm {
   return $name;
 }
 
-fn _get_handler {
-  let $field = shift;
-
+fn _get_handler(field) {
   if (let $h = $handlers->{CUSTOM}{_norm($field)}) {
     return $h;
   }
@@ -1299,9 +1278,7 @@ fn _get_handler {
 // Changes node $xp_target_s (XPATH 1.0) to $value in the biblatexml entry $e, puts errors
 // into $error. Quite complicated because of the various node types that can be changed and
 // also due to the requirements of creating new targets when then don't exist.
-fn _changenode {
-  let ($e, $xp_target_s, $value, $error) = @_;
-
+fn _changenode(e, xp_target_s, value, error) {
   // names are special and can be specified by just the string
   if ($dm->is_field($value)) {
     let $dmv = $dm->get_dm_for_field($value);
@@ -1411,8 +1388,7 @@ fn _changenode {
   return 1;
 }
 
-fn _getpath {
-  let $string = shift;
+fn _getpath(string) {
   return undef unless $string;
   let $dm = crate::Config->get_dm;
   if ($string =~ m|/|) {

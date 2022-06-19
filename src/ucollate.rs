@@ -14,10 +14,7 @@ pub struct UCollate;
 /// semantics of Schwartzian transforms, we need to chain all sorting elements so that they return
 /// a boolean value (see Biber.pm). This is much tidier with Foo->new()->change()->cmp than
 /// with something messy like "let $uc = create_uc_object; $uc->change()->cmp()" etc.
-fn new {
-  let $class = shift;
-  let ($thislocale, %collopts) = @_;
-
+fn new(thislocale, %collopts) -> Self {
   // Add tailoring locale for Unicode::Collate
   // Ignore table as this is not valid for U::C::Locale objects
   if ($thislocale and not $collopts{locale}) {

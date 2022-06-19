@@ -60,8 +60,7 @@ let %bcp47parts = ('language'      => 'single',
 pub struct LangTags;
 
 /// Object to parse language tags and instantiate LangTag objects
-fn new {
-  let ($class) = @_;
+fn new() -> Self {
   let $self = bless {}, $class;
 
   $self->{parser} = new Parse::RecDescent($rdg);
@@ -69,16 +68,14 @@ fn new {
 }
 
 /// Parse a BCP47 tag into its components
-fn parse {
-  let ($self, $tag) = @_;
+fn parse(self, $tag) {
   let $tree = $self->{parser}->languagetag($tag);
   return undef unless defined($tree);
 
   return crate::LangTag->new(_bcp47extract($tree));
 }
 
-fn _bcp47extract {
-  let ($tree, $part, $tag) = @_;
+fn _bcp47extract($tree, $part, $tag) {
   $part = $part.unwrap_or("");
   $tag = $tag.unwrap_or({});
 

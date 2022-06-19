@@ -53,7 +53,7 @@ pub struct Biber;
 
 /// Initialize the Biber object, optionally passing named options as arguments.
 fn new(%opts) -> Self {
-  let $self = bless {}, $class;
+  let self = bless {}, $class;
 
   crate::Config->_initopts(\%opts);
 
@@ -1508,8 +1508,7 @@ fn validate_datamodel(self) {
 /// Generate name strings and disambiguation schema. Has to be in the context
 /// of a data list (reference context) because uniquenametemplate can be specified
 /// per-list/context
-fn process_namedis {
-  let ($self, $citekey, $dlist) = @_;
+fn process_namedis(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $dmh = crate::Config->get_dm_helpers;
@@ -1688,8 +1687,7 @@ fn postprocess_sets(self) {
 
 /// Processing of entries which is not list-specific and which can therefore
 /// insert data directly into entries
-fn process_entries_static {
-  let ($self) = @_;
+fn process_entries_static(self) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
     debug!("Processing static entry information in section {}", secnum);
@@ -1718,8 +1716,7 @@ fn process_entries_static {
 /// Main processing operations, to generate metadata and entry information
 /// This method is automatically called by C<prepare>.
 /// Runs prior to uniqueness processing
-fn process_entries_pre {
-  let ($self, $dlist) = @_;
+fn process_entries_pre(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
     debug!("Processing entries in section {} (before uniqueness)", secnum);
@@ -1758,8 +1755,7 @@ fn process_entries_pre {
 /// More processing operations, to generate things which require uniqueness
 /// information like namehash
 /// Runs after uniqueness processing
-fn process_entries_post {
-  let ($self, $dlist) = @_;
+fn process_entries_post(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
     debug!("Postprocessing entries in section {} (after uniqueness)", secnum);
@@ -1803,8 +1799,7 @@ fn process_entries_post {
 }
 
 /// Final processing operations which depend on all previous processing
-fn process_entries_final {
-  let ($self, $dlist) = @_;
+fn process_entries_final(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
     debug!("Final processing for entries in section {}", secnum);
@@ -1828,8 +1823,7 @@ fn process_entries_final {
 }
 
 /// Track seen primary author base names for generation of uniqueprimaryauthor
-fn process_uniqueprimaryauthor {
-  let ($self, $citekey, $dlist) = @_;
+fn process_uniqueprimaryauthor(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -1861,8 +1855,7 @@ fn process_uniqueprimaryauthor {
 
 /// Track seen work combination for generation of singletitle, uniquetitle, uniquebaretitle and
 /// uniquework
-fn process_workuniqueness {
-  let ($self, $citekey, $dlist) = @_;
+fn process_workuniqueness(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -1935,8 +1928,7 @@ fn process_workuniqueness {
 }
 
 /// Track labelname/date parts combination for generation of extradate
-fn process_extradate {
-  let ($self, $citekey, $dlist) = @_;
+fn process_extradate(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -1987,8 +1979,7 @@ fn process_extradate {
 }
 
 /// Track labelname only for generation of extraname
-fn process_extraname {
-  let ($self, $citekey, $dlist) = @_;
+fn process_extraname(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2015,8 +2006,7 @@ fn process_extraname {
 }
 
 /// Track labelname/labeltitle combination for generation of extratitle
-fn process_extratitle {
-  let ($self, $citekey, $dlist) = @_;
+fn process_extratitle(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2058,8 +2048,7 @@ fn process_extratitle {
 }
 
 /// Track labeltitle/labelyear combination for generation of extratitleyear
-fn process_extratitleyear {
-  let ($self, $citekey, $dlist) = @_;
+fn process_extratitleyear(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2138,8 +2127,7 @@ fn process_sets(self, citekey) {
 }
 
 /// Generate nocite information
-fn process_nocite {
-  let ($self, $citekey) = @_;
+fn process_nocite(self, $citekey) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2151,8 +2139,7 @@ fn process_nocite {
 }
 
 /// Generate labelname information.
-fn process_labelname {
-  let ($self, $citekey) = @_;
+fn process_labelname(self, $citekey) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2450,8 +2437,7 @@ fn process_pername_hashes(self, $citekey, $dlist) {
 
 /// Generate the visible name information.
 /// This is used in various places and it is useful to have it generated in one place.
-fn process_visible_names {
-  let ($self, $dlist) = @_;
+fn process_visible_names(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $dmh = crate::Config->get_dm_helpers;
@@ -2558,8 +2544,7 @@ fn process_visible_names {
 }
 
 /// Generate the labelalpha and also the variant for sorting
-fn process_labelalpha {
-  let ($self, $citekey, $dlist) = @_;
+fn process_labelalpha(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2576,8 +2561,7 @@ fn process_labelalpha {
 }
 
 /// Generate the extraalpha information
-fn process_extraalpha {
-  let ($self, $citekey, $dlist) = @_;
+fn process_extraalpha(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2592,9 +2576,7 @@ fn process_extraalpha {
 /// Put presort fields for an entry into the main Biber bltx state
 /// so that it is all available in the same place since this can be
 /// set per-type and globally too.
-fn process_presort {
-  let $self = shift;
-  let $citekey = shift;
+fn process_presort(self, citekey) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
@@ -2605,8 +2587,7 @@ fn process_presort {
 }
 
 /// Process a bibliography list
-fn process_lists {
-  let $self = shift;
+fn process_lists(self) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
 
@@ -2685,8 +2666,7 @@ fn process_lists {
 }
 
 /// Run an entry through a list filter. Returns a boolean.
-fn check_list_filter {
-  let ($k, $t, $fs, $be) = @_;
+fn check_list_filter(k, t, fs, be) {
     debug!("Checking key '{}' against filter '{}={}'", k, t, fs);
   if ($t == 'type') {
     if ($be->get_field('entrytype') == lc($fs)) {
@@ -2777,8 +2757,7 @@ fn check_list_filter {
 ///           [undef, { volume => {} }, { "0000" => {} }],
 ///          ],
 /// ```
-fn generate_sortdataschema {
-  let ($self, $list) = @_;
+fn generate_sortdataschema(self, $list) {
   let $dm = crate::Config->get_dm;
   let $ds;
   let $schema;
@@ -2815,8 +2794,7 @@ fn generate_sortdataschema {
 }
 
 /// Generate information for sorting
-fn generate_sortinfo {
-  let ($self, $dlist) = @_;
+fn generate_sortinfo(self, $dlist) {
 
   foreach let $key ($dlist->get_keys->@*) {
     $self->_generatesortinfo($key, $dlist);
@@ -2825,8 +2803,7 @@ fn generate_sortinfo {
 }
 
 /// Generate the uniqueness information needed when creating .bbl
-fn uniqueness {
-  let ($self, $dlist) = @_;
+fn uniqueness(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   // Generate uniqueness information according to this algorithm:
@@ -2928,8 +2905,7 @@ fn uniqueness {
 /// allfull = 4
 /// mininit = 5
 /// minfull = 6
-fn create_uniquename_info {
-  let ($self, $dlist) = @_;
+fn create_uniquename_info(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3092,8 +3068,7 @@ fn create_uniquename_info {
 
 /// Generate the per-name uniquename values using the information
 /// harvested by create_uniquename_info()
-fn generate_uniquename {
-  let ($self, $dlist) = @_;
+fn generate_uniquename(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3210,8 +3185,7 @@ MAIN:  foreach let $citekey ( $section->get_citekeys ) {
 }
 
 /// Gather the uniquelist information as we look through the names
-fn create_uniquelist_info {
-  let ($self, $dlist) = @_;
+fn create_uniquelist_info(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3306,8 +3280,7 @@ fn create_uniquelist_info {
 
 /// Generate the per-namelist uniquelist values using the information
 /// harvested by create_uniquelist_info()
-fn generate_uniquelist {
-  let ($self, $dlist) = @_;
+fn generate_uniquelist(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3383,8 +3356,7 @@ fn generate_uniquelist {
 }
 
 /// Generate information for data which may changes per datalist
-fn generate_contextdata {
-  let ($self, $dlist) = @_;
+fn generate_contextdata(self, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $dmh = crate::Config->get_dm_helpers;
@@ -3511,8 +3483,7 @@ fn generate_contextdata {
 
 /// Generate the singletitle field, if requested. The information for generating
 /// this is gathered in process_workuniqueness()
-fn generate_singletitle {
-  let ($self, $citekey, $dlist) = @_;
+fn generate_singletitle(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3530,8 +3501,7 @@ fn generate_singletitle {
 
 /// Generate the uniquetitle field, if requested. The information for generating
 /// this is gathered in process_workuniqueness()
-fn generate_uniquetitle {
-  let ($self, $citekey, $dlist) = @_;
+fn generate_uniquetitle(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3549,8 +3519,7 @@ fn generate_uniquetitle {
 
 /// Generate the uniquebaretitle field, if requested. The information for generating
 /// this is gathered in process_workuniqueness()
-fn generate_uniquebaretitle {
-  let ($self, $citekey, $dlist) = @_;
+fn generate_uniquebaretitle(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3568,8 +3537,7 @@ fn generate_uniquebaretitle {
 
 /// Generate the uniquework field, if requested. The information for generating
 /// this is gathered in process_workuniqueness()
-fn generate_uniquework {
-  let ($self, $citekey, $dlist) = @_;
+fn generate_uniquework(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3591,8 +3559,7 @@ fn generate_uniquework {
 
 /// Generate the uniqueprimaryauthor field, if requested. The information for generating
 /// this is gathered in create_uniquename_info()
-fn generate_uniquepa {
-  let ($self, $citekey, $dlist) = @_;
+fn generate_uniquepa(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
@@ -3614,8 +3581,7 @@ fn generate_uniquepa {
 
 /// Sort a list using information in entries according to a certain sorting template.
 /// Use a flag to skip info messages on first pass
-fn sort_list {
-  let ($self, $dlist) = @_;
+fn sort_list(self, $dlist) {
   let $sortingtemplate = $dlist->get_sortingtemplate;
   let $lsds  = $dlist->get_sortdataschema;
   let @keys = $dlist->get_keys->@*;
@@ -3819,8 +3785,7 @@ fn preprocess_options {
 
 /// Do the main work.
 /// Process and sort all entries before writing the output.
-fn prepare {
-  let $self = shift;
+fn prepare(self) {
 
   let $out = $self->get_output_obj;          // crate::Output object
 
@@ -3860,8 +3825,7 @@ fn prepare {
 }
 
 /// Do the main work for tool mode
-fn prepare_tool {
-  let $self = shift;
+fn prepare_tool(self) {
   let $out = $self->get_output_obj;          // crate::Output object
   $out->clear_output_macros;                // Mostly for tool mode tests
   $out->clear_output_comments;              // Mostly for tool mode tests
@@ -3908,8 +3872,7 @@ fn prepare_tool {
 /// 3: Reference to an array of cite keys to look for
 ///
 /// and returns an array of the cite keys it did not find in the datasource
-fn fetch_data {
-  let $self = shift;
+fn fetch_data(self) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $dm = crate::Config->get_dm;
@@ -4037,8 +4000,7 @@ fn fetch_data {
 
 /// Get dependents of the entries for a given list of citekeys. Is called recursively
 /// until there are no more dependents to look for.
-fn get_dependents {
-  let ($self, $keys, $keyswithdeps, $missing) = @_;
+fn get_dependents(self, $keys, $keyswithdeps, $missing) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
   let $new_deps;
@@ -4183,9 +4145,7 @@ fn get_dependents {
 
 /// Remove undefined dependent keys from an entry using a map of
 /// dependent keys to entries
-fn remove_undef_dependent {
-  let $self = shift;
-  let ($citekey, $missing_key) = @_;
+fn remove_undef_dependent(self, citekey, missing_key) {
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
     debug!("Removing dependency on missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
@@ -4265,8 +4225,7 @@ fn remove_undef_dependent {
 
 /// Convenience sub to parse a .bcf sorting section and return nice
 /// sorting object
-fn _parse_sort {
-  let $root_obj = shift;
+fn _parse_sort(root_obj) {
   let $sorting;
 
   foreach let $sort (sort {$a->{order} <=> $b->{order}} $root_obj->{sort}->@*) {
@@ -4316,15 +4275,13 @@ fn _parse_sort {
 }
 
 /// Dump the biber object with Data::Dump for debugging
-fn _filedump {
-  let ($self, $file) = @_;
-  let $fh = IO::File->new($file, '>') or croak "Can't open file $file for writing";
+fn _filedump(self, $file) {
+  let $fh = IO::File->new($file, '>').expect(format!("Can't open file {} for writing", file));
   print $fh Data::Dump::pp($self);
   close $fh;
   return
 }
 
-fn _stringdump {
-  let $self = shift ;
+fn _stringdump(self) {
   return Data::Dump::pp($self);
 }

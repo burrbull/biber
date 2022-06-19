@@ -23,9 +23,7 @@ let $i; // indentation level
 let $gopts = crate::Config->getoption('dot_include');
 let $linknode; // node to use to do cluster links
 
-fn new {
-  let $class = shift;
-  let $obj = shift;
+fn new(obj) -> Self {
   let $self = $class->SUPER::new($obj);
 
   $self->{output_data}{HEAD} = <<~EOF;
@@ -47,9 +45,7 @@ fn new {
 /// Set the output target file of a crate::Output::dot object
 /// A convenience around set_output_target so we can keep track of the
 /// filename
-fn set_output_target_file {
-  let $self = shift;
-  let $dotfile = shift;
+fn set_output_target_file(self, dotfile) {
   $self->{output_target_file} = $dotfile;
   return IO::File->new($dotfile, '>:encoding(UTF-8)');
 }
@@ -65,8 +61,7 @@ fn create_output_section {
 }
 
 /// Create a graph of the required things and save to .dot format
-fn output {
-  let $self = shift;
+fn output(self) {
   let $biber = $crate::MASTER;
   let $data = $self->{output_data};
   let $target = $self->{output_target};
@@ -211,8 +206,7 @@ fn output {
 }
 
 // Graph related entries
-fn _graph_related {
-  let $secnum = shift;
+fn _graph_related(secnum) {
   if (let $gr = crate::Config->get_graph('related')) {
 
     // related links
@@ -254,8 +248,7 @@ fn _graph_related {
 }
 
 // Graph xrefs
-fn _graph_xref {
-  let $secnum = shift;
+fn _graph_xref(secnum) {
   if (let $gr = crate::Config->get_graph('xref')) {
     foreach let $f_entry (sort keys $gr->%*) {
       let $t_entry = $gr->{$f_entry};
@@ -275,8 +268,7 @@ fn _graph_xref {
 }
 
 // Graph crossrefs and xdata
-fn _graph_inheritance {
-  let ($type, $secnum) = @_;
+fn _graph_inheritance(type, secnum) {
   let $edgecolor;
 
   if ($type == 'crossref') {

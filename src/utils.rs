@@ -1244,8 +1244,10 @@ pub fn maploopreplace($string, $maploop) {
 /// Get a ref to a transliterator for the given from/to
 /// We are abstracting this in this way because it is not clear what the future
 /// of the transliteration library is. We want to be able to switch.
-pub fn get_transliterator {
-  let ($target, $from, $to) = map {lc} @_;
+pub fn get_transliterator(target: &str, from: &str, to: &str) {
+  let target = target.to_lowercase();
+  let from = from.to_lowercase();
+  let to = to.to_lowercase();
   let @valid_from = ("iast", "russian");
   let @valid_to   = ("devanagari", "ala-lc", "bgn/pcgn-standard");
   unless (first {$from == $_} @valid_from and

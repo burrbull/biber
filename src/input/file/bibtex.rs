@@ -77,8 +77,7 @@ let $handlers = {
 
 /// Signal handler to catch fatal Text::BibTex SEGFAULTS. It has bugs
 /// and we want to say at least something if it coredumps
-fn TBSIG {
-  let $sig = shift;
+fn TBSIG(sig) {
   $logger->logdie("Caught signal: $sig\nLikely your .bib has a very bad entry which causes libbtparse to crash: $!");
 }
 
@@ -86,8 +85,7 @@ fn TBSIG {
 /// Accepts a data source identifier, preprocesses the file and then
 /// looks for the passed keys, creating entries when it finds them and
 /// passes out an array of keys it didn't find.
-fn extract_entries {
-  let ($filename, $encoding, $keys) = @_;
+fn extract_entries(filename, encoding, keys) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @rkeys = $keys->@*;
@@ -308,11 +306,10 @@ fn extract_entries {
 /// Be careful in here, all T::B set methods are UTF-8/NFC boundaries
 /// so be careful to encode(NFC()) on calls. Windows won't handle UTF-8
 /// in T::B btparse gracefully and will die.
-fn create_entry {
+fn create_entry(key, entry, datasource, smaps, rkeys) {
   // We have to pass in $rkeys so that the new/clone operations can remove the new/clone
   // key from the list of wanted keys because new/cloned entries will never appear to the normal
   // key search loop
-  let ($key, $entry, $datasource, $smaps, $rkeys) = @_;
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $crret = 1; // Return value from create_entry() is used to signal some things
@@ -818,8 +815,7 @@ fn create_entry {
   return $crret;
 }
 
-fn _create_entry {
-  let ($k, $e) = @_;
+fn _create_entry(k, e) {
   return 1 unless $e; // newentry might be undef
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
@@ -881,8 +877,7 @@ fn _create_entry {
 // ========
 
 // Data annotation fields
-fn _annotation {
-  let ($bibentry, $entry, $field, $key) = @_;
+fn _annotation(bibentry, entry, field, key) {
   let $fc = fc($field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
   let $ann = quotemeta(crate::Config->getoption('annotation_marker'));
@@ -916,8 +911,7 @@ fn _annotation {
 }
 
 // Literal fields
-fn _literal {
-  let ($bibentry, $entry, $field, $key) = @_;
+fn _literal(bibentry, entry, field, key) {
   let $fc = fc($field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
@@ -992,8 +986,7 @@ fn _literal {
 }
 
 // URI fields
-fn _uri {
-  let ($bibentry, $entry, $field) = @_;
+fn _uri(bibentry, entry, field) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Record any XDATA
@@ -1003,10 +996,9 @@ fn _uri {
 }
 
 // xSV field form
-fn _xsv {
+fn _xsv(bibentry, entry, field) {
   let $Srx = crate::Config->getoption('xsvsep');
   let $S = qr/$Srx/;
-  let ($bibentry, $entry, $field) = @_;
   let $value = [ split(/$S/, $entry->get(encode("UTF-8", NFC($field)))) ];
 
   // Record any XDATA
@@ -1016,8 +1008,7 @@ fn _xsv {
 }
 
 // Verbatim fields
-fn _verbatim {
-  let ($bibentry, $entry, $field) = @_;
+fn _verbatim(bibentry, entry, field) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Record any XDATA
@@ -1033,8 +1024,7 @@ fn _verbatim {
 // -n  -> ['', n]
 // -   -> ['', undef]
 
-fn _range {
-  let ($bibentry, $entry, $field, $key) = @_;
+fn _range(bibentry, entry, field, key) {
   let $values_ref;
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
@@ -1075,8 +1065,7 @@ fn _range {
 }
 
 // Names
-fn _name {
-  let ($bibentry, $entry, $field, $key) = @_;
+fn _name(bibentry, entry, field, key) {
   let $fc = fc($field); // Casefolded field which is what we need internally
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
@@ -1176,8 +1165,7 @@ fn _name {
 }
 
 // Dates
-fn _datetime {
-  let ($bibentry, $entry, $field, $key) = @_;
+fn _datetime(bibentry, entry, field, key) {
   let $datetype = $field =~ s/date\z//xmsr;
   let $date = $entry->get(encode("UTF-8", NFC($field)));
   let $secnum = $crate::MASTER->get_current_section;
@@ -1318,8 +1306,7 @@ fn _datetime {
 }
 
 // Bibtex list fields with listsep separator
-fn _list {
-  let ($bibentry, $entry, $field) = @_;
+fn _list(bibentry, entry, field) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
@@ -1344,8 +1331,7 @@ fn _list {
 }
 
 // Bibtex uri lists
-fn _urilist {
-  let ($bibentry, $entry, $field) = @_;
+fn _urilist(bibentry, entry, field) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Unicode NFC boundary (passing to external library)
@@ -1370,15 +1356,9 @@ fn _urilist {
 
 }
 
-=head2 cache_data
-
-   Caches file data into T::B objects indexed by the original
-   datasource key, decoded into UTF8
-
-=cut
-
-fn cache_data {
-  let ($filename, $encoding) = @_;
+/// Caches file data into T::B objects indexed by the original
+/// datasource key, decoded into UTF8
+fn cache_data(filename, encoding) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 
@@ -1512,15 +1492,8 @@ fn cache_data {
 }
 
 
-=head2 preprocess_file
-
-   Convert file to UTF-8 and potentially decode LaTeX macros to UTF-8
-
-=cut
-
-fn preprocess_file {
-  let ($filename, $benc) = @_;
-
+/// Convert file to UTF-8 and potentially decode LaTeX macros to UTF-8
+fn preprocess_file(filename, benc) {
   // Put the utf8 encoded file into the global biber tempdir
   // We have to do this in case we can't write to the location of the
   // .bib file
@@ -1564,17 +1537,11 @@ fn preprocess_file {
   return $ufilename;
 }
 
-=head2 parse_decode
-
-  Partially parse the .bib datasource and latex_decode the data contents.
-  We do this because latex_decoding the entire buffer is difficult since
-  such decoding is regexp based and since braces are used to protect data in
-  .bib files, it makes it hard to do some parsing.
-
-=cut
-
-fn parse_decode {
-  let $ufilename = shift;
+/// Partially parse the .bib datasource and latex_decode the data contents.
+/// We do this because latex_decoding the entire buffer is difficult since
+/// such decoding is regexp based and since braces are used to protect data in
+/// .bib files, it makes it hard to do some parsing.
+fn parse_decode(ufilename) {
   let $dmh = crate::Config->get_dm_helpers;
   let $lbuf;
 
@@ -1631,30 +1598,25 @@ fn parse_decode {
   return $lbuf;
 }
 
-=head2 parsename
-
-    Given a name string, this function returns a crate::Entry::Name object
-    with all parts of the name resolved according to the BibTeX conventions.
-
-    parsename('John Doe', 'author', 'key')
-    returns an object which internally looks a bit like this:
-
-    { given          => {string => 'John', initial => ['J']},
-      family         => {string => 'Doe', initial => ['D']},
-      prefix         => {string => undef, initial => undef},
-      suffix         => {string => undef, initial => undef},
-      id             => 32RS0Wuj0P,
-      strip          => {'given'  => 0,
-                         'family' => 0,
-                         'prefix' => 0,
-                         'suffix' => 0}
-      }
-
-=cut
-
-fn parsename {
-  let ($section, $namestr, $fieldname) = @_;
-
+/// Given a name string, this function returns a crate::Entry::Name object
+/// with all parts of the name resolved according to the BibTeX conventions.
+///
+/// `parsename('John Doe', 'author', 'key')`
+/// returns an object which internally looks a bit like this:
+///
+/// ```
+/// { given          => {string => 'John', initial => ['J']},
+///   family         => {string => 'Doe', initial => ['D']},
+///   prefix         => {string => undef, initial => undef},
+///   suffix         => {string => undef, initial => undef},
+///   id             => 32RS0Wuj0P,
+///   strip          => {'given'  => 0,
+///                      'family' => 0,
+///                      'prefix' => 0,
+///                      'suffix' => 0}
+///   }
+/// ```
+fn parsename(section, namestr, fieldname) {
   // First sanitise the namestring due to Text::BibTeX::Name limitations on whitespace
   $namestr =~ s/\A\s*|\s*\z//xms; // leading and trailing whitespace
   // Collapse internal whitespace and escaped spaces like in "Christina A. L.\ Thiele"
@@ -1728,26 +1690,22 @@ fn parsename {
                                  );
 }
 
-=head2 parsename_x
-
-    Given a name string in extended format, this function returns a crate::Entry::Name object
-    with all parts of the name resolved according to the BibTeX conventions.
-
-    parsename_x('given=John, family=Doe')
-    returns an object which internally looks a bit like this:
-
-    { given          => {string => 'John', initial => ['J']},
-      family         => {string => 'Doe', initial => ['D']},
-      prefix         => {string => undef, initial => undef},
-      suffix         => {string => undef, initial => undef},
-      id             => 32RS0Wuj0P,
-      sortingnamekeytemplatename => 'template name',
-    }
-
-=cut
-
-fn parsename_x {
-  let ($section, $namestr, $fieldname, $key) = @_;
+/// Given a name string in extended format, this function returns a crate::Entry::Name object
+/// with all parts of the name resolved according to the BibTeX conventions.
+///
+/// `parsename_x('given=John, family=Doe')`
+/// returns an object which internally looks a bit like this:
+///
+/// ```
+/// { given          => {string => 'John', initial => ['J']},
+///   family         => {string => 'Doe', initial => ['D']},
+///   prefix         => {string => undef, initial => undef},
+///   suffix         => {string => undef, initial => undef},
+///   id             => 32RS0Wuj0P,
+///   sortingnamekeytemplatename => 'template name',
+/// }
+/// ```
+fn parsename_x(section, namestr, fieldname, key) {
   let $xnamesep = crate::Config->getoption('xnamesep');
   let %nps = map {$_ => 1} $dm->get_constant_value('nameparts');
 
@@ -1843,8 +1801,7 @@ let %months = (
               'dec' => '12'
              );
 
-fn _hack_month {
-  let $in_month = shift;
+fn _hack_month(in_month) {
   if (let ($m) = $in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
     return $months{lc(Unicode::GCString->new($m)->substr(0,3)->as_string)};
   }
@@ -1853,8 +1810,7 @@ fn _hack_month {
   }
 }
 
-fn _get_handler {
-  let $field = shift;
+fn _get_handler(field) {
   let $ann = $CONFIG_META_MARKERS{annotation};
   let $nam = $CONFIG_META_MARKERS{namedannotation};
   if ($field =~ m/$ann(?:$nam.+)?$/) {
@@ -1866,8 +1822,7 @@ fn _get_handler {
 }
 
 // "ab{cd}e" -> [a,b,cd,e]
-fn _split_initials {
-  let $npv = shift;
+fn _split_initials(npv) {
   let @npv;
   let $ci = 0;
   let $acc;

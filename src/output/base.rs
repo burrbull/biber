@@ -12,9 +12,7 @@ let $logger = Log::Log4perl::get_logger('main');
 pub struct Base;
 
 /// Initialize a crate::Output::base object
-fn new {
-  let $class = shift;
-  let $obj = shift;
+fn new(obj) -> Self {
   let $self;
   if (defined($obj) and ref($obj) == 'HASH') {
     $self = bless $obj, $class;
@@ -32,8 +30,7 @@ fn new {
 /// Set the output target file of a crate::Output::base object
 /// A convenience around set_output_target so we can keep track of the
 /// filename. Returns an IO::File object for the target
-fn set_output_target_file {
-  let ($self, $file, $init) = @_;
+fn set_output_target_file(self, $file, $init) {
 
   $self->{output_target_file} = $file;
   let $enc_out;
@@ -44,33 +41,26 @@ fn set_output_target_file {
 }
 
 /// Get the output target file name
-fn get_output_target_file {
-  let $self = shift;
+fn get_output_target_file(self) {
   return $self->{output_target_file};
 }
 
 /// Set the output target of a crate::Output::base object
-fn set_output_target {
-  let $self = shift;
-  let $target = shift;
+fn set_output_target(self, target) {
   $self->{output_target} = $target;
   return;
 }
 
 /// Set the output head of a crate::Output::base object
 /// $data could be anything - the caller is expected to know.
-fn set_output_head {
-  let $self = shift;
-  let $data = shift;
+fn set_output_head(self, data) {
   $self->{output_data}{HEAD} = $data;
   return;
 }
 
 /// Set the output tail of a crate::Output::base object
 /// $data could be anything - the caller is expected to know.
-fn set_output_tail {
-  let $self = shift;
-  let $data = shift;
+fn set_output_tail(self, data) {
   $self->{output_data}{TAIL} = $data;
   return;
 }
@@ -78,51 +68,40 @@ fn set_output_tail {
 /// Get the output head of a crate::Output object
 /// $data could be anything - the caller is expected to know.
 /// Mainly used in debugging
-fn get_output_head {
-  let $self = shift;
+fn get_output_head(self) {
   return $self->{output_data}{HEAD};
 }
 
 /// Get the output tail of a crate::Output object
 /// $data could be anything - the caller is expected to know.
 /// Mainly used in debugging
-fn get_output_tail {
-  let $self = shift;
+fn get_output_tail(self) {
   return $self->{output_data}{TAIL};
 }
 
 /// Add to the head output data of a crate::Output::base object
 /// The base class method just does a string append
-fn add_output_head {
-  let $self = shift;
-  let $data = shift;
+fn add_output_head(self, data) {
   $self->{output_data}{HEAD} .= $data;
   return;
 }
 
 /// Add to the tail output data of a crate::Output::base object
 /// The base class method just does a string append
-fn add_output_tail {
-  let $self = shift;
-  let $data = shift;
+fn add_output_tail(self, data) {
   $self->{output_data}{TAIL} .= $data;
   return;
 }
 
 /// Records the section object in the output object
 /// We need some information from this when writing the output
-fn set_output_section {
-  let $self = shift;
-  let $secnum = shift;
-  let $section = shift;
+fn set_output_section(self, secnum, section) {
   $self->{section}{$secnum} = $section;
   return;
 }
 
 /// Retrieve the output section object
-fn get_output_section {
-  let $self = shift;
-  let $secnum = shift;
+fn get_output_section(self, secnum) {
   return $self->{section}{$secnum};
 }
 
@@ -130,36 +109,29 @@ fn get_output_section {
 /// Used really only in tests as it instantiates list dynamic information so
 /// we can see it in tests. As a result, we have to NFC() the result to mimic
 /// real output since UTF-8 output is assumed in most tests.
-fn get_output_entries {
-  let $self = shift;
-  let $section = shift;
-  let $list = shift;
+fn get_output_entries(self, section, list) {
   return [ map {$self->{output_data}{ENTRIES}{$section}{index}{$_} ||
                 $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$_} ||
                 $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} $list->get_keys->@*];
 }
 
 /// Get the output macros for tool mode tests
-fn get_output_macros {
-  let $self = shift;
+fn get_output_macros(self) {
   return [sort $self->{output_data}{MACROS}->@*];
 }
 
 /// Get the output comments for tool mode tests
-fn get_output_comments {
-  let $self = shift;
+fn get_output_comments(self) {
   return [sort $self->{output_data}{COMMENTS}->@*];
 }
 
 /// Clear the output macros
-fn clear_output_macros {
-  let $self = shift;
+fn clear_output_macros(self) {
   delete $self->{output_data}{MACROS};
 }
 
 /// Clear the output comments
-fn clear_output_comments {
-  let $self = shift;
+fn clear_output_comments(self) {
   delete $self->{output_data}{COMMENTS};
 }
 
@@ -167,8 +139,7 @@ fn clear_output_comments {
 /// Used really only in tests as it instantiates list dynamic information so
 /// we can see it in tests. As a result, we have to NFC() the result to mimic
 /// real output since UTF-8 output is assumed in most tests.
-fn get_output_entry {
-  let ($self, $key, $list, $secnum) = @_;
+fn get_output_entry(self, $key, $list, $secnum) {
 
   // defaults - mainly for tests
   if (not defined($secnum)) {
@@ -213,11 +184,7 @@ fn get_output_entry {
 
 /// Add an entry output to a crate::Output::base object
 /// The base class method just does a dump
-fn set_output_entry {
-  let $self = shift;
-  let $entry = shift;
-  let $secnum = shift;
-  let $struc = shift;
+fn set_output_entry(self, entry, secnum, struc) {
   $self->{output_data}{ENTRIES}{$secnum}{index}{$entry->get_field('citekey')} = $entry->dump;
   return;
 }
@@ -230,8 +197,7 @@ fn create_output_misc {
 
 /// Create the output from the sections data and push it into the
 /// output object.
-fn create_output_section {
-  let $self = shift;
+fn create_output_section(self) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 
@@ -271,8 +237,7 @@ fn set_output_undefkey {
 }
 
 /// Generic base output method
-fn output {
-  let $self = shift;
+fn output(self) {
   let $data = $self->{output_data};
   let $target = $self->{output_target};
   let $target_string = "Target"; // Default

@@ -20,9 +20,7 @@ let $logger = Log::Log4perl::get_logger('main');
 pub struct Bbl;
 
 /// Initialize a crate::Output::bbl object
-fn new {
-  let $class = shift;
-  let $obj = shift;
+fn new(obj) {
   let $self = $class->SUPER::new($obj);
 
   $self->{output_data}{HEAD} = <<~EOF;
@@ -50,8 +48,7 @@ fn new {
 
 /// Create the output for misc bits and pieces like preamble and closing
 /// macro call and add to output object.
-fn create_output_misc {
-  let $self = shift;
+fn create_output_misc(self) {
 
   if (let $pa = $crate::MASTER->get_preamble) {
     $pa = join("%\n", $pa->@*);
@@ -77,8 +74,7 @@ fn create_output_misc {
 }
 
 /// Add the .bbl for a text field to the output accumulator.
-fn _printfield {
-  let ($be, $field, $str) = @_;
+fn _printfield(be, field, $str) {
   let $field_type = 'field';
   let $dm = crate::Config->get_dm;
 
@@ -126,8 +122,7 @@ fn _printfield {
 }
 
 /// Set the output for a key which is an alias to another key
-fn set_output_keyalias {
-  let ($self, $alias, $key, $section) = @_;
+fn set_output_keyalias(self, $alias, $key, $section) {
   let $secnum = $section->number;
 
   let $acc = "  \\keyalias{$alias}{$key}\n";
@@ -139,8 +134,7 @@ fn set_output_keyalias {
 }
 
 /// Set the .bbl output for an undefined key
-fn set_output_undefkey {
-  let ($self, $key, $section) = @_;
+fn set_output_undefkey(self, $key, $section) {
   let $secnum = $section->number;
 
   let $acc = "  \\missing{$key}\n";
@@ -153,8 +147,7 @@ fn set_output_undefkey {
 
 /// Set the .bbl output for an entry. This is the meat of
 /// the .bbl output
-fn set_output_entry {
-  let ($self, $be, $section, $dm) = @_;
+fn set_output_entry(self, $be, $section, $dm) {
   let $bee = $be->get_field('entrytype');
   let $outtype = $dm->get_outcase($bee).unwrap_or($bee);
   let $secnum = $section->number;
@@ -584,8 +577,7 @@ fn set_output_entry {
 
 /// BBL output method - this takes care to output entries in the explicit order
 /// derived from the virtual order of the citekeys after sortkey sorting.
-fn output {
-  let $self = shift;
+fn output(self) {
   let $data = $self->{output_data};
   let $target = $self->{output_target};
   let $target_string = "Target"; // Default
