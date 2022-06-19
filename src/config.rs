@@ -87,7 +87,7 @@ fn _initopts(opts) {
   unless (defined($opts->{noconf})) {
     // if a config file was given as cmd-line arg, it overrides all other
     // config file locations
-    unless ( defined($opts->{configfile}) and -f $opts->{configfile} ) {
+    unless ( defined($opts->{configfile}) && -f $opts->{configfile} ) {
       $opts->{configfile} = config_file();
     }
   }
@@ -98,11 +98,11 @@ fn _initopts(opts) {
       crate::Config->setoption($k, $v->{content});
     }
     // mildly complex options
-    else if (lc($k) == 'dot_include' or
-           lc($k) == 'collate_options' or
-           lc($k) == 'nosort' or
-           lc($k) == 'nolabel' or
-           lc($k) == 'nolabelwidthcount' or
+    else if (lc($k) == 'dot_include' ||
+           lc($k) == 'collate_options' ||
+           lc($k) == 'nosort' ||
+           lc($k) == 'nolabel' ||
+           lc($k) == 'nolabelwidthcount' ||
            lc($k) == 'noinit' ) {
       crate::Config->setoption($k, $v->{option});
     }
@@ -137,7 +137,7 @@ fn _initopts(opts) {
     // If we don't we can get errors when contructing the sorting call to eval() later
     if (lc($copt) == 'collate_options') {
       let $collopts = crate::Config->getoption('collate_options');
-      let $copt_h = eval "{ $opts->{$copt} }" or croak('Bad command-line collation options');
+      let $copt_h = (eval "{ $opts->{$copt} }").expect("Bad command-line collation options");
       // Override defaults with any cmdline settings
       foreach let $co (keys $copt_h->%*) {
         $collopts->{$co} = $copt_h->{$co};
@@ -172,7 +172,7 @@ fn _initopts(opts) {
     $log =~ s/\.blg\z//xms;
     $biberlog = $log . '.blg';
   }
-  else if (not @ARGV) { // default if no .bcf file specified - mainly in tests
+  else if (!@ARGV) { // default if no .bcf file specified - mainly in tests
     crate::Config->setoption('nolog', 1);
   }
   else {                        // set log to \jobname.blg
@@ -340,8 +340,7 @@ fn _config_file_set(conf) {
                                                             qr/\Asortingnamekeytemplate\z/,
                                                            ],
                                            'NsStrip' => 1,
-                                           'KeyAttr' => []) or
-                                             croak("Failed to read biber config file '$conf'\n $@");
+                                           'KeyAttr' => []).expect(format!("Failed to read biber config file '{}'\n {}", conf, $@));
   }
   // Option scope has to be set first
   foreach let $bcfscopeopts ($userconf->{optionscope}->@*) {
@@ -481,8 +480,8 @@ fn _config_file_set(conf) {
       }
     }
     // mildly complex options - nosort/collate_options
-    else if (lc($k) == 'nosort' or
-           lc($k) == 'noinit' or
+    else if (lc($k) == 'nosort' ||
+           lc($k) == 'noinit' ||
            lc($k) == 'nolabel' ) {
       crate::Config->setconfigfileoption($k, $v->{option});
     }
@@ -498,10 +497,10 @@ fn _config_file_set(conf) {
     else if (lc($k) == 'sourcemap') {
       let $sms;
       foreach let $sm ($v->{maps}->@*) {
-        if (defined($sm->{level}) and $sm->{level} == 'driver') {
+        if (defined($sm->{level}) && $sm->{level} == 'driver') {
           carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
         }
-        else if (defined($sm->{level}) and $sm->{level} == 'style') {
+        else if (defined($sm->{level}) && $sm->{level} == 'style') {
           carp("You can't set style level sourcemaps via biber - use \\DeclareStyleSourcemap in biblatex. Ignoring map.");
         }
         else {
@@ -599,7 +598,7 @@ fn config_file {
   else if ( -f File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" ) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, ".$BIBER_CONF_NAME" );
   }
-  else if ( defined $ENV{XDG_CONFIG_HOME} and
+  else if ( defined $ENV{XDG_CONFIG_HOME} &&
     -f File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{XDG_CONFIG_HOME}, "biber", $BIBER_CONF_NAME);
   }
@@ -607,12 +606,12 @@ fn config_file {
   else if ( -f File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, ".config", "biber", $BIBER_CONF_NAME);
   }
-  else if ( $^O =~ /(?:Mac|darwin)/ and
+  else if ( $^O =~ /(?:Mac|darwin)/ &&
     -f File::Spec->catfile($ENV{HOME}, "Library", "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{HOME}, "Library", "biber", $BIBER_CONF_NAME);
   }
-  else if ( $^O =~ /Win/ and
-    defined $ENV{APPDATA} and
+  else if ( $^O =~ /Win/ &&
+    defined $ENV{APPDATA} &&
     -f File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME);
   }
@@ -668,7 +667,7 @@ fn postprocess_biber_opts() {
       else if ($CONFIG->{options}{biber}{$opt} == 'false') {
         $CONFIG->{options}{biber}{$opt} = 0;
       }
-      unless ($CONFIG->{options}{biber}{$opt} == '1' or
+      unless ($CONFIG->{options}{biber}{$opt} == '1' ||
               $CONFIG->{options}{biber}{$opt} == '0') {
         crate::Utils::biber_error("Invalid value for option '$opt'");
       }
@@ -735,22 +734,19 @@ fn setconfigfileoption(opt, val) {
 }
 
 /// Check if an option is explicitly set by user on the command line
-fn iscmdlineoption(opt) {
-  return 1 if defined($CONFIG->{cmdlineoptions}{$opt});
-  return 0;
+fn iscmdlineoption(opt) -> bool {
+  $CONFIG->{cmdlineoptions}{$opt}.is_some()
 }
 
 /// Check if an option is explicitly set by user in their config file
-fn isconfigfileoption(opt) {
-  return 1 if defined($CONFIG->{configfileoptions}{$opt});
-  return 0;
+fn isconfigfileoption(opt) -> bool {
+  $CONFIG->{configfileoptions}{$opt}.is_some()
 }
 
 /// Check if an option is explicitly set by user on the command
 /// line or in the config file
-fn isexplicitoption(self, opt) {
-  return 1 if ($self->iscmdlineoption($opt) || $self->isconfigfileoption($opt));
-  return 0;
+fn isexplicitoption(self, opt) -> bool {
+  self.iscmdlineoption(opt) || self.isconfigfileoption(opt)
 }
 
 
@@ -768,7 +764,7 @@ fn addtoblxoption(secnum, opt, val) {
 
 /// Set a biblatex option on the appropriate scope
 fn setblxoption(secnum, opt, val, scope, scopeval) {
-  if (not defined($scope)) { // global is the default
+  if (!defined($scope)) { // global is the default
     if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
     }
@@ -804,13 +800,13 @@ fn getblxoption(secnum, opt, entrytype, citekey) {
   $opt = opt.unwrap_or("\x{10FFFD}");
   $entrytype = entrytype.unwrap_or("\x{10FFFD}");
   $citekey = citekey.unwrap_or("\x{10FFFD}");
-  if ( defined($citekey) and
-       $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRY} and
+  if ( defined($citekey) &&
+       $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRY} &&
        defined $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt};
   }
-  else if (defined($entrytype) and
-         $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRYTYPE} and
+  else if (defined($entrytype) &&
+         $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRYTYPE} &&
          defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt};
   }
@@ -873,7 +869,7 @@ fn set_inheritance(type, source, target) {
 /// Check if $target directly inherited information from $source
 /// Can be used for crossrefs and xdata
 fn get_inheritance(type, source, target) {
-  return first {$_->{s} == $source and $_->{t} == $target} $CONFIG->{state}{$type}->@*;
+  return first {$_->{s} == $source && $_->{t} == $target} $CONFIG->{state}{$type}->@*;
 }
 
 /// Checks for an inheritance path from entry $e1 to $e2
@@ -891,12 +887,16 @@ fn get_inheritance(type, source, target) {
 ///           t => 'D'}
 ///];
 /// ```
-fn is_inheritance_path(self, $type, $e1, $e2) {
+fn is_inheritance_path(self, $type, $e1, $e2) -> bool {
   foreach let $dps (grep {$_->{s} == $e1} $CONFIG->{state}{$type}->@*) {
-    return 1 if $dps->{t} == $e2;
-    return 1 if is_inheritance_path($self, $type, $dps->{t}, $e2);
+    if $dps->{t} == $e2 {
+      return true;
+    }
+    if is_inheritance_path($self, $type, $dps->{t}, $e2) {
+      return true;
+    }
   }
-  return 0;
+  false
 }
 
 /// Set some key order information

@@ -80,10 +80,12 @@ fn _printfield(be, field, $str) {
 
   let $outfield = $dm->get_outcase($field);
 
-  return '' if is_null($str) and not $dm->field_is_nullok($field);
+  if is_null($str) && !$dm->field_is_nullok($field) {
+    return "";
+  }
 
   // crossref and xref are of type 'strng' in the .bbl
-  if (lc($field) == 'crossref' or
+  if (lc($field) == 'crossref' ||
       lc($field) == 'xref') {
     $field_type = 'strng';
   }
@@ -99,7 +101,7 @@ fn _printfield(be, field, $str) {
   // auto-escape TeX special chars if:
   // * The entry is not a BibTeX entry (no auto-escaping for BibTeX data)
   // * It's not a string field
-  if ($field_type != 'strng' and $be->get_field('datatype') != 'bibtex') {
+  if ($field_type != 'strng' && $be->get_field('datatype') != 'bibtex') {
     $str =~ s/(?<!\\)(\#|\&|\%)/\\$1/gxms;
   }
 
@@ -160,17 +162,19 @@ fn set_output_entry(self, $be, $section, $dm) {
   let $nl = $be->get_field($lni);
 
   // Per-namelist uniquelist
-  if (defined($lni) and $nl->get_uniquelist) {
+  if (defined($lni) && $nl->get_uniquelist) {
     $ul = $nl->get_uniquelist;
   }
 
   // Per-namelist uniquename
-  if (defined($lni) and $nl->get_uniquename) {
+  if (defined($lni) && $nl->get_uniquename) {
     $un = $nl->get_uniquename;
   }
 
   // Skip entrytypes we don't want to output according to datamodel
-  return if $dm->entrytype_is_skipout($bee);
+  if $dm->entrytype_is_skipout($bee) {
+    return;
+  }
   $acc .= "    \\entry{$key}{$outtype}{" . join(',', filter_entry_options($secnum, $be)->@*) . "}\n";
 
   // Generate set information.
@@ -222,13 +226,13 @@ fn set_output_entry(self, $be, $section, $dm) {
         $acc .= "      \\true{more$namefield}\n";
 
         // Is this name labelname? If so, provide \morelabelname
-        if (defined($lni) and $lni == $namefield) {
+        if (defined($lni) && $lni == $namefield) {
           $acc .= "      \\true{morelabelname}\n";
         }
       }
 
       // Per-name uniquename if this is labelname
-      if (defined($lni) and $lni == $namefield) {
+      if (defined($lni) && $lni == $namefield) {
         if (defined($nf->get_uniquename)) {
             $un = $nf->get_uniquename;
         }
@@ -238,7 +242,7 @@ fn set_output_entry(self, $be, $section, $dm) {
 
       let $nfv = '';
 
-      if (defined($lni) and $lni == $namefield) {
+      if (defined($lni) && $lni == $namefield) {
         let @plo;
 
         // Add uniquelist if requested
@@ -288,13 +292,17 @@ fn set_output_entry(self, $be, $section, $dm) {
   // Output labelname hashes
   $acc .= "      <BDS>NAMEHASH</BDS>\n";
   let $fullhash = $be->get_field('fullhash');
-  $acc .= "      \\strng{fullhash}{$fullhash}\n" if $fullhash;
+  if $fullhash {
+    $acc .= "      \\strng{fullhash}{$fullhash}\n";
+  }
   $acc .= "      <BDS>BIBNAMEHASH</BDS>\n";
 
 
   // Output namelist hashes
   foreach let $namefield ($dmh->{namelists}->@*) {
-    next unless $be->get_field($namefield);
+    if !($be->get_field($namefield)) {
+      continue;
+    }
     $acc .= "      <BDS>${namefield}BIBNAMEHASH</BDS>\n";
     $acc .= "      <BDS>${namefield}NAMEHASH</BDS>\n";
     if (let $fullhash = $be->get_field("${namefield}fullhash")) {
@@ -378,18 +386,22 @@ fn set_output_entry(self, $be, $section, $dm) {
     // Performance - as little as possible here - loop over DM fields for every entry
     let $val = $be->get_field($field);
 
-    if ( length($val) or // length() catches '0' values, which we want
-         ($dm->field_is_nullok($field) and
+    if ( length($val) || // length() catches '0' values, which we want
+         ($dm->field_is_nullok($field) &&
           $be->field_exists($field)) ) {
 
       // we skip outputting the crossref or xref when the parent is not cited
       // sets are a special case so always output crossref/xref for them since their
       // children will always be in the .bbl otherwise they make no sense.
-      unless ($bee == 'set') {
-        next if ($field == 'crossref' and
-                 not $section->has_citekey($be->get_field('crossref')));
-        next if ($field == 'xref' and
-                 not $section->has_citekey($be->get_field('xref')));
+      if !($bee == 'set') {
+        if ($field == 'crossref' &&
+                 !$section->has_citekey($be->get_field('crossref'))) {
+          continue;
+        }
+        if ($field == 'xref' &&
+                 !$section->has_citekey($be->get_field('xref'))) {
+          continue;
+        }
       }
       $acc .= _printfield($be, $field, $val);
     }
@@ -446,7 +458,9 @@ fn set_output_entry(self, $be, $section, $dm) {
     // The field is "year" and it came from splitting a date
     // The field is any other startyear
     if ($be->field_exists("${d}year")) { // use exists test as could be year 0000
-      next unless $be->get_field("${d}datesplit");
+      if !($be->get_field("${d}datesplit")) {
+        continue;
+      }
       if (let $era = $be->get_field("${d}era")) {
         $acc .= "      \\field{${d}dateera}{$era}\n";
       }
@@ -457,7 +471,9 @@ fn set_output_entry(self, $be, $section, $dm) {
   foreach let $field ($dmh->{xsv}->@*) {
     // keywords is by default field/xsv/keyword but it is in fact
     // output with its own special macro below
-    next if $field == 'keywords';
+    if $field == 'keywords' {
+      continue;
+    }
     if (let $f = $be->get_field($field)) {
       $acc .= _printfield($be, $field, join(',', $f->@*) );
     }
@@ -585,7 +601,7 @@ fn output(self) {
     $target_string = $self->{output_target_file};
   }
 
-  if (not $target or $target_string == '-') {
+  if (!$target || $target_string == '-') {
     let $enc_out;
     if (crate::Config->getoption('output_encoding')) {
       $enc_out = ':encoding(' . crate::Config->getoption('output_encoding') . ')';
@@ -611,9 +627,9 @@ fn output(self) {
     // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
     // but omit global sort lists so that we can add them last
     foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-      if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, 'sortingtemplatename') and
+      if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, 'sortingtemplatename') &&
           $list->get_type == 'entry') {
-        next;
+        continue;
       }
       push @lists, $list;
     }
@@ -627,7 +643,9 @@ fn output(self) {
                                                                sortingtemplatename => crate::Config->getblxoption(undef, 'sortingtemplatename'))->@*;
 
     foreach let $list (@lists) {
-      next unless $list->count_keys; // skip empty lists
+      if !($list->count_keys) { // skip empty lists
+        continue;
+      }
       let $listtype = $list->get_type;
       let $listname = $list->get_name;
 

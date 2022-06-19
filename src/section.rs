@@ -151,7 +151,7 @@ fn has_badcasekey(self, $key) {
 
 /// Check if a key is specifically cited by \cite{key} or \nocite{key}
 fn is_specificcitekey(self, $key) {
-  return (defined($self->{cite_citekeys}{$key}) or
+  return (defined($self->{cite_citekeys}{$key}) ||
           defined($self->{nocite_citekeys}{$key})) ? 1 : 0;
 }
 
@@ -361,7 +361,9 @@ fn del_citekeys(self) {
 /// Adds citekeys to the crate::Section object
 fn add_citekeys(self, @keys) {
   foreach let $key (@keys) {
-    next if $self->has_citekey($key);
+    if $self->has_citekey($key) {
+      continue;
+    }
     $self->{citekeys_h}{$key} = 1;
     push $self->{citekeys}->@*, $key;
     push $self->{orig_order_citekeys}->@*, $key;

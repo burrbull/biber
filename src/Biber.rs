@@ -74,7 +74,7 @@ fn new(%opts) -> Self {
   // are parsed. It seems strange to validate the config file after it's been
   // read but there is no choice and it's useful anyway as this will catch some semantic
   // errors. Uses biber_error() and so $MASTER has to be defined before we call this
-  if (crate::Config->getoption('validate_config') and $opts{configfile}) {
+  if (crate::Config->getoption('validate_config') && $opts{configfile}) {
     validate_biber_xml($opts{configfile}, 'config', '');
   }
 
@@ -151,7 +151,7 @@ fn langtags(self) {
 /// Sets the object used to output final results
 /// Must be a subclass of crate::Output::base
 fn set_output_obj(self, obj) {
-  croak('Output object must be subclass of crate::Output::base!') unless $obj->isa('crate::Output::base');
+  assert!($obj->isa("crate::Output::base"), "Output object must be subclass of crate::Output::base!");
   $self->{output_obj} = $obj;
   return;
 }
@@ -236,17 +236,19 @@ fn parse_ctrlfile(self, $ctrl_file) {
   let $ctrl_file_path = locate_data_file($ctrl_file);
   crate::Config->set_ctrlfile_path($ctrl_file_path);
 
-  biber_error("Cannot find control file '$ctrl_file'! - Did latex run successfully on your .tex file before you ran biber?") unless ($ctrl_file_path and check_exists($ctrl_file_path));
+  if !($ctrl_file_path && check_exists($ctrl_file_path)) {
+    biber_error("Cannot find control file '$ctrl_file'! - Did latex run successfully on your .tex file before you ran biber?")
+  }
 
   // Early check to make sure .bcf is well-formed. If not, this means that the last biblatex run
   // exited prematurely while writing the .bcf. This results is problems for latexmk. So, if the
   // .bcf is broken, just stop here, remove the .bcf and exit with error so that we don't write
   // a bad .bbl
   let $checkbuf;
-  unless ($checkbuf = eval {slurp_switchr($ctrl_file_path)->$*}) {
+  if !($checkbuf = eval {slurp_switchr($ctrl_file_path)->$*}) {
     // Reading ctrl-file as UTF-8 failed. Probably it was written by fontenc as latin1
     // with some latin1 char in it (probably a sourcemap), so try that as a last resort
-    unless (eval {$checkbuf = slurp_switchr($ctrl_file_path, 'latin1')->$*}) {
+    if !(eval {$checkbuf = slurp_switchr($ctrl_file_path, 'latin1')->$*}) {
       biber_error("$ctrl_file_path is not UTF-8 or even latin1, please delete it and run latex again or check that biblatex is writing a valid .bcf file.");
     }
     // Write ctrl file as UTF-8
@@ -254,9 +256,11 @@ fn parse_ctrlfile(self, $ctrl_file) {
   }
 
   $checkbuf = NFD($checkbuf);// Unicode NFD boundary
-  unless (eval "XML::LibXML->load_xml(string => \$checkbuf)") {
+  if !(eval "XML::LibXML->load_xml(string => \$checkbuf)") {
     let $output = $self->get_output_obj->get_output_target_file;
-    unlink($output) unless $output == '-';// ignore deletion of STDOUT marker
+    if $output != '-' {
+      unlink($output);// ignore deletion of STDOUT marker
+    }
     biber_error("$ctrl_file_path is malformed, last biblatex run probably failed. Deleted $output");
   }
 
@@ -282,7 +286,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
     // Specifically, "Biber.pm" in @INC might resolve to an internal jumbled name
     // nowhere near to these files. You know what I mean if you've dealt with pp
     let $bcf_xsl;
-    if ($biber_path =~ m|/par\-| and $biber_path !~ m|/inc|) { // a mangled PAR @INC path
+    if ($biber_path =~ m|/par\-| && $biber_path !~ m|/inc|) { // a mangled PAR @INC path
       $bcf_xsl = File::Spec->catpath($vol, "$biber_path/inc/lib/Biber", 'bcf.xsl');
     }
     else {
@@ -375,7 +379,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
   let $controlversion = $bcfxml->{version};
   let $bltxversion = $bcfxml->{bltxversion};
   crate::Config->setblxoption(undef, 'controlversion', $controlversion);
-  unless ($controlversion == $BCF_VERSION) {
+  if $controlversion != $BCF_VERSION {
     biber_error("Error: Found biblatex control file version $controlversion, expected version $BCF_VERSION.\nThis means that your biber ($crate::Config::VERSION) and biblatex ($bltxversion) versions are incompatible.\nSee compat matrix in biblatex or biber PDF documentation.");
   }
 
@@ -390,7 +394,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
       }
       $CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope} = 1;
       $CONFIG_SCOPEOPT_BIBLATEX{$scope}{$opt} = 1;
-      if (defined($CONFIG_OPTTYPE_BIBLATEX{$opt}) and
+      if (defined($CONFIG_OPTTYPE_BIBLATEX{$opt}) &&
           lc($CONFIG_OPTTYPE_BIBLATEX{$opt}) != lc($bcfscopeopt->{datatype})) {
         biber_warn("Warning: Datatype for biblatex option '$opt' has conflicting values, probably at different scopes. This is not supported.");
       }
@@ -420,7 +424,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
       if ($bcfopts->{type} == 'global') {
         foreach let $bcfopt ($bcfopts->{option}->@*) {
           // unless already explicitly set from cmdline/config file
-          unless (crate::Config->isexplicitoption($bcfopt->{key}{content})) {
+          if !(crate::Config->isexplicitoption($bcfopt->{key}{content})) {
             if ($bcfopt->{type} == 'singlevalued') {
               crate::Config->setoption($bcfopt->{key}{content}, $bcfopt->{value}[0]{content});
             }
@@ -511,7 +515,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
       }
 
       // Merge the driver/style maps with the user maps from the config file
-      if (let @m = grep {$_->{level} == 'driver' or
+      if (let @m = grep {$_->{level} == 'driver' ||
                         $_->{level} == 'style'} $bcfxml->{sourcemap}{maps}->@* ) {
         crate::Config->setoption('sourcemap', [$usms->@*, @m]);
       }
@@ -624,11 +628,13 @@ fn parse_ctrlfile(self, $ctrl_file) {
 
   // UNIQUENAME TEMPLATE
   let $unts;
-  let $checkbase = 0;
+  let mut checkbase = false;
   foreach let $unt ($bcfxml->{uniquenametemplate}->@*) {
     let $untval = [];
     foreach let $np (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
-      $checkbase = 1 if $np->{base};
+      if $np->{base} {
+        checkbase = true;
+      }
       push $untval->@*, {namepart        => $np->{content},
                          use             => $np->{use},
                          disambiguation  => $np->{disambiguation},
@@ -639,8 +645,10 @@ fn parse_ctrlfile(self, $ctrl_file) {
 
   // Check to make sure we have a base to disambiguate from. If not, we can get infinite loops
   // in the disambiguation code
-  biber_error("The uniquenametemplate must contain at least one 'base' part otherwise name disambiguation is impossible") unless $checkbase;
-
+  if !checkbase {
+    biber_error("The uniquenametemplate must contain at least one 'base' part otherwise name disambiguation is impossible");
+  }
+  
   crate::Config->setblxoption(undef, 'uniquenametemplate', $unts);
 
   // SORTING NAME KEY
@@ -716,7 +724,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
   // presort defaults
   foreach let $presort ($bcfxml->{presort}->@*) {
     // Global presort default
-    unless (exists($presort->{type})) {
+    if ($presort->{type}).is_none() {
       crate::Config->setblxoption(undef, 'presort', $presort->{content});
     }
     // Per-type default
@@ -748,8 +756,8 @@ fn parse_ctrlfile(self, $ctrl_file) {
   let %bibdatasources = ();
   foreach let $data ($bcfxml->{bibdata}->@*) {
     foreach let $datasource ($data->{datasource}->@*) {
-      unless (first {$_->{type} == $datasource->{type} and
-             $_->{datatype} == $datasource->{datatype} and
+      if !(first {$_->{type} == $datasource->{type} &&
+             $_->{datatype} == $datasource->{datatype} &&
                $_->{name} == $datasource->{content}} $bibdatasources{$data->{section}[0]}->@*) {
         push $bibdatasources{$data->{section}[0]}->@*, { type     => $datasource->{type},
                                                          name     => $datasource->{content},
@@ -761,7 +769,7 @@ fn parse_ctrlfile(self, $ctrl_file) {
   }
 
   // Be friendly to latexmk etc.
-  unless (%bibdatasources) {
+  if !(%bibdatasources) {
     biber_warn("No data sources defined!");
     exit EXIT_OK;
   }
@@ -782,8 +790,7 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
 
     // Set the data files for the section unless we've already done so
     // (for example, for multiple section 0 entries)
-    $bib_section->set_datasources($bibdatasources{$secnum}) unless
-      $bib_section->get_datasources;
+    $bib_section->set_datasources($bibdatasources{$secnum}) if !$bib_section->get_datasources;
 
     let @prekeys = ();
     let @keys = ();
@@ -794,13 +801,13 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
 
       if ($keyc->{nocite}) {// \nocite'd
         // Don't add if there is an identical key without nocite since \cite takes precedence
-        unless (first {$key == NFD($_->{content})} @prekeys) {
+        if !(first {$key == NFD($_->{content})} @prekeys) {
           push @prekeys, $keyc;
         }
       }
       else {// \cite'd
         // If there is already a nocite of this key, remove the nocite attribute and don't add
-        if (first {($key == NFD($_->{content})) and $_->{nocite}} @prekeys) {
+        if (first {($key == NFD($_->{content})) && $_->{nocite}} @prekeys) {
           @prekeys = map {delete($_->{nocite}) if $key == NFD($_->{content});$_} @prekeys;
         }
         else {
@@ -822,11 +829,11 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
         }
         $key_flag = 1; // There is at least one key, used for error reporting below
       }
-      else if (not $bib_section->get_seenkey($key)) {
+      else if (!$bib_section->get_seenkey($key)) {
         // Dynamic set definition
         // Save dynamic key -> member keys mapping for set entry auto creation later
         // We still need to find these even if allkeys is set
-        if (exists($keyc->{type}) and $keyc->{type} == 'set') {
+        if (exists($keyc->{type}) && $keyc->{type} == 'set') {
           $bib_section->set_dynamic_set($key, split /\s*,\s*/, $keyc->{members});
           push @keys, $key;
           $key_flag = 1; // There is at least one key, used for error reporting below
@@ -865,11 +872,13 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
       info!("Found {} citekeys in bib section {}", $#keys+1, secnum);
     }
 
-    unless ($bib_section->is_allkeys) {
+    if !($bib_section->is_allkeys) {
         debug!("The citekeys for section {} are: {}\n", secnum, join(', ', sort @keys));
     }
 
-    $bib_section->add_citekeys(@keys) unless $bib_section->is_allkeys;
+    if !$bib_section->is_allkeys {
+      $bib_section->add_citekeys(@keys);
+    }
     $bib_sections->add_section($bib_section);
   }
 
@@ -898,7 +907,7 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
                              uniquenametemplatename     => $luntn,
                              labelalphanametemplatename => $llantn)) {
         debug!("Section datalist '{}' of type '{}' with sortingtemplate '{}', sortingnamekeytemplatename '{}', labelprefix '{}', uniquenametemplate '{}' and labelalphanametemplate '{}' is repeated for section {} - ignoring", lname, ltype, lstn, lsnksn, lpn, luntn, llantn, lsection);
-      next;
+        continue;
     }
 
     let $datalist = crate::DataList->new(section                    => $lsection,
@@ -941,7 +950,7 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
     let $globalss = crate::Config->getblxoption(undef, 'sortingtemplatename');
     let $secnum = $section->{number};
 
-    unless ($datalists->get_lists_by_attrs(section                    => $secnum,
+    if !($datalists->get_lists_by_attrs(section                    => $secnum,
                                            type                       => 'entry',
                                            sortingtemplatename        => $globalss,
                                            sortingnamekeytemplatename => 'global',
@@ -968,7 +977,7 @@ SECTION: foreach let $section ($bcfxml->{section}->@*) {
   $self->{datalists} = $datalists;
 
   // Warn if there are no citations in any section
-  unless ($key_flag) {
+  if !($key_flag) {
     biber_warn("The file '$ctrl_file_path' does not contain any citations!");
   }
 
@@ -1038,7 +1047,7 @@ fn process_setup(self) {
   foreach let $section ($self->sections->get_sections->@*) {
     let $secnum = $section->number;
 
-    unless ($self->datalists->has_lists_of_type_for_section($secnum, 'entry')) {
+    if !($self->datalists->has_lists_of_type_for_section($secnum, 'entry')) {
       let $datalist = crate::DataList->new(sortingtemplatename => crate::Config->getblxoption(undef, 'sortingtemplatename'),
                                           sortingnamekeytemplatename => 'global',
                                           uniquenametemplatename     => 'global',
@@ -1063,7 +1072,7 @@ fn process_setup(self) {
   _resolve_datafieldsets();
 
   // Force output_safechars flag if output to ASCII and input_encoding is not ASCII
-  if (crate::Config->getoption('output_encoding') =~ /(?:x-)?ascii/xmsi and
+  if (crate::Config->getoption('output_encoding') =~ /(?:x-)?ascii/xmsi &&
       crate::Config->getoption('input_encoding') !~ /(?:x-)?ascii/xmsi) {
     crate::Config->setoption('output_safechars', 1);
   }
@@ -1077,7 +1086,7 @@ fn process_setup_tool(self) {
   _resolve_datafieldsets();
 
   // Force output_safechars flag if output to ASCII and input_encoding is not ASCII
-  if (crate::Config->getoption('output_encoding') =~ /(?:x-)?ascii/xmsi and
+  if (crate::Config->getoption('output_encoding') =~ /(?:x-)?ascii/xmsi &&
       crate::Config->getoption('input_encoding') !~ /(?:x-)?ascii/xmsi) {
     crate::Config->setoption('output_safechars', 1);
   }
@@ -1090,7 +1099,7 @@ fn _resolve_datafieldsets {
     let $fs;
     foreach let $m ($value->@*) {
       if (ref $m == 'HASH') {
-        if ($m->{fieldtype} and $m->{datatype}) {
+        if ($m->{fieldtype} && $m->{datatype}) {
           push $fs->@*, $dm->get_fields_of_type($m->{fieldtype}, $m->{datatype})->@*;
         }
         else if ($m->{fieldtype}) {
@@ -1119,8 +1128,8 @@ fn resolve_alias_refs(self) {
 
 
   // Don't resolve alias refs in tool mode unless told to
-  if (crate::Config->getoption('tool') and
-      not (crate::Config->getoption('output_resolve_crossrefs') or
+  if (crate::Config->getoption('tool') &&
+      not (crate::Config->getoption('output_resolve_crossrefs') ||
            crate::Config->getoption('output_resolve_xdata'))) {
     return;
   }
@@ -1144,7 +1153,7 @@ fn resolve_alias_refs(self) {
     if (let $xdata = $be->get_xdata_refs) {
       let $resolved_keys;
       foreach let $xdataref ($xdata->@*) {
-        if (not defined($xdataref->{xdatafield})) { // XDATA ref to whole entry
+        if (!defined($xdataref->{xdatafield})) { // XDATA ref to whole entry
           foreach let $refkey ($xdataref->{xdataentries}->@*) { // whole entry XDATA can be xsv
             $refkey = $section->get_citekey_alias($refkey).unwrap_or($refkey);
             push $resolved_keys->@*, $refkey;
@@ -1230,7 +1239,7 @@ fn resolve_xdata(self) {
   let $section = $self->sections->get_section($secnum);
 
   // Don't resolve xdata in tool mode unless told to
-  if (crate::Config->getoption('tool') and
+  if (crate::Config->getoption('tool') &&
       not crate::Config->getoption('output_resolve_xdata')) {
     return;
   }
@@ -1243,8 +1252,15 @@ fn resolve_xdata(self) {
     // Don't directly resolve XDATA entrytypes - this is done recursively in the Entry method
     // Otherwise, we will die on loops etc. for XDATA entries which are never referenced from
     // any cited entry
-    next if $be->get_field('entrytype') == 'xdata';
-    next unless let $xdata = $be->get_xdata_refs;
+    if $be->get_field('entrytype') == 'xdata' {
+      continue;
+    }
+    {
+      let xdata = $be->get_xdata_refs;
+      if !xdata {
+        continue;
+      }
+    }
     $be->resolve_xdata($xdata);
   }
 }
@@ -1260,13 +1276,15 @@ fn cite_setmembers(self) {
     let $be = $section->bibentry($citekey);
 
     // promote indirectly cited inset set members to fully cited entries
-    if ($be->get_field('entrytype') == 'set' and
+    if ($be->get_field('entrytype') == 'set' &&
         $be->get_field('entryset')) {
       let $inset_keys = $be->get_field('entryset');
 
       // Ignore empty sets (likely this means that they contained only
       // non-existent keys that were removed)
-      next unless $inset_keys->@*;
+      if !($inset_keys->@*) {
+        continue;
+      }
 
       let $realmems;
       foreach let $mem ($inset_keys->@*) {
@@ -1309,8 +1327,8 @@ fn preprocess_sets(self) {
   let $section = $self->sections->get_section($secnum);
 
   // Don't preprocess sets in tool mode unless told to
-  if (crate::Config->getoption('tool') and
-      not crate::Config->getoption('output_resolve_sets')) {
+  if (crate::Config->getoption('tool') &&
+      !crate::Config->getoption('output_resolve_sets')) {
     return;
   }
 
@@ -1326,7 +1344,7 @@ fn preprocess_sets(self) {
       let $entrysetkeys = $be->get_field('entryset');
       unless ($entrysetkeys) {
         biber_warn("Set entry '$citekey' has no entryset field, ignoring", $be);
-        next;
+        continue;
       }
       foreach let $member ($entrysetkeys->@*) {
         $section->set_set_pc($citekey, $member);
@@ -1370,7 +1388,7 @@ fn calculate_interentry(self) {
     }
 
     // Record xref inheritance for graphing if required
-    if (crate::Config->getoption('output_format') == 'dot' and
+    if (crate::Config->getoption('output_format') == 'dot' &&
         let $xref = $be->get_field('xref')) {
       crate::Config->set_graph('xref', $citekey, $xref);
     }
@@ -1413,8 +1431,8 @@ fn process_interentry(self) {
   let $section = $self->sections->get_section($secnum);
 
   // Don't resolve crossrefs in tool mode unless told to
-  if (crate::Config->getoption('tool') and
-      not crate::Config->getoption('output_resolve_crossrefs')) {
+  if (crate::Config->getoption('tool') &&
+      !crate::Config->getoption('output_resolve_crossrefs')) {
     return;
   }
 
@@ -1428,10 +1446,12 @@ fn process_interentry(self) {
     // Do crossref inheritance
     if (let $cr = $be->get_field('crossref')) {
       // Skip inheritance if we've already done it
-      next if crate::Config->get_inheritance('crossref', $cr, $be->get_field('citekey'));
+      if crate::Config->get_inheritance('crossref', $cr, $be->get_field('citekey')) {
+        continue;
+      }
       let $parent = $section->bibentry($cr);
         debug!("Entry {} inheriting fields from parent {}", citekey, cr);
-      unless ($parent) {
+      if !($parent) {
         biber_warn("Cannot inherit from crossref key '$cr' - does it exist?", $be);
       }
       else {
@@ -1472,7 +1492,7 @@ fn validate_datamodel(self) {
       // * Valid because it's allowed for "ALL" entrytypes OR
       // * Valid field for the specific entrytype OR
       // * Valid because entrytype allows "ALL" fields
-      unless ($et == 'xdata' or $et == 'set') { // XDATA/SET are generic containers for any field
+      unless ($et == 'xdata' || $et == 'set') { // XDATA/SET are generic containers for any field
         foreach let $ef ($be->datafields) {
           unless ($dm->is_field_for_entrytype($et, $ef)) {
             $dmwe->("Datamodel: Entry '$citekey' ($ds): Invalid field '$ef' for entrytype '$et'", $be);
@@ -1530,7 +1550,10 @@ fn process_namedis(self, $citekey, $dlist) {
   let $namedis;
 
 MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
-    next unless let $nl = $be->get_field($pn);
+    let nl = $be->get_field($pn);
+    if !nl {
+      continue;
+    }
     let $nlid = $nl->get_id;
 
     // per-namelist uniquenametemplatename
@@ -1562,7 +1585,7 @@ MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
 
       // Die if no uniquenametemplate found as this results in an infinite loop
       // in the disambiguation code
-      unless (crate::Config->getblxoption(undef, 'uniquenametemplate')->{$untname}) {
+      if !(crate::Config->getblxoption(undef, 'uniquenametemplate')->{$untname}) {
         biber_error("No uniquenametemplate called '$untname' found, cannot continue.");
       }
 
@@ -1578,7 +1601,9 @@ MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
       let $baseparts;
 
       foreach let $np (crate::Config->getblxoption(undef, 'uniquenametemplate')->{$untname}->@*) {
-        next unless $np->{base};
+        if !$np->{base} {
+          continue;
+        }
         let $npn = $np->{namepart};
 
         if (let $p = $n->get_namepart($npn)) {
@@ -1595,7 +1620,9 @@ MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
             if (defined($n->$method)) {
               $useok = $n->$method;
             }
-            next unless $useok;
+            if !$useok {
+              continue;
+            }
           }
           $base .= $p;
           push $baseparts->@*, $npn;
@@ -1608,8 +1635,12 @@ MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
 
       // ... then add non-base parts by incrementally adding to the last disambiguation level
       foreach let $np (crate::Config->getblxoption(undef, 'uniquenametemplate')->{$untname}->@*) {
-        next if $np->{base};
-        next if defined($np->{disambiguation}) and ($np->{disambiguation} == 'none');
+        if $np->{base} {
+          continue;
+        }
+        if defined($np->{disambiguation}) && ($np->{disambiguation} == 'none') {
+          continue;
+        }
 
         let $npn = $np->{namepart};
 
@@ -1631,7 +1662,9 @@ MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
             if (defined($n->$method)) {
               $useok = $n->$method;
             }
-            next unless $useok;
+            if !$useok {
+              continue;
+            }
           }
 
           $namestring .= $p;
@@ -1734,9 +1767,9 @@ fn process_entries_pre(self, $dlist) {
         // here so that they can be checked
         // We only don't set name disambiguation data if both uniquelist/uniquename
         // effective options are 'false'. If either are not false, we need the information
-        if ($namedis->{$nlid}{$nid}{nameun} == 'false' and
+        if ($namedis->{$nlid}{$nid}{nameun} == 'false' &&
             $namedis->{$nlid}{$nid}{namelistul} == 'false') {
-          next;
+          continue;
         }
         $dlist->set_namedis($nlid,
                             $nid,
@@ -1871,7 +1904,7 @@ fn process_workuniqueness(self, $citekey, $dlist) {
   // singletitle
   // Don't generate information for entries with no labelname or labeltitle
   // Use fullhash as this is not a test of uniqueness of only visible information
-  if ($lni and crate::Config->getblxoption(undef, 'singletitle', $bee, $citekey)) {
+  if ($lni && crate::Config->getblxoption(undef, 'singletitle', $bee, $citekey)) {
     $identifier = $self->_getfullhash($citekey, $be->get_field($lni));
 
     // Skip due to ignore settings?
@@ -1879,8 +1912,8 @@ fn process_workuniqueness(self, $citekey, $dlist) {
     // were inherited
     // Put another way, if both labelname and labeltitle were inherited, singletitle
     // can still be true (in a mvbook for example, which is just a single "work")
-    unless (($lni and first {fc($lni) == fc($_)} $ignore->{singletitle}->@*) and
-            ($lti and first {fc($lti) == fc($_)} $ignore->{singletitle}->@*)) {
+    unless (($lni && first {fc($lni) == fc($_)} $ignore->{singletitle}->@*) &&
+            ($lti && first {fc($lti) == fc($_)} $ignore->{singletitle}->@*)) {
       $dlist->incr_seenname($identifier);
     }
     $dlist->set_entryfield($citekey, 'seenname', $identifier);
@@ -1888,7 +1921,7 @@ fn process_workuniqueness(self, $citekey, $dlist) {
 
   // uniquetitle
   // Don't generate information for entries with no labeltitle
-  if ($lti and crate::Config->getblxoption(undef, 'uniquetitle', $bee, $citekey)) {
+  if ($lti && crate::Config->getblxoption(undef, 'uniquetitle', $bee, $citekey)) {
     $identifier = $be->get_field($lti);
 
     // Skip due to ignore settings?
@@ -1900,7 +1933,7 @@ fn process_workuniqueness(self, $citekey, $dlist) {
 
   // uniquebaretitle
   // Don't generate information for entries with no labeltitle and with labelname
-  if ($lti and not $lni and crate::Config->getblxoption(undef, 'uniquebaretitle', $bee, $citekey)) {
+  if ($lti && !$lni && crate::Config->getblxoption(undef, 'uniquebaretitle', $bee, $citekey)) {
     $identifier = $be->get_field($lti);
 
     // Skip due to ignore settings?
@@ -1913,11 +1946,11 @@ fn process_workuniqueness(self, $citekey, $dlist) {
   // uniquework
   // Don't generate information for entries with no labelname and labeltitle
   // Should use fullhash this is not a test of uniqueness of only visible information
-  if ($lni and $lti and crate::Config->getblxoption(undef, 'uniquework', $bee, $citekey)) {
+  if ($lni && $lti && crate::Config->getblxoption(undef, 'uniquework', $bee, $citekey)) {
     $identifier = $self->_getfullhash($citekey, $be->get_field($lni)) . $be->get_field($lti);
 
     // Skip due to ignore settings?
-    unless (first {fc($lni) == fc($_)} $ignore->{uniquework}->@* and
+    unless (first {fc($lni) == fc($_)} $ignore->{uniquework}->@* &&
             first {fc($lti) == fc($_)} $ignore->{uniquework}->@*) {
       $dlist->incr_seenwork($identifier);
     }
@@ -2132,7 +2165,7 @@ fn process_nocite(self, $citekey) {
   let $section = $self->sections->get_section($secnum);
   let $be = $section->bibentry($citekey);
   // Either specifically nocited or \nocite{*} and not specifically cited without nocite
-  if ($section->is_nocite($citekey) or
+  if ($section->is_nocite($citekey) ||
       ($section->is_allkeys_nocite and not $section->is_specificcitekey($citekey))) {
     $be->set_field('nocite', '1');
   }
@@ -2161,13 +2194,13 @@ fn process_labelname(self, $citekey) {
 
     unless (first {$ln == $_} $dmh->{namelistsall}->@*) {
       biber_warn("Labelname candidate '$ln' is not a name field - skipping");
-      next;
+      continue;
     }
 
     // If there is a biblatex option which controls the use of this labelname info, check it
-    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$lnameopt"} and
-       not crate::Config->getblxoption($secnum, "use$lnameopt", $bee, $citekey)) {
-      next;
+    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$lnameopt"} &&
+       !crate::Config->getblxoption($secnum, "use$lnameopt", $bee, $citekey)) {
+      continue;
     }
 
     if ($be->get_field($ln)) {
@@ -2182,16 +2215,18 @@ fn process_labelname(self, $citekey) {
   foreach let $h_ln ($lnamespec->@*) {
     let $ln = $h_ln->{content};
     if ( $ln =~ /\Ashort(.+)\z/xms ) {
-      next;
+      continue;
     }
 
     // We have already warned about this above
-    next unless (first {$ln == $_} $dmh->{namelistsall}->@*);
+    if !(first {$ln == $_} $dmh->{namelistsall}->@*) {
+      continue;
+    }
 
     // If there is a biblatex option which controls the use of this labelname info, check it
-    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$ln"} and
-       not crate::Config->getblxoption($secnum, "use$ln", $bee, $citekey)) {
-      next;
+    if ($CONFIG_OPTSCOPE_BIBLATEX{"use$ln"} &&
+       !crate::Config->getblxoption($secnum, "use$ln", $bee, $citekey)) {
+      continue;
     }
 
     if ($be->get_field($ln)) {
@@ -2232,7 +2267,7 @@ fn process_labeldate(self, citekey) {
 
         // resolve dates
         $datetype = $ld =~ s/date\z//xmsr;
-        if ($dm->field_is_datatype('date', $ld) and
+        if ($dm->field_is_datatype('date', $ld) &&
             $be->get_field("${datetype}datesplit")) { // real EDTF dates
           $ldy    = $datetype . 'year';
           $ldey   = $datetype . 'endyear';
@@ -2250,7 +2285,7 @@ fn process_labeldate(self, citekey) {
 
         // Did we find a labeldate - this is equivalent to checking for a year/endyear
         // as that is always present if there is a labeldate
-        if (defined($be->get_field($ldy)) or defined($be->get_field($ldey))) {
+        if (defined($be->get_field($ldy)) || defined($be->get_field($ldey))) {
           // set source to field or date field prefix for a real date field
           $be->set_labeldate_info({'field' => {year       => $ldy,
                                                month      => $ldm,
@@ -2290,42 +2325,42 @@ fn process_labeldate(self, citekey) {
 
         // construct labelyear from start/end year field
         if ($be->field_exists($ytype . 'endyear')
-            and (($be->get_field($df->{year}).unwrap_or("")) != $be->get_field($ytype . 'endyear'))) {
+            && (($be->get_field($df->{year}).unwrap_or("")) != $be->get_field($ytype . 'endyear'))) {
           $be->set_field('labelyear',
                          ($be->get_field('labelyear').unwrap_or("")). '\bibdatedash ' . $be->get_field($ytype . 'endyear'));
         }
         // construct labelmonth from start/end month field
-        if (not $pseudodate and
+        if (!$pseudodate &&
             $be->get_field($ytype . 'endmonth')
-            and (($be->get_field($df->{month}).unwrap_or("")) != $be->get_field($ytype . 'endmonth'))) {
+            && (($be->get_field($df->{month}).unwrap_or("")) != $be->get_field($ytype . 'endmonth'))) {
           $be->set_field('labelmonth',
                          ($be->get_field('labelmonth').unwrap_or("")) . '\bibdatedash ' . $be->get_field($ytype . 'endmonth'));
         }
         // construct labelday from start/end month field
-        if (not $pseudodate and
+        if (!$pseudodate &&
             $be->get_field($ytype . 'endday')
-            and (($be->get_field($df->{day}).unwrap_or("")) != $be->get_field($ytype . 'endday'))) {
+            && (($be->get_field($df->{day}).unwrap_or("")) != $be->get_field($ytype . 'endday'))) {
           $be->set_field('labelday',
                          ($be->get_field('labelday').unwrap_or("")) . '\bibdatedash ' . $be->get_field($ytype . 'endday'));
         }
         // construct labelhour from start/end hour field
-        if (not $pseudodate and
+        if (!$pseudodate &&
             $be->get_field($ytype . 'endhour')
-            and (($be->get_field($df->{hour}).unwrap_or("")) != $be->get_field($ytype . 'endhour'))) {
+            && (($be->get_field($df->{hour}).unwrap_or("")) != $be->get_field($ytype . 'endhour'))) {
           $be->set_field('labelhour',
                          ($be->get_field('labelhour').unwrap_or("")) . '\bibdatedash ' . $be->get_field($ytype . 'endhour'));
         }
         // construct labelminute from start/end minute field
-        if (not $pseudodate and
+        if (!$pseudodate &&
             $be->get_field($ytype . 'endminute')
-            and (($be->get_field($df->{minute}).unwrap_or("")) != $be->get_field($ytype . 'endminute'))) {
+            && (($be->get_field($df->{minute}).unwrap_or("")) != $be->get_field($ytype . 'endminute'))) {
           $be->set_field('labelminute',
                          ($be->get_field('labelminute').unwrap_or("")) . '\bibdatedash ' . $be->get_field($ytype . 'endminute'));
         }
         // construct labelsecond from start/end second field
-        if (not $pseudodate and
+        if (!$pseudodate &&
             $be->get_field($ytype . 'endsecond')
-            and (($be->get_field($df->{second}).unwrap_or("")) != $be->get_field($ytype . 'endsecond'))) {
+            && (($be->get_field($df->{second}).unwrap_or("")) != $be->get_field($ytype . 'endsecond'))) {
           $be->set_field('labelsecond',
                          ($be->get_field('labelsecond').unwrap_or("")) . '\bibdatedash ' . $be->get_field($ytype . 'endsecond'));
         }
@@ -2383,8 +2418,11 @@ fn process_fullhash(self, citekey) {
 
   // Generate fullhash for all other name fields
   foreach let $n ($dmh->{namelistsall}->@*) {
-    next unless let $nv = $be->get_field($n);
-    $be->set_field("${n}fullhash", $self->_getfullhash($citekey, $nv));
+    let nv = $be->get_field($n);
+    if !nv {
+      continue;
+    }
+    $be->set_field("${n}fullhash", $self->_getfullhash($citekey, nv));
   }
 
   return;
@@ -2409,9 +2447,12 @@ fn process_namehash(self, citekey, dlist) {
 
   // Generate namehash for all other name fields
   foreach let $n ($dmh->{namelistsall}->@*) {
-    next unless let $nv = $be->get_field($n);
-    $dlist->set_entryfield($citekey, "${n}namehash", $self->_getnamehash($citekey, $nv, $dlist));
-    $dlist->set_entryfield($citekey, "${n}bibnamehash", $self->_getnamehash($citekey, $nv, $dlist, 1));
+    let nv = $be->get_field($n);
+    if !nv {
+      continue;
+    }
+    $dlist->set_entryfield($citekey, "${n}namehash", $self->_getnamehash($citekey, nv, $dlist));
+    $dlist->set_entryfield($citekey, "${n}bibnamehash", $self->_getnamehash($citekey, nv, $dlist, 1));
   }
 
   return;
@@ -2425,7 +2466,10 @@ fn process_pername_hashes(self, $citekey, $dlist) {
   let $dmh = crate::Config->get_dm_helpers;
 
   foreach let $pn ($dmh->{namelistsall}->@*) {
-    next unless let $nl = $be->get_field($pn);
+    let nl = $be->get_field($pn);
+    if !nl {
+      continue;
+    }
     foreach let $n ($nl->names->@*) {
       let $pnhash = $self->_genpnhash($citekey, $n);
       $n->set_hash($pnhash);
@@ -2457,7 +2501,10 @@ fn process_visible_names(self, $dlist) {
     let $minan = crate::Config->getblxoption($secnum, 'minalphanames', $bee, $citekey);
 
     foreach let $n ($dmh->{namelistsall}->@*) {
-      next unless let $nl = $be->get_field($n);
+      let $nl = $be->get_field($n);
+      if !nl {
+        continue;
+      }
 
       let $count = $nl->count;
       let $visible_names_cite;
@@ -2637,16 +2684,20 @@ fn process_lists(self) {
     // Filtering - must come before sorting/labelling so that there are no gaps in e.g. extradate
     if (let $filters = $list->get_filters) {
       let $flist = [];
-    KEYLOOP: foreach let $k ($list->get_keys->@*) {
+    'KEYLOOP: foreach let $k ($list->get_keys->@*) {
 
         let $be = $section->bibentry($k);
         foreach let $f ($filters->@*) {
           // Filter disjunction is ok if any of the checks are ok, hence the grep()
           if (ref $f == 'ARRAY') {
-            next KEYLOOP unless grep {check_list_filter($k, $_->{type}, $_->{value}, $be)} $f->@*;
+            if !(grep {check_list_filter($k, $_->{type}, $_->{value}, $be)} $f->@*) {
+              continue 'KEYLOOP ;
+            }
           }
           else {
-            next KEYLOOP unless check_list_filter($k, $f->{type}, $f->{value}, $be);
+            if !check_list_filter($k, $f->{type}, $f->{value}, $be) {
+              continue 'KEYLOOP;
+            }
           }
         }
         push $flist->@*, $k;
@@ -2685,7 +2736,7 @@ fn check_list_filter(k, t, fs, be) {
     }
   }
   else if ($t == 'subtype') {
-    if ($be->field_exists('entrysubtype') and
+    if ($be->field_exists('entrysubtype') &&
         $be->get_field('entrysubtype') == lc($fs)) {
         trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
     }
@@ -2694,7 +2745,7 @@ fn check_list_filter(k, t, fs, be) {
     }
   }
   else if ($t == 'notsubtype') {
-    if ($be->field_exists('entrysubtype') and
+    if ($be->field_exists('entrysubtype') &&
         $be->get_field('entrysubtype') == lc($fs)) {
       return 0;
     }
@@ -2840,7 +2891,7 @@ fn uniqueness(self, $dlist) {
     }
     // Generate uniquelist information, if requested
     // Always run uniquelist at least once, if requested
-    if ($first_ul_pass or not $dlist->get_unul_done) {
+    if ($first_ul_pass || !$dlist->get_unul_done) {
         debug!("Entering uniquelist processing");
       $dlist->set_unul_changed(0); // reset state for global unul changed flag
       $first_ul_pass = 0; // Ignore special case when uniquelist has run once
@@ -2914,12 +2965,14 @@ fn create_uniquename_info(self, $dlist) {
   // again because uniquelist information might have changed
   $dlist->reset_uniquenamecount;
 
-  MAIN: foreach let $citekey ( $section->get_citekeys ) {
+  'MAIN: foreach let $citekey ( $section->get_citekeys ) {
     let $be = $bibentries->entry($citekey);
     let $bee = $be->get_field('entrytype');
     let $lni = $be->get_labelname_info;
 
-    next unless defined($lni); // only care about labelname
+    if !defined($lni) { // only care about labelname
+      continue;
+    }
 
     let $nl = $be->get_field($lni);
     let $nlid = $nl->get_id;
@@ -2972,7 +3025,9 @@ fn create_uniquename_info(self, $dlist) {
         $un = $n->get_uniquename;
       }
 
-      next MAIN if $un == 'false';
+      if $un == 'false' {
+        continue 'MAIN;
+      }
 
       // We need to track two types of uniquename disambiguation here:
       //
@@ -2992,14 +3047,14 @@ fn create_uniquename_info(self, $dlist) {
       // Uniquelist is not set, a name list is longer than the maxcitenames truncation
       //   and the name appears before the mincitenames truncation
 
-      if ($un == 'allinit' or $un == 'allfull' or
-          ($ul and $n->get_index <= $ul) or
-          $morenames or
-          $num_names <= $maxcn or
+      if ($un == 'allinit' || $un == 'allfull' ||
+          ($ul && $n->get_index <= $ul) ||
+          $morenames ||
+          $num_names <= $maxcn ||
           $n->get_index <= $mincn) { // implicitly, $num_names > $maxcn here
 
         $truncnames{$nid} = 1;
-        if ($un == 'mininit' or $un == 'minfull') {
+        if ($un == 'mininit' || $un == 'minfull') {
           push @basenames, $dlist->get_basenamestring($nlid, $nid);
           push @allnames, $dlist->get_namestring($nlid, $nid);
         }
@@ -3009,10 +3064,10 @@ fn create_uniquename_info(self, $dlist) {
     // and non-basename is all names in the namelist, not just the current name
     let $min_basename;
     let $min_namestring;
-    if ($un == 'mininit' or $un == 'minfull') {
+    if ($un == 'mininit' || $un == 'minfull') {
       $min_basename = join("\x{10FFFD}", @basenames);
       $min_namestring = join("\x{10FFFD}", @allnames);
-      if ($#basenames + 1 < $num_names or $morenames) {
+      if ($#basenames + 1 < $num_names || $morenames) {
         $min_basename .= "\x{10FFFD}et al";     // if truncated, record this
         $min_namestring .= "\x{10FFFD}et al";   // if truncated, record this
       }
@@ -3027,11 +3082,11 @@ fn create_uniquename_info(self, $dlist) {
       let $nskey;
 
       // Disambiguation scope and key depend on the uniquename setting
-      if ($un == 'init' or $un == 'full' or $un == 'allinit' or $un == 'allfull') {
+      if ($un == 'init' || $un == 'full' || $un == 'allinit' || $un == 'allfull') {
         $namedisamiguationscope = 'global';
         $nskey = join("\x{10FFFD}", $namestrings->@*);
       }
-      else if ($un == 'mininit' or $un == 'minfull') {
+      else if ($un == 'mininit' || $un == 'minfull') {
         $namedisamiguationscope = $min_basename;
         $nskey = $min_namestring;
         $dlist->set_unmininfo($nlid, $nid, $min_basename);
@@ -3051,7 +3106,7 @@ fn create_uniquename_info(self, $dlist) {
 
       // Per-namelist uniquelist
       let $nl = $be->get_field($lni);
-      if (defined($lni) and $nl->get_uniquelist) {
+      if (defined($lni) && $nl->get_uniquelist) {
         $eul = $nl->get_uniquelist;
       }
 
@@ -3074,11 +3129,13 @@ fn generate_uniquename(self, $dlist) {
   let $bibentries = $section->bibentries;
 
   // Now use the information to set the actual uniquename information
-MAIN:  foreach let $citekey ( $section->get_citekeys ) {
+'MAIN:  foreach let $citekey ( $section->get_citekeys ) {
     let $be = $bibentries->entry($citekey);
     let $bee = $be->get_field('entrytype');
     let $lni = $be->get_labelname_info;
-    next unless defined($lni); // only care about labelname
+    if !defined($lni) { // only care about labelname
+      continue;
+    }
 
     let $nl = $be->get_field($lni);
     let $nlid = $nl->get_id;
@@ -3114,12 +3171,14 @@ MAIN:  foreach let $citekey ( $section->get_citekeys ) {
         $un = $n->get_uniquename;
       }
 
-      next MAIN if $un == 'false';
+      if $un == 'false' {
+        continue 'MAIN;
+      }
 
-      if ($un == 'allinit' or $un == 'allfull' or
-          ($ul and $n->get_index <= $ul) or
-          $morenames or
-          $num_names <= $maxcn or
+      if ($un == 'allinit' || $un == 'allfull' ||
+          ($ul && $n->get_index <= $ul) ||
+          $morenames ||
+          $num_names <= $maxcn ||
           $n->get_index <= $mincn) { // implicitly, $num_names > $maxcn here
         $truncnames{$nid} = 1;
       }
@@ -3136,7 +3195,7 @@ MAIN:  foreach let $citekey ( $section->get_citekeys ) {
       let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
       let $namescope = 'global'; // default
 
-      if ($un == 'mininit' or $un == 'minfull') {
+      if ($un == 'mininit' || $un == 'minfull') {
         $namescope = $dlist->get_unmininfo($nlid, $nid);
       }
 
@@ -3200,7 +3259,9 @@ fn create_uniquelist_info(self, $dlist) {
     let $maxcn = crate::Config->getblxoption($secnum, 'maxcitenames', $bee, $citekey);
     let $mincn = crate::Config->getblxoption($secnum, 'mincitenames', $bee, $citekey);
     let $lni = $be->get_labelname_info;
-    next unless defined($lni); // only care about labelname
+    if !defined($lni) { // only care about labelname
+      continue;
+    }
     let $nl = $be->get_field($lni);
     let $nlid = $nl->get_id;
     let $labelyear = $be->get_field('labelyear');
@@ -3212,7 +3273,9 @@ fn create_uniquelist_info(self, $dlist) {
       $ul = $nl->get_uniquelist;
     }
 
-    next if $ul == 'false';
+    if $ul == 'false' {
+      continue;
+    }
 
       trace!("Generating uniquelist information for '{}'", citekey);
 
@@ -3230,7 +3293,7 @@ fn create_uniquelist_info(self, $dlist) {
       // uniquelist = minyear
       if ($ul == 'minyear') {
         // minyear uniquename, we set based on the max/mincitenames list
-        if ($num_names > $maxcn and
+        if ($num_names > $maxcn &&
             $n->get_index <= $mincn) {
           $ulminyearflag = 1;
         }
@@ -3239,7 +3302,7 @@ fn create_uniquelist_info(self, $dlist) {
       let $unall = $dlist->get_uniquename_all($nlid, $nid);
 
       // uniquename is not set so generate uniquelist based on just base name
-      if (not defined($unall) or $unall->[0] == 'base') {
+      if (!defined($unall) || $unall->[0] == 'base') {
         push $namelist->@*, $basename if defined($basename);
         push $ulminyear_namelist->@*, $basename if $ulminyearflag;
       }
@@ -3285,14 +3348,16 @@ fn generate_uniquelist(self, $dlist) {
   let $section = $self->sections->get_section($secnum);
   let $bibentries = $section->bibentries;
 
- MAIN: foreach let $citekey ( $section->get_citekeys ) {
+ 'MAIN: foreach let $citekey ( $section->get_citekeys ) {
     let $be = $bibentries->entry($citekey);
     let $bee = $be->get_field('entrytype');
     let $labelyear = $be->get_field('labelyear');
     let $maxcn = crate::Config->getblxoption($secnum, 'maxcitenames', $bee, $citekey);
     let $mincn = crate::Config->getblxoption($secnum, 'mincitenames', $bee, $citekey);
     let $lni = $be->get_labelname_info;
-    next unless defined($lni); // only care about labelname
+    if !defined($lni) { // only care about labelname
+      continue;
+    }
     let $nl = $be->get_field($lni);
     let $nlid = $nl->get_id;
 
@@ -3302,7 +3367,9 @@ fn generate_uniquelist(self, $dlist) {
       $ul = $nl->get_uniquelist;
     }
 
-    next if $ul == 'false';
+    if $ul == 'false' {
+      continue;
+    }
 
       trace!("Creating uniquelist for '{}'", citekey);
 
@@ -3318,7 +3385,7 @@ fn generate_uniquelist(self, $dlist) {
       let $unall = $dlist->get_uniquename_all($nlid, $nid);
 
       // uniquename is not set so generate uniquelist based on just base name
-      if (not defined($unall) or $unall->[0] == 'base') {
+      if (!defined($unall) || $unall->[0] == 'base') {
         push $namelist->@*, $basename if defined($basename);
       }
       else {
@@ -3333,12 +3400,12 @@ fn generate_uniquelist(self, $dlist) {
       // With uniquelist=minyear, uniquelist should not be set at all if there are
       // no other entries with the same max/mincitenames visible list and different years
       // to disambiguate from
-      if ($ul == 'minyear' and
-          $num_names > $maxcn and
-          $n->get_index <= $mincn and
+      if ($ul == 'minyear' &&
+          $num_names > $maxcn &&
+          $n->get_index <= $mincn &&
           $dlist->get_uniquelistcount_minyear($namelist, $labelyear) == 1) {
           trace!("Not setting uniquelist=minyear for '{}'", citekey);
-        next MAIN;
+        continue 'MAIN;
       }
 
       // list is unique after this many names so we set uniquelist to this point
@@ -3450,10 +3517,15 @@ fn generate_contextdata(self, $dlist) {
     foreach let $namefield ($dmh->{namelists}->@*) {
       if (let $nl = $be->get_field($namefield)) {
         let $nlid = $nl->get_id;
-        next unless (defined($lni) and $lni == $namefield); // labelname only
+        if !(defined($lni) && $lni == $namefield) { // labelname only
+          continue;
+        }
         foreach let $n ($nl->names->@*) {
           let $nid = $n->get_id;
-          next unless let $uniquename = $dlist->get_uniquename($nlid, $nid);
+          let $uniquename = $dlist->get_uniquename($nlid, $nid);
+          if !uniquename {
+            continue;
+          }
           let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
 
           // Construct per-namepart uniquename value
@@ -3462,7 +3534,7 @@ fn generate_contextdata(self, $dlist) {
             let $nss = $namedisschema->[$i];
             if (Compare($uniquename, $nss)) {
               // Find where uniqueness is established, determine un settings up to this point
-              let @dis = grep {$_->[0] != 'base' and $_->[1] != 'full'} $namedisschema->@[1..$i-1];
+              let @dis = grep {$_->[0] != 'base' && $_->[1] != 'full'} $namedisschema->@[1..$i-1];
               push @dis, $namedisschema->@[$i];
               // normalise 'fullonly' to 'full' now that we have stripped all non-disambiguating elements
               %pnun = map {$_->[0] => ($_->[1] == 'fullonly' ? 'full' : $_->[1])} @dis;
@@ -3492,7 +3564,7 @@ fn generate_singletitle(self, $citekey, $dlist) {
 
   if (crate::Config->getblxoption(undef, 'singletitle', $bee, $citekey)) {
     let $sn = $dlist->get_entryfield($citekey, 'seenname');
-    if (defined($sn) and $dlist->get_seenname($sn) < 2 ) {
+    if (defined($sn) && $dlist->get_seenname($sn) < 2 ) {
       $dlist->set_entryfield($citekey, 'singletitle', 1);
     }
   }
@@ -3510,7 +3582,7 @@ fn generate_uniquetitle(self, $citekey, $dlist) {
 
   if (crate::Config->getblxoption(undef, 'uniquetitle', $bee, $citekey)) {
     let $ut = $dlist->get_entryfield($citekey, 'seentitle');
-    if (defined($ut) and $dlist->get_seentitle($ut) < 2 ) {
+    if (defined($ut) && $dlist->get_seentitle($ut) < 2 ) {
       $dlist->set_entryfield($citekey, 'uniquetitle', 1);
     }
   }
@@ -3528,7 +3600,7 @@ fn generate_uniquebaretitle(self, $citekey, $dlist) {
 
   if (crate::Config->getblxoption(undef, 'uniquebaretitle', $bee, $citekey)) {
     let $ubt = $dlist->get_entryfield($citekey, 'seenbaretitle');
-    if (defined($ubt) and $dlist->get_seenbaretitle($ubt) < 2 ) {
+    if (defined($ubt) && $dlist->get_seenbaretitle($ubt) < 2 ) {
       $dlist->set_entryfield($citekey, 'uniquebaretitle', 1);
     }
   }
@@ -3545,7 +3617,7 @@ fn generate_uniquework(self, $citekey, $dlist) {
   let $bee = $be->get_field('entrytype');
 
   if (crate::Config->getblxoption(undef, 'uniquework', $bee, $citekey)) {
-    if ($dlist->get_entryfield($citekey, 'seenwork') and
+    if ($dlist->get_entryfield($citekey, 'seenwork') &&
         $dlist->get_seenwork($dlist->get_entryfield($citekey, 'seenwork')) < 2 ) {
         trace!("Setting uniquework for '{}'", citekey);
       $dlist->set_entryfield($citekey, 'uniquework', 1);
@@ -3567,7 +3639,7 @@ fn generate_uniquepa(self, $citekey, $dlist) {
   let $bee = $be->get_field('entrytype');
 
   if (crate::Config->getblxoption(undef, 'uniqueprimaryauthor', $bee, $citekey)) {
-    if ($dlist->get_entryfield($citekey, 'seenprimaryauthor') and
+    if ($dlist->get_entryfield($citekey, 'seenprimaryauthor') &&
         $dlist->get_seenpa($dlist->get_entryfield($citekey, 'seenprimaryauthor')) < 2 ) {
         trace!("Setting uniqueprimaryauthor for '{}'", citekey);
       $dlist->set_entryfield($citekey, 'uniqueprimaryauthor', 1);
@@ -3658,7 +3730,7 @@ fn sort_list(self, $dlist) {
     // This can't be done in a ->change() method, has to be a new object.
     let $cobj;
     let $sl = locale2bcp47($sortset->[0]{locale});
-    if (defined($sl) and $sl != $thislocale) {
+    if (defined($sl) && $sl != $thislocale) {
       $cobj = 'crate::UCollate->new(' . "'$sl'" . ",'" . join("','", $collopts->%*) . "')";
     }
     else {
@@ -3668,11 +3740,11 @@ fn sort_list(self, $dlist) {
     // If the case or upper option on a field is not the global default
     // set it locally on the $Collator by constructing a change() method call
     let $sc = $sortset->[0]{sortcase};
-    if (defined($sc) and $sc != crate::Config->getoption('sortcase')) {
+    if (defined($sc) && $sc != crate::Config->getoption('sortcase')) {
       push @fc, $sc ? 'level => 4' : 'level => 2';
     }
     let $su = $sortset->[0]{sortupper};
-    if (defined($su) and $su != crate::Config->getoption('sortupper')) {
+    if (defined($su) && $su != crate::Config->getoption('sortupper')) {
       push @fc, $su ? 'upper_before_lower => 1' : 'upper_before_lower => 0';
     }
 
@@ -3719,7 +3791,7 @@ fn sort_list(self, $dlist) {
         push @d, looks_like_number($sortfield) ? $sortfield : 2000000000;
       }
       else {
-        // Don't do '$sortfield' or "$sortfield" because it might contain quotes
+        // Don't do '$sortfield' || "$sortfield" because it might contain quotes
         let $a = $collateobjs[$i] . "->getSortKey(q{$sortfield})";
         // Cache index is just the collation object opts and key gen call in string form
         // since this should be unique for a key/collopts combination
@@ -3794,7 +3866,9 @@ fn prepare(self) {
 
   foreach let $section ($self->sections->get_sections->@*) {
     // shortcut - skip sections that don't have any keys
-    next unless $section->get_citekeys or $section->is_allkeys;
+    if !($section->get_citekeys || $section->is_allkeys) {
+      continue;
+    }
     let $secnum = $section->number;
 
     info!("Processing section {}", secnum);
@@ -3916,7 +3990,7 @@ fn fetch_data(self) {
   // Now actually fetch data with expanded list of data sources
   foreach let $datasource ($section->get_datasources->@*) {
     // shortcut if we have found all the keys now
-    last unless (@remaining_keys or $section->is_allkeys);
+    last unless (@remaining_keys || $section->is_allkeys);
     let $type = $datasource->{type};
     let $name = $datasource->{name};
     let $encoding = $datasource->{encoding};
@@ -4077,7 +4151,7 @@ fn get_dependents(self, $keys, $keyswithdeps, $missing) {
       if (let $relkeys = $be->get_field('related')) {
         // skip looking for dependent if it's already there (loop suppression)
         foreach let $rm ($relkeys->@*) {
-          unless ($section->has_citekey($rm) or $section->is_related($rm)) {
+          unless ($section->has_citekey($rm) || $section->is_related($rm)) {
             // record that $rm is used as a related entry key
             $section->add_related($rm);
             push $new_deps->@*, $rm;
@@ -4113,7 +4187,7 @@ fn get_dependents(self, $keys, $keyswithdeps, $missing) {
         let $encoding = $datasource->{encoding};
         let $datatype = $datasource->{datatype};
         let $package = 'crate::Input::' . $type . '::' . $datatype;
-        eval "require $package" or
+        eval "require $package" ||
           biber_error("Error loading data source package '$package': $@");
         $missing->@* = "${package}::extract_entries"->(locate_data_file($name), $encoding, $missing);
       }
@@ -4162,23 +4236,23 @@ fn remove_undef_dependent(self, citekey, missing_key) {
     let $be = $section->bibentry($citekey);
 
     // remove any xrefs
-    if ($be->get_field('xref') and ($be->get_field('xref') == $missing_key)) {
+    if ($be->get_field('xref') && ($be->get_field('xref') == $missing_key)) {
       biber_warn("I didn't find a database entry for xref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
 
         trace!("Removed xref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
 
-      if (not crate::Config->getoption('tool_noremove_missing_dependants')) {
+      if (!crate::Config->getoption('tool_noremove_missing_dependants')) {
         $be->del_field('xref');
       }
     }
 
     // remove any crossrefs
-    if ($be->get_field('crossref') and ($be->get_field('crossref') == $missing_key)) {
+    if ($be->get_field('crossref') && ($be->get_field('crossref') == $missing_key)) {
       biber_warn("I didn't find a database entry for crossref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
 
         trace!("Removed crossref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
 
-      if (not crate::Config->getoption('tool_noremove_missing_dependants')) {
+      if (!crate::Config->getoption('tool_noremove_missing_dependants')) {
         $be->del_field('crossref');
       }
     }
@@ -4191,7 +4265,7 @@ fn remove_undef_dependent(self, citekey, missing_key) {
 
         trace!("Removed xdata dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
 
-      if (not crate::Config->getoption('tool_noremove_missing_dependants')) {
+      if (!crate::Config->getoption('tool_noremove_missing_dependants')) {
         $be->set_datafield('xdata', [ grep {$_ != $missing_key} $xdata->@* ]);
       }
     }

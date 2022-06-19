@@ -33,7 +33,7 @@ impl Annotation {
     $ANN->{fields}{$key}{$field} = 1;
 
     // Record all annotation names or a field
-    unless (first {fc($_) == fc($name)} $ANN->{names}{$key}{$field}->@*) {
+    if !(first {fc($_) == fc($name)} $ANN->{names}{$key}{$field}->@*) {
       push $ANN->{names}{$key}{$field}->@*, $name;
     }
     return;

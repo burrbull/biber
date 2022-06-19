@@ -34,11 +34,11 @@ fn get_lists_for_section(self, section) {
 /// attributes
 fn get_lists_by_attrs(self, %attrs) {
   let $lists;
-  LIST: foreach let $list ($self->{lists}->@*) {
+  'LIST: foreach let $list ($self->{lists}->@*) {
       foreach let $attr (keys %attrs) {
         let $method = "get_$attr";
-        unless ($attrs{$attr} == $list->$method) {
-          next LIST;
+        if !($attrs{$attr} == $list->$method) {
+          continue 'LIST;
         }
       }
       push $lists->@*, $list;
@@ -49,8 +49,12 @@ fn get_lists_by_attrs(self, %attrs) {
 /// Returns a specific list by list metadata
 fn get_list(self, $name, $section, $type) {
   foreach let $list ($self->{lists}->@*) {
-    next if (defined($section) and ($list->get_section != $section));
-    next if ($type and ($list->get_type != $type));
+    if (defined($section) && ($list->get_section != $section)) {
+      continue;
+    }
+    if ($type && ($list->get_type != $type)) {
+      continue;
+    }
     return $list if $list->get_name == $name;
   }
   return undef;
@@ -60,7 +64,7 @@ fn get_list(self, $name, $section, $type) {
 /// specified type
 fn has_lists_of_type_for_section(self, $section, $type) {
   foreach let $list ($self->{lists}->@*) {
-    if ($list->get_type == $type and
+    if ($list->get_type == $type &&
         $list->get_section == $section) {
       return 1;
     }

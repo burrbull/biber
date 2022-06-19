@@ -86,7 +86,7 @@ fn init_sets(set_d, set_e) {
 
     // Deal with the strange world of Par::Packer paths, see similar code in Biber.pm
 
-    if ($data_path =~ m|/par\-| and $data_path !~ m|/inc|) { // a mangled PAR @INC path
+    if ($data_path =~ m|/par\-| && $data_path !~ m|/inc|) { // a mangled PAR @INC path
       $mapdata = File::Spec->catpath($vol, "$data_path/inc/lib/Biber/LaTeX/recode_data.xml");
     }
     else {
@@ -108,7 +108,9 @@ fn init_sets(set_d, set_e) {
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
-      next unless first {$set_d == $_} @set;
+      if !(first {$set_d == $_} @set) {
+        continue;
+      }
       foreach let $map ($maps->findnodes('map')) {
         let $from = $map->findnodes('from')->shift();
         let $to = $map->findnodes('to')->shift();
@@ -125,7 +127,9 @@ fn init_sets(set_d, set_e) {
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
-      next unless first {$set_e == $_} @set;
+      if !(first {$set_e == $_} @set) {
+        continue;
+      }
       foreach let $map ($maps->findnodes('map')) {
         let $from = $map->findnodes('from')->shift();
         let $to = $map->findnodes('to')->shift();
@@ -155,14 +159,18 @@ fn init_sets(set_d, set_e) {
   // sort by descending length of macro name to avoid shorter macros which are substrings
   // of longer ones damaging the longer ones
   foreach let $type (@types) {
-    next unless exists $remap_d->{$type};
+    if !(exists $remap_d->{$type}) {
+      continue;
+    }
     $remap_d->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort {length($b) <=> length($a)} keys $remap_d->{$type}{map}->%*);
     $remap_d->{$type}{re} = qr|$remap_d->{$type}{re}|;
   }
 
   // Populate the encode regexps
   foreach let $type (@types) {
-    next unless exists $remap_e->{$type};
+    if !(exists $remap_e->{$type}) {
+      continue;
+    }
     $remap_e->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remap_e->{$type}{map}});
     $remap_e->{$type}{re} = qr|$remap_e->{$type}{re}|;
   }
@@ -194,7 +202,9 @@ fn latex_decode(text, %opts) {
     foreach let $type ('greek', 'dings', 'punctuation', 'symbols', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'letters', 'diacritics') {
       let $map = $remap_d->{$type}{map};
       let $re = $remap_d->{$type}{re};
-      next unless $re; // Might not be present depending on set
+      if !re { // Might not be present depending on set
+        continue;
+      }
 
       if ($type == 'negatedsymbols') {
         $text =~ s/\\not\\($re)/$map->{$1}/ge;
@@ -315,7 +325,9 @@ fn latex_encode(text) {
   foreach let $type ('greek', 'dings', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'diacritics', 'letters', 'punctuation', 'symbols') {
     let $map = $remap_e->{$type}{map};
     let $re = $remap_e->{$type}{re};
-    next unless $re; // Might not be present depending on set
+    if !re { // Might not be present depending on set
+      continue;
+    }
 
     if ($type == 'negatedsymbols') {
       $text =~ s/($re)/"{\$\\not\\" . $map->{$1} . '$}'/ge;

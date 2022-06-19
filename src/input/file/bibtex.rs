@@ -113,16 +113,16 @@ fn extract_entries(filename, encoding, keys) {
   // Maps are applied in order USER->STYLE->DRIVER
   if (defined(crate::Config->getoption('sourcemap'))) {
     // User maps, allow multiple \DeclareSourcemap
-    if (let @m = grep {$_->{datatype} == 'bibtex' and $_->{level} == 'user' } crate::Config->getoption('sourcemap')->@* ) {
+    if (let @m = grep {$_->{datatype} == 'bibtex' && $_->{level} == 'user' } crate::Config->getoption('sourcemap')->@* ) {
       push $smaps->@*, @m;
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
-    if (let @m = grep {$_->{datatype} == 'bibtex' and $_->{level} == 'style' } crate::Config->getoption('sourcemap')->@* ) {
+    if (let @m = grep {$_->{datatype} == 'bibtex' && $_->{level} == 'style' } crate::Config->getoption('sourcemap')->@* ) {
       push $smaps->@*, @m;
     }
     // Driver default maps
-    if (let $m = first {$_->{datatype} == 'bibtex' and $_->{level} == 'driver'} crate::Config->getoption('sourcemap')->@* ) {
+    if (let $m = first {$_->{datatype} == 'bibtex' && $_->{level} == 'driver'} crate::Config->getoption('sourcemap')->@* ) {
       push $smaps->@*, $m;
     }
   }
@@ -138,7 +138,7 @@ fn extract_entries(filename, encoding, keys) {
   // so, if debugging/tracing, output STDERR errors immediately.
   let $tberr;
   let $tberr_name;
-  unless ($logger->is_debug() or $logger->is_trace()) {
+  unless ($logger->is_debug() || $logger->is_trace()) {
     $tberr = File::Temp->new(TEMPLATE => 'biber_Text_BibTeX_STDERR_XXXXX',
                              DIR      => $crate::MASTER->biber_tempdir);
     $tberr_name = $tberr->filename;
@@ -259,7 +259,7 @@ fn extract_entries(filename, encoding, keys) {
     }
   }
 
-  unless ($logger->is_debug() or $logger->is_trace()) {
+  unless ($logger->is_debug() || $logger->is_trace()) {
     open STDERR, '>&', \*OLDERR;
     close OLDERR;
 
@@ -268,7 +268,9 @@ fn extract_entries(filename, encoding, keys) {
     // This is not so bad as they have a clean structure (see error.c in libbtparse)
     open let $tbe, '<', $tberr_name;
     while (<$tbe>) {
-      next if /overriding\sexisting\sdefinition\sof\smacro/; // ignore macro redefs
+      if /overriding\sexisting\sdefinition\sof\smacro/ { // ignore macro redefs
+        continue;
+      }
       if (/error:/) {
         chomp;
         if (/skipping\sto\snext\s"\@"/) {
@@ -288,7 +290,7 @@ fn extract_entries(filename, encoding, keys) {
 
   // Only push the preambles from the file if we haven't seen this data file before
   // and there are some preambles to push
-  if ($cache->{counts}{$filename} < 2 and $cache->{preamble}{$filename}->@*) {
+  if ($cache->{counts}{$filename} < 2 && $cache->{preamble}{$filename}->@*) {
     push $crate::MASTER->{preamble}->@*, $cache->{preamble}{$filename}->@*;
   }
 
@@ -331,21 +333,23 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
         // Skip if this map element specifies a particular refsection and it is not this one
         if (exists($map->{refsection})) {
-          next unless $secnum == $map->{refsection};
+          if $secnum != $map->{refsection} {
+            continue;
+          }
         }
 
         // Check pertype restrictions
         // Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
         // messier to write than Q
-        unless (not exists($map->{per_type}) or
+        if !(!exists($map->{per_type}) ||
                 first {fc($_->{content}) == fc($entry->type)} $map->{per_type}->@*) {
-          next;
+          continue;
         }
 
         // Check negated pertype restrictions
-        if (exists($map->{per_nottype}) and
+        if (exists($map->{per_nottype}) &&
             first {fc($_->{content}) == fc($entry->type)} $map->{per_nottype}->@*) {
-          next;
+          continue;
         }
 
         // Check per_datasource restrictions
@@ -356,9 +360,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
         if (File::Spec->file_name_is_absolute($test_path)) { // kpsewhich returns abs paths
           $test_path = (File::Spec->splitpath($datasource))[2];
         }
-        unless (not exists($map->{per_datasource}) or
+        if !(!exists($map->{per_datasource}) ||
                 first {$_->{content} == $test_path} $map->{per_datasource}->@*) {
-          next;
+          continue;
         }
 
         let $last_type = $entry->type; // defaults to the entrytype unless changed below
@@ -383,7 +387,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           }
         }
 
-      MAP: foreach let $maploop (@maploop) {
+      'MAP: foreach let $maploop (@maploop) {
           let $MAPUNIQVAL;
           // loop over mapping steps
           foreach let $step ($map->{map_step}->@*) {
@@ -402,9 +406,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               $newkey =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
 
               let $newentrytype;
-              unless ($newentrytype = maploopreplace($step->{map_entry_newtype}, $maploop)) {
+              if !($newentrytype = maploopreplace($step->{map_entry_newtype}, $maploop)) {
                 biber_warn("Source mapping (type=$level, key=$key): Missing type for new entry '$newkey', skipping step ...");
-                next;
+                continue;
               }
                 debug!("Source mapping (type={}, key={}): Creating new entry with key '{}'", level, key, newkey);
               let $newentry = Text::BibTeX::Entry->new({binmode => "UTF-8", normalization => 'NFD'});
@@ -470,9 +474,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               // previous map_match
               $etargetkey =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
 
-              unless ($etarget = $newentries{$etargetkey}) {
+              if !($etarget = $newentries{$etargetkey}) {
                 biber_warn("Source mapping (type=$level, key=$key): Dynamically created entry target '$etargetkey' does not exist skipping step ...");
-                next;
+                continue;
               }
             }
             else {           // default is that we operate on the same entry
@@ -487,12 +491,12 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Entry type is '{}' but map wants '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, $etarget->type, typesource);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Entry type is '{}' but map wants '{}', skipping step ...", level, etargetkey, $etarget->type, typesource);
-                  next;
+                  continue;
                 }
               }
               // Change entrytype if requested
@@ -511,12 +515,12 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               if ($etarget->exists($nfieldsource)) {
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Field '{}' exists and step has 'final' set, skipping rest of map ...", level, etargetkey, nfieldsource);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Field '{}' exists, skipping step ...", level, etargetkey, nfieldsource);
-                  next;
+                  continue;
                 }
               }
               $fieldcontinue = 1;
@@ -530,28 +534,28 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // \cite{key} or \nocite{key}
             if ($step->{map_entrykey_citedornocited}) {
-              if (not $section->is_specificcitekey($key)) { // check if NOT \cited{} and NOT \nocited{}
+              if (!$section->is_specificcitekey($key)) { // check if NOT \cited{} and NOT \nocited{}
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...", level, key);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited, skipping step ...", level, key);
-                  next;
+                  continue;
                 }
               }
             }
 
             // \cite{key}
             if ($step->{map_entrykey_cited}) {
-              if (not $section->is_cite($key)) { // check if NOT cited
+              if (!$section->is_cite($key)) { // check if NOT cited
                     debug!("Source mapping (type={}, key={}): Key is not \\cited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Key is not \\cited, skipping step ...", level, key);
-                  next;
+                  continue;
                 }
               }
             }
@@ -559,46 +563,46 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             // \nocite{key}
             if ($step->{map_entrykey_nocited}) {
               // If cited, don't want to do the allkeys_nocite check as this overrides
-              if ($section->is_cite($key) or
-                  (not $section->is_nocite($key) and not $section->is_allkeys_nocite)) {  // check if NOT nocited
+              if ($section->is_cite($key) ||
+                  (!$section->is_nocite($key) && !$section->is_allkeys_nocite)) {  // check if NOT nocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is not \\nocited and step has 'final' set, skipping rest of map ...", level, key);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Key is not \\nocited, skipping step ...", level, key);
-                  next;
+                  continue;
                 }
               }
             }
 
             // \nocite{key} or \nocite{*}
             if ($step->{map_entrykey_allnocited}) {
-              if (not $section->is_allkeys_nocite) {  // check if NOT allnocited
+              if (!$section->is_allkeys_nocite) {  // check if NOT allnocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...", level, key);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed, skipping step ...", level, key);
-                  next;
+                  continue;
                 }
               }
             }
 
             // \nocite{*}
             if ($step->{map_entrykey_starnocited}) {
-              if ($section->is_allkeys_nocite and ($section->is_cite($key) or $section->is_nocite($key))) {  // check if NOT nocited
+              if ($section->is_allkeys_nocite && ($section->is_cite($key) || $section->is_nocite($key))) {  // check if NOT nocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...", level, key);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited, skipping step ...", level, key);
-                  next;
+                  continue;
                 }
               }
             }
@@ -609,17 +613,17 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // key is a pseudo-field. It's guaranteed to exist so
               // just check if that's what's being asked for
-              unless ($fieldsource == 'entrykey' or
+              unless ($fieldsource == 'entrykey' ||
                       $etarget->exists($fieldsource)) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): No field '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, fieldsource);
-                  next MAP;
+                  continue 'MAP;
                 }
                 else {
                   // just ignore this step
                     debug!("Source mapping (type={}, key={}): No field '{}', skipping step ...", level, etargetkey, fieldsource);
-                  next;
+                  continue;
                 }
               }
               $fieldcontinue = 1;
@@ -634,7 +638,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               let $negmatch = 0;
               let $nm;
               // Negated matches are a normal match with a special flag
-              if ($nm = $step->{map_notmatch} or $nm = $step->{map_notmatchi}) {
+              if ($nm = $step->{map_notmatch} || $nm = $step->{map_notmatchi}) {
                 $step->{map_match} = $nm;
                 $negmatch = 1;
               }
@@ -642,7 +646,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               let $caseinsensitive = 0;
               let $mi;
               // Case insensitive matches are a normal match with a special flag
-              if ($mi = $step->{map_matchi} or $mi = $step->{map_notmatchi}) {
+              if ($mi = $step->{map_matchi} || $mi = $step->{map_notmatchi}) {
                 $step->{map_match} = $mi;
                 $caseinsensitive = 1;
               }
@@ -658,13 +662,13 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               if (let $ms = $step->{map_matches}) {
                 let @ms = split(/\s*,\s*/,$ms);
                 let @rs = split(/\s*,\s*/,$step->{map_replace});
-                unless (scalar(@ms) == scalar(@rs)) {
+                if (scalar(@ms) != scalar(@rs)) {
                   debug!("Source mapping (type={}, key={}): Different number of fixed matches vs replaces, skipping ...", level, etargetkey);
-                  next;
+                  continue;
                 }
                 for (let $i = 0; $i <= $#ms; $i++) {
-                  if (($caseinsensitives and fc($last_fieldval) == fc($ms[$i]))
-                      or ($last_fieldval == $ms[$i])) {
+                  if (($caseinsensitives && fc($last_fieldval) == fc($ms[$i]))
+                      || ($last_fieldval == $ms[$i])) {
                     $etarget->set(encode("UTF-8", NFC($fieldsource)), $rs[$i]);
                   }
                 }
@@ -677,7 +681,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   // Can't modify entrykey
                   if ($fieldsource == 'entrykey') {
                       debug!("Source mapping (type={}, key={}): Field '{}' is 'entrykey' - cannot remap the value of this field, skipping ...", level, etargetkey, fieldsource);
-                    next;
+                      continue;
                   }
 
                   let $r = maploopreplace($step->{map_replace}, $maploop);
@@ -696,12 +700,12 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                     // Skip the rest of the map if this step doesn't match and match is final
                     if ($step->{map_final}) {
                         debug!("Source mapping (type={}, key={}): Field '{}' does not match '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, fieldsource, m);
-                      next MAP;
+                      continue 'MAP;
                     }
                     else {
                       // just ignore this step
                         debug!("Source mapping (type={}, key={}): Field '{}' does not match '{}', skipping step ...", level, etargetkey, fieldsource, m);
-                      next;
+                      continue;
                     }
                   }
                 }
@@ -713,7 +717,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 // Can't remap entry key pseudo-field
                 if ($fieldsource == 'entrykey') {
                     debug!("Source mapping (type={}, key={}): Field '{}' is 'entrykey'- cannot map this to a new field as you must have an entrykey, skipping ...", level, etargetkey, fieldsource);
-                  next;
+                    continue;
                 }
 
                 if ($etarget->exists($target)) {
@@ -722,7 +726,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   }
                   else {
                       debug!("Source mapping (type={}, key={}): Field '{}' is mapped to field '{}' but both are defined, skipping ...", level, etargetkey, fieldsource, target);
-                    next;
+                      continue;
                   }
                 }
                 // $target and $fieldsource are already casefolded, which is correct as it
@@ -747,12 +751,12 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                     if ($step->{map_final}) {
                       // map_final is set, ignore and skip rest of step
                         debug!("Source mapping (type={}, key={}): Field '{}' exists, overwrite is not set and step has 'final' set, skipping rest of map ...", level, etargetkey, field);
-                      next MAP;
+                      continue 'MAP;
                     }
                     else {
                       // just ignore this step
                         debug!("Source mapping (type={}, key={}): Field '{}' exists and overwrite is not set, skipping step ...", level, etargetkey, field);
-                      next;
+                      continue;
                     }
                   }
                 }
@@ -760,26 +764,32 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 let $orig = '';
                 // If append or appendstrict is set, keep the original value
                 // and append the new.
-                if ($step->{map_append} or $step->{map_appendstrict}) {
+                if ($step->{map_append} || $step->{map_appendstrict}) {
                   // $field is already casefolded, which is correct as it does not come
                   // from Text::BibTeX's list of fields
                   $orig = $etarget->get(encode("UTF-8", NFC($field))) || '';
                 }
 
                 if ($step->{map_origentrytype}) {
-                  next unless $last_type;
+                  if !last_type {
+                    continue;
+                  }
                     debug!("Source mapping (type={}, key={}): Setting field '{}' to '${orig}${last_type}'", level, etargetkey, field);
                   $etarget->set(encode("UTF-8", NFC($field)),
                                 encode("UTF-8", NFC(appendstrict_check($step, $orig,$last_type))));
                 }
                 else if ($step->{map_origfieldval}) {
-                  next unless $last_fieldval;
+                  if !last_fieldval {
+                    continue;
+                  }
                     debug!("Source mapping (type={}, key={}): Setting field '{}' to '{}{}'", level, etargetkey, field, orig, last_fieldval);
                   $etarget->set(encode("UTF-8", NFC($field)),
                                 encode("UTF-8", NFC(appendstrict_check($step, $orig, $last_fieldval))));
                 }
                 else if ($step->{map_origfield}) {
-                  next unless $last_field;
+                  if !last_field {
+                    continue;
+                  }
                     debug!("Source mapping (type={}, key={}): Setting field '{}' to '{}{}'", level, etargetkey, field, orig, last_field);
                   $etarget->set(encode("UTF-8", NFC($field)),
                                 encode("UTF-8", NFC(appendstrict_check($step, $orig, $last_field))));
@@ -924,14 +934,18 @@ fn _literal(bibentry, entry, field, key) {
   // like date -> year/month/day, don't overwrite them with explicit
   // year/month
   if ($fc == 'year') {
-    return if $bibentry->get_datafield('year');
-    if ($value and not looks_like_number(num($value))) {
+    if $bibentry->get_datafield('year') {
+      return;
+    }
+    if ($value && !looks_like_number(num($value))) {
       biber_warn("legacy year field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
   if ($fc == 'month') {
-    return if $bibentry->get_datafield('month');
-    if ($value and not looks_like_number(num($value))) {
+    if $bibentry->get_datafield('month') {
+      return;
+    }
+    if ($value && !looks_like_number(num($value))) {
       biber_warn("legacy month field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
@@ -949,7 +963,7 @@ fn _literal(bibentry, entry, field, key) {
     let $isbn = Business::ISBN->new($value);
 
     // Ignore invalid ISBNs
-    if (not $isbn or not $isbn->is_valid) {
+    if (!$isbn || not $isbn->is_valid) {
       biber_warn("ISBN '$value' in entry '$key' is invalid - run biber with '--validate_datamodel' for details.");
       return $value;
     }
@@ -977,7 +991,7 @@ fn _literal(bibentry, entry, field, key) {
   // Rationalise any bcp47 style langids into babel/polyglossia names
   // biblatex will convert these back again when loading .lbx files
   // We need this until babel/polyglossia support proper bcp47 language/locales
-  else if ($fc == 'langid' and let $map = $LOCALE_MAP_R{$value}) {
+  else if ($fc == 'langid' && let $map = $LOCALE_MAP_R{$value}) {
     return $map;
   }
   else {
@@ -1089,7 +1103,7 @@ fn _name(bibentry, entry, field, key) {
     if ($bibentry->add_xdata_ref($field, $name, $i)) {
       // Add special xdata ref empty name as placeholder
       $names->add_name(crate::Entry::Name->new(xdata => $name));
-      next;
+      continue;
     }
 
     // per-namelist options
@@ -1103,7 +1117,7 @@ fn _name(bibentry, entry, field, key) {
           let $method = 'set_' . $o->[0];
           $names->$method($o->[1]);
         }
-        next;
+        continue;
       }
     }
 
@@ -1119,17 +1133,19 @@ fn _name(bibentry, entry, field, key) {
 
     // extended name format
     let $xnamesep = crate::Config->getoption('xnamesep');
-    if ($name =~ m/(?:$nps)\s*$xnamesep/ and not crate::Config->getoption('noxname')) {
+    if ($name =~ m/(?:$nps)\s*$xnamesep/ && !crate::Config->getoption('noxname')) {
       // Skip names that don't parse for some reason
       // uniquename defaults to 'false' just in case we are in tool mode otherwise
       // there are spurious uninitialised warnings
 
-      next unless $no = parsename_x($section, $name, $fc, $key);
+      if !($no = parsename_x($section, $name, $fc, $key)) {
+        continue;
+      }
     }
     else { // Normal bibtex name format
       // Check for malformed names in names which aren't completely escaped
       // Too many commas
-      unless ($name =~ m/\A\{\X+\}\z/xms) { // Ignore these tests for escaped names
+      if !($name =~ m/\A\{\X+\}\z/xms) { // Ignore these tests for escaped names
         let @commas = $name =~ m/,/g;
         if ($#commas > 1) {
           biber_error("Name \"$name\" has too many commas, skipping entry '$key'", 1);
@@ -1148,7 +1164,9 @@ fn _name(bibentry, entry, field, key) {
       // Skip names that don't parse for some reason
       // unique name defaults to 0 just in case we are in tool mode otherwise there are spurious
       // uninitialised warnings
-      next unless $no = parsename($section, $name, $fc);
+      if !($no = parsename($section, $name, $fc)) {
+        continue;
+      }
     }
 
     // Deal with implied "et al" in data source
@@ -1187,15 +1205,15 @@ fn _datetime(bibentry, entry, field, key) {
       $bibentry->set_field("${datetype}datesplit", 1);
 
       // Some warnings for overwriting YEAR and MONTH from DATE
-      if ($sdate->year and
-          ($datetype . 'year' == 'year') and
-          $entry->get('year') and
+      if ($sdate->year &&
+          ($datetype . 'year' == 'year') &&
+          $entry->get('year') &&
           $sdate->year != $entry->get('year')) {
         biber_warn("Overwriting field 'year' with year value from field 'date' for entry '$key'", $bibentry);
       }
-      if (not $CONFIG_DATE_PARSERS{start}->missing('month') and
-          ($datetype . 'month' == 'month') and
-          $entry->get('month') and
+      if (!$CONFIG_DATE_PARSERS{start}->missing('month') &&
+          ($datetype . 'month' == 'month') &&
+          $entry->get('month') &&
           $sdate->month != $entry->get('month')) {
         biber_warn("Overwriting field 'month' with month value from field 'date' for entry '$key'", $bibentry);
       }
@@ -1341,18 +1359,16 @@ fn _urilist(bibentry, entry, field) {
                                      undef,
                                      undef,
                                      {binmode => "UTF-8", normalization => 'NFD'});
-  let @result;
+  let result = Vec::new();
 
-  for (let $i = 0; $i <= $#tmp; $i++) {
-    let $e = $tmp[$i];
-
+  for (i, e) in tmp.iter().enumerate() {
     // Record any XDATA and skip if we did
-    $bibentry->add_xdata_ref($field, $e, $i);
+    bibentry.add_xdata_ref(field, e, i);
 
-    push @result, $e;
+    result.push(e);
   }
 
-  return [ @result ];
+  return result;
 
 }
 
@@ -1369,7 +1385,7 @@ fn cache_data(filename, encoding) {
   let $pfilename = preprocess_file($filename, $encoding);
 
   let $bib = Text::BibTeX::File->new();
-  $bib->open($pfilename, {binmode => "UTF-8", normalization => 'NFD'}) or biber_error("Cannot create Text::BibTeX::File object from $pfilename: $!");
+  $bib->open($pfilename, {binmode => "UTF-8", normalization => 'NFD'}) || biber_error("Cannot create Text::BibTeX::File object from $pfilename: $!");
 
   // Log that we found a data file
   info!("Found BibTeX data source '{}'", filename);
@@ -1377,16 +1393,16 @@ fn cache_data(filename, encoding) {
   while ( let $entry = Text::BibTeX::Entry->new($bib) ) {
     if ( $entry->metatype == BTE_PREAMBLE ) {
       push $cache->{preamble}{$filename}->@*, $entry->value;
-      next;
+      continue;
     }
 
     // Save comments for output in tool mode unless comment stripping is requested
     if ( $entry->metatype == BTE_COMMENT ) {
-      if (crate::Config->getoption('tool') and not
-          crate::Config->getoption('strip_comments') ) {
+      if (crate::Config->getoption('tool') &&
+          !crate::Config->getoption('strip_comments') ) {
         push $cache->{comments}{$filename}->@*, process_comment($entry->value);
       }
-      next;
+      continue;
     }
 
     // Record macros in T::B so we can output then properly in tool mode
@@ -1394,16 +1410,18 @@ fn cache_data(filename, encoding) {
       foreach let $f ($entry->fieldlist) {
         $RSTRINGS{$entry->get($f)} = $f;
       }
-      next;
+      continue;
     }
 
     // Ignore misc BibTeX entry types we don't care about
-    next if ( $entry->metatype == BTE_UNKNOWN );
+    if ( $entry->metatype == BTE_UNKNOWN ) {
+      continue;
+    }
 
     // If an entry has no key, ignore it and warn
-    unless ($entry->key) {
+    if !($entry->key) {
       biber_warn("Invalid or undefined BibTeX entry key in file '$pfilename', skipping ...");
-      next;
+      continue;
     }
 
     // Text::BibTeX >= 0.46 passes through all citekey bits, thus allowing UTF-8 keys
@@ -1428,13 +1446,13 @@ fn cache_data(filename, encoding) {
         // Skip aliases which are this very key (deep recursion ...)
         if ($id == $key) {
           biber_warn("BAD RECURSION! Entry alias '$id' is identical to the entry key, skipping ...");
-          next;
+          continue;
         }
 
         // Skip aliases which are also real entry keys
         if ($section->has_everykey($id)) {
           biber_warn("Entry alias '$id' is also a real entry key, skipping ...");
-          next;
+          continue;
         }
 
         // Warn on conflicting aliases
@@ -1459,9 +1477,9 @@ fn cache_data(filename, encoding) {
 
     // If we've already seen this key in a datasource, ignore it and warn unless user wants
     // duplicates
-    if ($section->has_everykey($key) and not crate::Config->getoption('noskipduplicates')) {
+    if ($section->has_everykey($key) && !crate::Config->getoption('noskipduplicates')) {
       biber_warn("Duplicate entry key: '$key' in file '$filename', skipping ...");
-      next;
+      continue;
     }
     else {
       if ($section->has_everykey($key)) {
@@ -1471,9 +1489,9 @@ fn cache_data(filename, encoding) {
     }
 
     // Bad entry
-    unless ($entry->parse_ok) {
+    if !($entry->parse_ok) {
       biber_warn("Entry $key does not parse correctly");
-      next;
+      continue;
     }
 
     // Cache the entry so we don't have to read the file again on next pass.
@@ -1546,7 +1564,7 @@ fn parse_decode(ufilename) {
   let $lbuf;
 
   let $bib = Text::BibTeX::File->new();
-  $bib->open($ufilename, {binmode => "UTF-8", normalization => 'NFD'}) or biber_error("Cannot create Text::BibTeX::File object from $ufilename: $!");
+  $bib->open($ufilename, {binmode => "UTF-8", normalization => 'NFD'}) || biber_error("Cannot create Text::BibTeX::File object from $ufilename: $!");
 
   info!("LaTeX decoding ...");
 
@@ -1557,7 +1575,7 @@ fn parse_decode(ufilename) {
         let $fv = $entry->get(encode("UTF-8", NFC($f))); // NFC boundary: $f is "output" to Text::BibTeX
 
         // Don't decode verbatim fields
-        if (not first {fc($f) == fc($_)} $dmh->{verbs}->@*) {
+        if (!first {fc($f) == fc($_)} $dmh->{verbs}->@*) {
           $fv = crate::LaTeX::Recode::latex_decode($fv);
         }
         $lbuf .= "  $f = {$fv},\n";
@@ -1722,12 +1740,12 @@ fn parsename_x(section, namestr, fieldname, key) {
       foreach let $o ($oo->@*) {
         $pernameopts{$o->[0]} = $o->[1];
       }
-      next;
+      continue;
     }
 
-    unless ($nps{$npn =~ s/-i$//r}) {
+    if !($nps{$npn =~ s/-i$//r}) {
       biber_warn("Invalid namepart '$npn' found in extended name format name '$fieldname' in entry '$key', ignoring");
-      next;
+      continue;
     }
 
     if ($npn =~ m/-i$/) {
@@ -1759,7 +1777,7 @@ fn parsename_x(section, namestr, fieldname, key) {
       $part = strip_noinit($part);
 
       // Generate any initials which are missing
-      if (not exists($namec{"${np}-i"})) {
+      if (!exists($namec{"${np}-i"})) {
         $namec{"${np}-i"} = [gen_initials(split(/[\s~]+/, $part))];
       }
     }

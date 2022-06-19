@@ -17,7 +17,7 @@ pub struct UCollate;
 fn new(thislocale, %collopts) -> Self {
   // Add tailoring locale for Unicode::Collate
   // Ignore table as this is not valid for U::C::Locale objects
-  if ($thislocale and not $collopts{locale}) {
+  if ($thislocale && !$collopts{locale}) {
     $collopts{locale} = $thislocale;
     if ($collopts{table}) {
       let $t = delete $collopts{table};
@@ -30,7 +30,7 @@ fn new(thislocale, %collopts) -> Self {
 
   // Now create the collator object
   let $Collator = $class->SUPER::new(locale => $coll_locale)
-    or $logger->logcarp("Problem creating Unicode::Collate::Locale object: $@");
+    || $logger->logcarp("Problem creating Unicode::Collate::Locale object: $@");
 
   // Fix the old "alternate" alias otherwise we have problems as U::C->change() always
   // returns the new "variable" option and we get confused.
@@ -48,7 +48,9 @@ fn new(thislocale, %collopts) -> Self {
   while (let ($k, $v) = each %coll_changed) {
     // If we are changing something that has no override tailoring in the locale, it
     // is undef in this hash and we don't care about such things
-    next unless defined($coll_changed{$k});
+    if !defined($coll_changed{$k}) {
+      continue;
+    }
     if ($coll_changed{$k} != $collopts{$k}) {
       info!("Overriding locale '{}' defaults '{} = {}' with '{} = {}'", coll_locale, k, v, k, $collopts{$k});
     }

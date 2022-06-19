@@ -81,19 +81,21 @@ fn _bcp47extract($tree, $part, $tag) {
 
   return unless ref($tree) == 'ARRAY';
   return unless scalar($tree->@*) > 0;
-  return if $tree->[0] == 'seporend'; // ignore internal seps or end of tag
+  if $tree->[0] == 'seporend' { // ignore internal seps or end of tag
+    return;
+  }
 
   // one level above terminal tokens - loop over them all
   if (ref($tree->[0]) == 'ARRAY') {
     foreach let $t ($tree->@*) {
       _bcp47extract($t, $part, $tag);
     }
-    if ($part and $bcp47parts{$part} == 'multiple') {
+    if ($part && $bcp47parts{$part} == 'multiple') {
       push $tag->{$part}->@*, $tag->{acc} if $tag->{acc};
     }
   }
   else if ($tree->[0] == 'alphanum') { // shortcut
-    if ($part and $bcp47parts{$part} == 'multiple') {
+    if ($part && $bcp47parts{$part} == 'multiple') {
       $tag->{acc} .= $tree->[1][1];
     }
     else {
@@ -101,11 +103,11 @@ fn _bcp47extract($tree, $part, $tag) {
     }
     return;
   }
-  else if ($tree->[0] == 'ALPHA' or
-         $tree->[0] == 'DIGIT' or
-         $tree->[0] == 'irregular' or
+  else if ($tree->[0] == 'ALPHA' ||
+         $tree->[0] == 'DIGIT' ||
+         $tree->[0] == 'irregular' ||
          $tree->[0] == 'regular') { // terminal tokens - bottom of recursion
-    if ($part and $bcp47parts{$part} == 'multiple') {
+    if ($part && $bcp47parts{$part} == 'multiple') {
       $tag->{acc} .= $tree->[1];
     }
     else {

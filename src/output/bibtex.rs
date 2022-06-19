@@ -131,7 +131,7 @@ fn set_output_entry(
       unless (crate::Config->getoption('output_resolve_xdata')) { // already resolved
         if (let $xdata = $names->get_xdata) {
           $acc{$outmap->($namefield)} = xdatarefout($xdata);
-          next;
+          continue;
         }
       }
 
@@ -155,7 +155,7 @@ fn set_output_entry(
         unless (crate::Config->getoption('output_resolve_xdata')) {
           if (let $xdata = $name->get_xdata) {
             push @namelist, xdatarefout($xdata);
-            next;
+            continue;
           }
         }
 
@@ -197,13 +197,15 @@ fn set_output_entry(
   // Date fields
   foreach let $d ($dmh->{datefields}->@*) {
     $d =~ s/date$//;
-    next unless $be->get_field("${d}year");
+    if !($be->get_field("${d}year")) {
+      continue;
+    }
 
     // Output legacy dates for YEAR/MONTH if requested
-    if (not $d and crate::Config->getoption('output_legacy_dates')) {
+    if (!$d && crate::Config->getoption('output_legacy_dates')) {
       if (let $val = $be->get_field('year')) {
-        if (not $be->get_field('day') and
-            not $be->get_field('endyear')) {
+        if (!$be->get_field('day') &&
+            !$be->get_field('endyear')) {
           $acc{$outmap->('year')} = $val;
           if (let $mval = $be->get_field('month')) {
             if (crate::Config->getoption('nostdmacros')) {
@@ -214,7 +216,7 @@ fn set_output_entry(
               $acc{$outmap->('month')} = $RMONTHS{$mval};
             }
           }
-          next;
+          continue;
         }
         else {
           biber_warn("Date in entry '$key' has DAY or ENDYEAR, cannot be output in legacy format.");
@@ -253,10 +255,12 @@ fn set_output_entry(
   foreach let $field ($dmh->{xsv}->@*) {
     // keywords is by default field/xsv/keyword but it is in fact
     // output with its own special macro below
-    next if $field == 'keywords';
+    if $field == 'keywords' {
+      continue;
+    }
     if (let $f = $be->get_field($field)) {
       let $fl = join(',', $f->@*);
-      unless (crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption('output_resolve_xdata')) {
         let $xd = xdatarefcheck($fl);
         $fl = $xd.unwrap_or($fl);
       }
@@ -320,8 +324,8 @@ fn set_output_entry(
 
 
   foreach let $field (split(/\s*,\s*/, crate::Config->getoption('output_field_order'))) {
-    if ($field == 'names' or
-        $field == 'lists' or
+    if ($field == 'names' ||
+        $field == 'lists' ||
         $field == 'dates') {
       let @donefields;
       foreach let $key (sort keys %acc) {
@@ -444,7 +448,7 @@ fn create_output_section(self) {
   // We rely on the order of this array for the order of the .bib
   foreach let $k ($section->get_citekeys) {
     // Regular entry
-    let $be = $section->bibentry($k) or biber_error("Cannot find entry with key '$k' to output");
+    let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
     $self->set_output_entry($be, $section, crate::Config->get_dm);
   }
 
@@ -651,7 +655,7 @@ fn construct_datetime(be, d) {
     }
 
     // Uncertain and approximate start date
-    if ($be->get_field("${d}dateuncertain") and
+    if ($be->get_field("${d}dateuncertain") &&
         $be->get_field("${d}dateapproximate")) {
       $datestring .= '%';
     }
@@ -707,7 +711,7 @@ fn construct_datetime(be, d) {
       }
 
       // Uncertain and approximate end date
-      if ($be->get_field("${d}enddateuncertain") and
+      if ($be->get_field("${d}enddateuncertain") &&
           $be->get_field("${d}enddateapproximate")) {
         $datestring .= '%';
       }

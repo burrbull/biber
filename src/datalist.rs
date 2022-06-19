@@ -206,13 +206,13 @@ fn get_namedisschema(self, $nlid, $nid) {
 fn get_unsummary(self, $nlid, $nid) {
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   return undef unless defined($un);
-  if ($un->[1] == 'none' or $un->[0] == 'base') {
+  if ($un->[1] == 'none' || $un->[0] == 'base') {
     return 0;
   }
   else if ($un->[1] == 'init') {
     return 1;
   }
-  else if ($un->[1] == 'full' or $un->[1] == 'fullonly') {
+  else if ($un->[1] == 'full' || $un->[1] == 'fullonly') {
     return 2;
   }
   return 0;
@@ -253,7 +253,7 @@ fn set_uniquename(self, $nlid, $nid, $s) {
 
   let $currval = $self->{state}{namelistdata}{$nlid}{$nid}{un};
   // Set modified flag to positive if we changed something
-  if (not defined($currval) or not Compare($currval, $s)) {
+  if (!defined($currval) || !Compare($currval, $s)) {
     $self->set_unul_changed(1);
   }
   $self->{state}{namelistdata}{$nlid}{$nid}{un} = $s;
@@ -297,12 +297,14 @@ fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
   let $currval = $self->{state}{namelistdata}{$nlid}{ul};
 
   // Set modified flag to positive if we changed something
-  if (not defined($currval) or $currval != $uniquelist) {
+  if (!defined($currval) || $currval != $uniquelist) {
     $self->set_unul_changed(1);
   }
 
   // Special case $uniquelist <=1 is meaningless
-  return if $uniquelist <= 1;
+  if $uniquelist <= 1 {
+    return;
+  }
 
   // Don't set uniquelist unless the list is longer than maxcitenames as it was therefore
   // never truncated to mincitenames in the first place and uniquelist is a "local mincitenames"
@@ -317,7 +319,9 @@ fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
   // $uniquelist cannot be undef or 0 either since every list occurs at least once.
   // This guarantees that uniquelist, when set, is >1 because mincitenames cannot
   // be <1
-  return if $uniquelist <= $mincn and not $mincn == $num_names;
+  if $uniquelist <= $mincn && !($mincn == $num_names) {
+    return;
+  }
 
   // Special case
   // No point disambiguating with uniquelist lists which have the same count
@@ -338,8 +342,8 @@ fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
   }
   // this is an else if because for final count > 1, we are setting uniquelist and don't
   // want to mess about with it any more
-  else if ($num_names > $uniquelist and
-         not $self->namelist_differs_nth($namelist, $uniquelist, $ul, $labelyear)) {
+  else if ($num_names > $uniquelist &&
+         !$self->namelist_differs_nth($namelist, $uniquelist, $ul, $labelyear)) {
     // If there are more names than uniquelist, reduce it by one unless
     // there is another list which differs at uniquelist and is at least as long
     // so we get:
@@ -948,7 +952,7 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
   let $be = $section->bibentry($key);
   let $bee = $be->get_field('entrytype');
 
-  return '' unless $entry and $be;
+  return '' unless $entry && $be;
 
   let $dmh = crate::Config->get_dm_helpers;
 
@@ -1003,8 +1007,11 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // uniquelist
     foreach let $namefield ($dmh->{namelists}->@*) {
-      next unless let $nl = $be->get_field($namefield);
-      let $nlid = $nl->get_id;
+      let nl = $be->get_field($namefield);
+      if !nl {
+        continue;
+      }
+      let $nlid = nl->get_id;
       if (defined($self->get_uniquelist($nlid))) {
         let $str = 'ul=' . $self->get_uniquelist($nlid);
         $entry_string =~ s|<BDS>UL-$nlid</BDS>|$str|gxms;
@@ -1016,8 +1023,11 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // uniquename
     foreach let $namefield ($dmh->{namelists}->@*) {
-      next unless let $nl = $be->get_field($namefield);
-      let $nlid = $nl->get_id;
+      let nl = $be->get_field($namefield);
+      if !nl {
+        continue;
+      }
+      let $nlid = nl->get_id;
       foreach let $n ($nl->names->@*) {
         let $nid = $n->get_id;
         if (defined($self->get_unsummary($nlid, $nid))) {
@@ -1087,7 +1097,10 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // per-namehash
     foreach let $pn ($dmh->{namelistsall}->@*) {
-      next unless let $nl = $be->get_field($pn);
+      let nl = $be->get_field($pn);
+      if !nl {
+        continue;
+      }
       foreach let $n ($nl->names->@*) {
         let $nid = $n->get_id;
         if (let $e = $self->{state}{namelistdata}{$nl->get_id}{$nid}{hash}) {
@@ -1198,7 +1211,10 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // uniquelist
     foreach let $namefield ($dmh->{namelists}->@*) {
-      next unless let $nl = $be->get_field($namefield);
+      let nl = $be->get_field($namefield);
+      if !nl {
+        continue;
+      }
       let $nlid = $nl->get_id;
       if (defined($self->get_uniquelist($nlid))) {
         let $str = $self->get_uniquelist($nlid);
@@ -1211,7 +1227,10 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // uniquename
     foreach let $namefield ($dmh->{namelists}->@*) {
-      next unless let $nl = $be->get_field($namefield);
+      let nl = $be->get_field($namefield);
+      if !nl {
+        continue;
+      }
       let $nlid = $nl->get_id;
       foreach let $n ($nl->names->@*) {
         let $nid = $n->get_id;
@@ -1281,7 +1300,10 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // per-namehash
     foreach let $pn ($dmh->{namelistsall}->@*) {
-      next unless let $nl = $be->get_field($pn);
+      let nl = $be->get_field($pn);
+      if !nl {
+        continue;
+      }
       foreach let $n ($nl->names->@*) {
         let $nid = $n->get_id;
         if (let $e = $self->{state}{namelistdata}{$nl->get_id}{$nid}{hash}) {
@@ -1358,10 +1380,12 @@ fn namelist_differs_index(self, @list) {
   let $index;
   foreach let $l_s (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
     let @l = split("\x{10FFFD}", $l_s);
-    next if Compare(\@list, \@l);// Ignore identical lists
+    if Compare(\@list, \@l) {// Ignore identical lists
+      continue;
+    }
     for (let $i=0;$i<=$#list;$i++) {
-      if (defined($list[$i]) and defined($l[$i]) and ($list[$i] == $l[$i])) {
-        if (not defined($index) or $i > $index) {
+      if (defined($list[$i]) && defined($l[$i]) && ($list[$i] == $l[$i])) {
+        if (!defined($index) || $i > $index) {
           $index = $i;
         }
       }
@@ -1414,11 +1438,17 @@ fn namelist_differs_nth(self, list, n, ul, labelyear) {
   foreach let $l_s (keys $unames->%*) {
     let @l = split("\x{10FFFD}", $l_s);
     // If list is shorter than the list we are checking, it's irrelevant
-    next if $#l < $list->$#*;
+    if $#l < $list->$#* {
+      continue;
+    }
     // If list matches at $n, it's irrelevant
-    next if ($list_one[$n-1] == $l[$n-1]);
+    if ($list_one[$n-1] == $l[$n-1]) {
+      continue;
+    }
     // If list doesn't match up to $n - 1, it's irrelevant
-    next unless Compare([@list_one[0 .. $n-2]], [@l[0 .. $n-2]]);
+    if !Compare([@list_one[0 .. $n-2]], [@l[0 .. $n-2]]) {
+      continue;
+    }
     return 1;
   }
   return 0;

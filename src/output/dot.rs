@@ -126,7 +126,9 @@ fn output(self) {
           $graph .= $i x $in . "fillcolor=\"#e3dadc\";\n";
           $graph .= "\n";
         }
-        next if $sets->{settomem}{$citekey}; // Don't make normal nodes for sets
+        if $sets->{settomem}{$citekey} { // Don't make normal nodes for sets
+          continue;
+        }
       }
 
       // Citekey aliases
@@ -213,8 +215,12 @@ fn _graph_related(secnum) {
     foreach let $f_entry (sort keys $gr->{clonetotarget}->%*) {
       let $m = $gr->{clonetotarget}{$f_entry};
       foreach let $t_entry (sort keys $m->%*) {
-        next unless $state->{$secnum}{"${secnum}/${f_entry}"};
-        next unless $state->{$secnum}{"${secnum}/${t_entry}"};
+        if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
+          continue;
+        }
+        if !($state->{$secnum}{"${secnum}/${t_entry}"}) {
+          continue;
+        }
 
         if ($gopts->{field}) { // links between clusters
           let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
@@ -231,8 +237,12 @@ fn _graph_related(secnum) {
     foreach let $f_entry (sort keys $gr->{reltoclone}->%*) {
       let $m = $gr->{reltoclone}{$f_entry};
       foreach let $t_entry (sort keys $m->%*) {
-        next unless $state->{$secnum}{"${secnum}/${f_entry}"};
-        next unless $state->{$secnum}{"${secnum}/${t_entry}"};
+        if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
+          continue;
+        }
+        if !($state->{$secnum}{"${secnum}/${t_entry}"}) {
+          continue;
+        }
 
         if ($gopts->{field}) { // links between clusters
           let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
@@ -252,8 +262,12 @@ fn _graph_xref(secnum) {
   if (let $gr = crate::Config->get_graph('xref')) {
     foreach let $f_entry (sort keys $gr->%*) {
       let $t_entry = $gr->{$f_entry};
-      next unless $state->{$secnum}{"${secnum}/${f_entry}"};
-      next unless $state->{$secnum}{"${secnum}/${t_entry}"};
+      if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
+        continue;
+      }
+      if !($state->{$secnum}{"${secnum}/${t_entry}"}) {
+        continue;
+      }
 
       if ($gopts->{field}) { // links between clusters
         let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
@@ -287,8 +301,12 @@ fn _graph_inheritance(type, secnum) {
           let $w = $v->{$f_field};
           foreach let $t_entry (sort keys $w->%*) {
             foreach let $t_field ($w->{$t_entry}->@*) {
-              next unless $state->{$secnum}{"${secnum}/${f_entry}"};
-              next unless $state->{$secnum}{"${secnum}/${t_entry}"};
+              if !$state->{$secnum}{"${secnum}/${f_entry}"} {
+                continue;
+              }
+              if !$state->{$secnum}{"${secnum}/${t_entry}"} {
+                continue;
+              }
               $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . uc($t_field) . " inherited via " . uc($type) . " from ${f_entry}/" . uc($f_field) . "\" ]\n";
             }
           }
@@ -301,9 +319,15 @@ fn _graph_inheritance(type, secnum) {
         let $v = $gr->{$f_entry};
         foreach let $w (sort values $v->%*) {
           foreach let $t_entry (sort keys $w->%*) {
-            next unless $state->{$secnum}{"${secnum}/${f_entry}"};
-            next unless $state->{$secnum}{"${secnum}/${t_entry}"};
-            next if $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"};
+            if !$state->{$secnum}{"${secnum}/${f_entry}"} {
+              continue;
+            }
+            if !$state->{$secnum}{"${secnum}/${t_entry}"} {
+              continue;
+            }
+            if $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"} {
+              continue;
+            }
             $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry} inherits via $type from ${f_entry}\" ]\n";
             $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"} = 1;
           }

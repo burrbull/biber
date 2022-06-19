@@ -14,7 +14,7 @@ pub struct Base;
 /// Initialize a crate::Output::base object
 fn new(obj) -> Self {
   let $self;
-  if (defined($obj) and ref($obj) == 'HASH') {
+  if (defined($obj) && ref($obj) == 'HASH') {
     $self = bless $obj, $class;
   }
   else {
@@ -142,8 +142,8 @@ fn clear_output_comments(self) {
 fn get_output_entry(self, $key, $list, $secnum) {
 
   // defaults - mainly for tests
-  if (not defined($secnum)) {
-    if (crate::Config->getoption('tool') or
+  if (!defined($secnum)) {
+    if (crate::Config->getoption('tool') ||
         crate::Config->getoption('output_format') == 'bibtex') {
       $secnum = 99999;
     }
@@ -204,7 +204,7 @@ fn create_output_section(self) {
   // We rely on the order of this array for the order of the ouput
   foreach let $k ($section->get_citekeys) {
     // Regular entry
-    let $be = $section->bibentry($k) or biber_error("Cannot find entry with key '$k' to output");
+    let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
     $self->set_output_entry($be, $section, crate::Config->get_dm);
   }
 

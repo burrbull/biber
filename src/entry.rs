@@ -31,7 +31,7 @@ pub struct Entry;
 /// copy/clone.
 fn new(obj) -> Self {
   let $self;
-  if (defined($obj) and ref($obj) == 'HASH') {
+  if (defined($obj) && ref($obj) == 'HASH') {
     $self = bless $obj, $class;
   }
   else {
@@ -364,7 +364,7 @@ fn field_exists(self, $key) {
 fn date_fields_exist(self, $field) {
   let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
   foreach let $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'yeardivision', 'timezone') {
-    if (exists($self->{datafields}{"$t$dp"}) or exists($self->{datafields}{"${t}end$dp"})) {
+    if (exists($self->{datafields}{"$t$dp"}) || exists($self->{datafields}{"${t}end$dp"})) {
       return 1;
     }
   }
@@ -450,13 +450,17 @@ fn set_inherit_from(self, $parent) {
 
   // Data source fields
   foreach let $field ($parent->datafields) {
-    next if $self->field_exists($field); // Don't overwrite existing fields
+    if $self->field_exists($field) { // Don't overwrite existing fields
+      continue;
+    }
 
     // Annotations are allowed for set parents themselves so never inherit these.
     // This can't be suppressed at .bbl writing as it is impossible to know there
     // whether the field came from the parent or first child because inheritance
     // is a low-level operation on datafields
-    next if fc($field) == fc('annotation');
+    if fc($field) == fc('annotation') {
+      continue;
+    }
 
     $self->set_datafield($field, $parent->get_field($field));
   }
@@ -514,13 +518,13 @@ fn resolve_xdata(self, $xdata) {
       unless (let $xdataentry = $section->bibentry($xdref)) {
         biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
         $xdatum->{resolved} = 0;
-        next;
+        continue;
       }
       else {
         unless ($xdataentry->get_field('entrytype') == 'xdata') {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
           $xdatum->{resolved} = 0;
-          next;
+          continue;
         }
 
         // record the XDATA resolve between these entries to prevent loops
@@ -532,9 +536,11 @@ fn resolve_xdata(self, $xdata) {
           }
 
           // Whole entry XDATA reference so inherit all fields
-          if (not defined($xdatum->{xdatafield})) {
+          if (!defined($xdatum->{xdatafield})) {
             foreach let $field ($xdataentry->datafields()) { // set fields
-              next if $field == 'ids'; // Never inherit aliases
+              if $field == 'ids' { // Never inherit aliases
+                continue;
+              }
               $self->set_datafield($field, $xdataentry->get_field($field));
 
               // Record graphing information if required
@@ -552,17 +558,17 @@ fn resolve_xdata(self, $xdata) {
             let $reffielddm = $dm->get_dm_for_field($reffield);
             let $xdatafielddm = $dm->get_dm_for_field($xdatafield);
 
-            unless ($reffielddm->{fieldtype} == $xdatafielddm->{fieldtype} and
+            unless ($reffielddm->{fieldtype} == $xdatafielddm->{fieldtype} &&
                     $reffielddm->{datatype} == $xdatafielddm->{datatype}) {
               biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
               $xdatum->{resolved} = 0;
-              next;
+              continue;
             }
 
             unless ($xdataentry->get_field($xdatafield)) {
               biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
               $xdatum->{resolved} = 0;
-              next;
+              continue;
             }
 
             // Name lists
@@ -577,7 +583,7 @@ fn resolve_xdata(self, $xdata) {
                 unless ($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
                   biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                   $xdatum->{resolved} = 0;
-                  next;
+                  continue;
                 }
 
                 $self->get_field($reffield)->replace_name($xdataentry->get_field($xdatafield)->nth_name($xdataposition), $refposition);
@@ -597,7 +603,7 @@ fn resolve_xdata(self, $xdata) {
                 unless ($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
                   biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                   $xdatum->{resolved} = 0;
-                  next;
+                  continue;
                 }
                 $self->get_field($reffield)->[$refposition-1] =
                   $xdataentry->get_field($xdatafield)->[$refposition-1];
@@ -665,8 +671,8 @@ fn inherit_from(self, $parent) {
 
   // override with type_pair specific defaults if they exist ...
   foreach let $type_pair ($defaults->{type_pair}->@*) {
-    if (($type_pair->{source} == '*' or $type_pair->{source} == $parenttype) and
-        ($type_pair->{target} == '*' or $type_pair->{target} == $type)) {
+    if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
+        ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
       $inherit_all = $type_pair->{inherit_all} if $type_pair->{inherit_all};
       $override_target = $type_pair->{override_target} if $type_pair->{override_target};
       $dignore = $type_pair->{ignore} if defined($type_pair->{ignore});
@@ -677,17 +683,19 @@ fn inherit_from(self, $parent) {
   foreach let $inherit ($inheritance->{inherit}->@*) {
     // Match for this combination of entry and crossref parent?
     foreach let $type_pair ($inherit->{type_pair}->@*) {
-      if (($type_pair->{source} == '*' or $type_pair->{source} == $parenttype) and
-          ($type_pair->{target} == '*' or $type_pair->{target} == $type)) {
+      if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
+          ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
         foreach let $field ($inherit->{field}->@*) {
           // Skip for fields in the per-entry noinerit datafield set
-          if (let $niset = crate::Config->getblxoption($secnum, 'noinherit', undef, $target_key) and
+          if (let $niset = crate::Config->getblxoption($secnum, 'noinherit', undef, $target_key) &&
              exists($field->{target})) {
             if (first {$field->{target} == $_} $DATAFIELD_SETS{$niset}->@*) {
-              next;
+              continue;
             }
           }
-          next unless $parent->field_exists($field->{source});
+          if !($parent->field_exists($field->{source})) {
+            continue;
+          }
           $processed{$field->{source}} = 1;
           // localise defaults according to field, if specified
           let $field_override_target = $field->{override_target}.unwrap_or("false");
@@ -696,7 +704,7 @@ fn inherit_from(self, $parent) {
             $processed{$field->{source}} = 1;
           }
           // Set the field if it doesn't exist or override is requested
-          else if (not $self->field_exists($field->{target}) or
+          else if (!$self->field_exists($field->{target}) ||
                  $field_override_target == 'true') {
               debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, $field->{source}, $field->{target}, source_key);
 
@@ -736,14 +744,14 @@ fn inherit_from(self, $parent) {
     let @removed_fields;
     foreach let $field (@fields) {
       if (first {$_ == $field} $dmh->{dateparts}->@*) {
-        if ($parent->get_field('datesplit') and $self->get_field('datesplit')) {
+        if ($parent->get_field('datesplit') && $self->get_field('datesplit')) {
           if ($self->date_fields_exist($field)) {
             if ($override_target == 'true') {
               $self->delete_date_fields($field); // clear out all date field parts in target
             }
             else {
               push @removed_fields, $field;
-              next;
+              continue;
             }
           }
         }
@@ -757,7 +765,9 @@ fn inherit_from(self, $parent) {
       let $df = $datefield =~ s/date$//r;
       // Ignore derived date special fields from date fields which we have skipped
       // because they already exist in the child.
-      next if first {$_ == $datefield} @removed_fields;
+      if first {$_ == $datefield} @removed_fields {
+        continue;
+      }
       foreach let $dsf ('dateunspecified', 'datesplit', 'datejulian',
                        'enddatejulian', 'dateapproximate', 'enddateapproximate',
                        'dateuncertain', 'enddateuncertain', 'yeardivision', 'endyeardivision',
@@ -774,13 +784,15 @@ fn inherit_from(self, $parent) {
       // Skip for fields in the per-entry noinherit datafield set
       if (let $niset = crate::Config->getblxoption($secnum, 'noinherit', undef, $target_key)) {
         if (first {$field == $_} $DATAFIELD_SETS{$niset}->@*) {
-          next;
+          continue;
         }
       }
-      next if $processed{$field}; // Skip if we have already dealt with this field above
+      if $processed{$field} { // Skip if we have already dealt with this field above
+        continue;
+      }
 
       // Set the field if it doesn't exist or override is requested
-      if (not $self->field_exists($field) or $override_target == 'true') {
+      if (!$self->field_exists($field) || $override_target == 'true') {
           debug!("Entry '{}' is inheriting field '{}' from entry '{}'", target_key, field, source_key);
 
         $self->set_datafield($field, $parent->get_field($field));

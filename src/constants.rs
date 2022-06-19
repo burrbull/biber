@@ -113,83 +113,72 @@ our %DATAFIELD_SETS = ();
 
 // datatypes for data model validation
 our %DM_DATATYPES = (
-                     integer => fn(v) {
-                       return 1 if looks_like_number(num($v =~ s/^-//r));
-                       return 0;
+                     integer => fn(v) -> bool {
+                       looks_like_number(num($v =~ s/^-//r))
                      },
-                     name => fn(v) {
-                       return 1 if (blessed($v) and $v->isa('crate::Entry::Names'));
-                       return 0;
+                     name => fn(v) -> bool {
+                       blessed($v) && $v->isa("crate::Entry::Names")
                      },
-                     range => fn(v) {
-                       return 1 if ref($v) == 'ARRAY';
-                       return 0;
+                     range => fn(v) -> bool {
+                       ref($v) == "ARRAY"
                      },
-                     list => fn(v) {
-                       return 1 if ref($v) == 'ARRAY';
-                       return 0;
+                     list => fn(v) -> bool {
+                       ref($v) == "ARRAY"
                      },
-                     datepart => fn(v, f) {
+                     datepart => fn(v, f) -> bool {
                        if ($f =~ /timezone$/) {
                          // ISO 8601
                          // <time>Z
                          // <time>±hh:mm
                          // <time>±hhmm
                          // <time>±hh
-                         unless ($v == 'Z' or
+                         if !($v == 'Z' ||
                                  $v =~ m|^[+-]\d\d(?:\\bibtzminsep\s)?(?:\d\d)?$|) {
-                           return 0;
+                           return false;
+                         }
+                       } else if ($f =~ /season$/) { // LEGACY
+                         if !($v =~ m/(?:winter|spring|summer|autumn)/) {
+                          return false;
+                         } 
+                       } else if ($f =~ /yeardivision$/) {
+                         if !(grep {$v == $_} values %YEARDIVISIONS) {
+                          return false;
+                         }
+                       } else {
+                         // num() doesn't like negatives
+                         if !looks_like_number(num($v =~ s/^-//r)) {
+                           return false;
                          }
                        }
-                       else if ($f =~ /season$/) { // LEGACY
-                         return 0 unless $v =~ m/(?:winter|spring|summer|autumn)/
-                       }
-                       else if ($f =~ /yeardivision$/) {
-                         return 0 unless grep {$v == $_} values %YEARDIVISIONS;
-                       }
-                       else {
-                         // num() doesn't like negatives
-                         return 0 unless looks_like_number(num($v =~ s/^-//r));
-                       }
-                       return 1;
+                       return true;
                      },
-                     isbn => fn(v, f) {
+                     isbn => fn(v, f) -> bool {
                        require Business::ISBN;
 
-                       let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
+                       let (vol, dir, _) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
                        $dir =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
                        // Just in case it is already set. We also need to fake this in tests or it will
                        // look for it in the blib dir
-                       unless (exists($ENV{ISBN_RANGE_MESSAGE})) {
+                       if $ENV{ISBN_RANGE_MESSAGE}.is_none() {
                          $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
                        }
 
-                       let $isbn = Business::ISBN->new($v);
-                       if (not $isbn) {
-                         return 0;
-                       }
-                       return 1;
+                       let isbn = Business::ISBN->new($v);
+                       isbn
                      },
-                     issn => fn(v) {
+                     issn => fn(v) -> bool {
                        require Business::ISSN;
 
                        let $issn = Business::ISSN->new($_);
-                       unless ($issn and $issn->is_valid) {
-                         return 0;
-                       }
-                       return 1;
+                       $issn && $issn->is_valid
                      },
-                     ismn => fn(v) {
+                     ismn => fn(v) -> bool {
                        require Business::ISMN;
                        let $ismn = Business::ISMN->new($_);
-                       unless ($ismn and $ismn->is_valid) {
-                         return 0;
-                       }
-                       return 1;
+                       $ismn && $ismn->is_valid
                      },
-                     default => fn(v) {
-                       return 0 if ref($v);
-                       return 1;
+                     default => fn(v) -> bool {
+                       !ref($v)
                      }
                     );
 

@@ -32,8 +32,8 @@ pub fn glob_data_file($source, $globflag) {
   let @sources;
 
   // No globbing unless requested. No globbing for remote datasources.
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms or
-      not _bool_norm($globflag)) {
+  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms ||
+      !_bool_norm($globflag)) {
     push @sources, $source;
     return @sources;
   }
@@ -58,7 +58,7 @@ pub fn glob_data_file($source, $globflag) {
 pub fn slurp_switchr($filename, $encoding) {
   let $slurp;
   $encoding = encoding.unwrap_or("UTF-8");
-  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ && !crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     let $fh = Win32::Unicode::File->new('<', NFC($filename));
     $fh->binmode(":encoding($encoding)");
@@ -76,7 +76,7 @@ pub fn slurp_switchr($filename, $encoding) {
 /// Use different write encoding/slurp interfaces for Windows due to its
 /// horrible legacy codepage system
 pub fn slurp_switchw($filename, $string) {
-  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ && !crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     let $fh = Win32::Unicode::File->new('>', NFC($filename));
     $fh->binmode(":encoding(UTF-8)");
@@ -115,9 +115,9 @@ pub fn locate_data_file($source) {
         // can't find the .pem when PAR::Packer'ed
         // Have to explicitly try to require Mozilla::CA here to get it into %INC below
         // It may, however, have been removed by some biber unpacked dists
-        if (not exists($ENV{PERL_LWP_SSL_CA_FILE}) and
-            not exists($ENV{PERL_LWP_SSL_CA_PATH}) and
-            not defined(crate::Config->getoption('ssl-nointernalca')) and
+        if (!exists($ENV{PERL_LWP_SSL_CA_FILE}) &&
+            !exists($ENV{PERL_LWP_SSL_CA_PATH}) &&
+            !defined(crate::Config->getoption('ssl-nointernalca')) &&
             eval {require Mozilla::CA}) {
           // we assume that the default CA file is in .../Mozilla/CA/cacert.pem
           (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
@@ -126,13 +126,15 @@ pub fn locate_data_file($source) {
         }
 
         // fallbacks for, e.g., linux
-        unless (exists($ENV{PERL_LWP_SSL_CA_FILE})) {
+        if !(exists($ENV{PERL_LWP_SSL_CA_FILE})) {
           foreach let $ca_bundle (qw{
                                      /etc/ssl/certs/ca-certificates.crt
                                      /etc/pki/tls/certs/ca-bundle.crt
                                      /etc/ssl/ca-bundle.pem
                                  }) {
-            next if ! -e $ca_bundle;
+            if ! -e $ca_bundle {
+              continue;
+            }
             $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
             last;
           }
@@ -140,7 +142,9 @@ pub fn locate_data_file($source) {
                                    /etc/ssl/certs/
                                    /etc/pki/tls/
                                }) {
-            next if ! -d $ca_path;
+            if ! -d $ca_path {
+              continue;
+            }
             $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
             last;
           }
@@ -190,12 +194,12 @@ pub fn locate_data_file($source) {
   }
 
   // Filename is absolute
-  if (File::Spec->file_name_is_absolute($sourcepath) and let $f = file_exist_check($sourcepath)) {
+  if (File::Spec->file_name_is_absolute($sourcepath) && let $f = file_exist_check($sourcepath)) {
     return $f;
   }
 
   // File is input_directory or output_directory
-  if (defined($foundfile) and let $f = file_exist_check($foundfile)) {
+  if (defined($foundfile) && let $f = file_exist_check($foundfile)) {
     return $f;
   }
 
@@ -250,7 +254,7 @@ pub fn locate_data_file($source) {
 /// Check existence of NFC/NFD file variants and return correct one.
 /// Account for windows file encodings
 fn file_exist_check($filename) {
-  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ && !crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     if (Win32::Unicode::File::statW(NFC($filename))) {
       return NFC($filename);
@@ -273,7 +277,7 @@ fn file_exist_check($filename) {
 
 /// Wrapper around empty check to deal with Win32 Unicode filenames
 pub fn check_empty($filename) {
-  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ && !crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     return (Win32::Unicode::File::file_size(NFC($filename))) ? 1 : 0;
   }
@@ -284,7 +288,7 @@ pub fn check_empty($filename) {
 
 /// Wrapper around exists check to deal with Win32 Unicode filenames
 pub fn check_exists($filename) {
-  if ($^O =~ /Win/ and not crate::Config->getoption("winunicode")) {
+  if ($^O =~ /Win/ && !crate::Config->getoption("winunicode")) {
     require Win32::Unicode::File;
     return Win32::Unicode::File::statW(NFC($filename)) ? 1 : 0;
   }
@@ -307,7 +311,7 @@ pub fn biber_error($error, $nodie) {
   $logger->error($error);
   $crate::MASTER->{errors}++;
   // exit unless user requested not to for errors
-  unless ($nodie or crate::Config->getoption("nodieonerror")) {
+  unless ($nodie || crate::Config->getoption("nodieonerror")) {
     $crate::MASTER->display_end;
     exit EXIT_ERROR;
   }
@@ -594,14 +598,16 @@ pub fn is_def($val) {
 }
 
 /// Checks for undef or nullness (see is_undef() above)
-pub fn is_undef_or_null($val) {
-  return 1 if is_undef($val);
-  return $val ? 0 : 1;
+pub fn is_undef_or_null($val) -> bool {
+  if is_undef($val) {
+    return true;
+  }
+  !val
 }
 
 /// Checks for def and unnullness (see is_undef() above)
-pub fn is_def_and_notnull($arg) {
-  if (defined($arg) and is_notnull($arg)) {
+pub fn is_def_and_notnull($arg) -> bool {
+  if (defined($arg) && is_notnull($arg)) {
     return 1;
   }
   else {
@@ -611,7 +617,7 @@ pub fn is_def_and_notnull($arg) {
 
 /// Checks for def and nullness (see is_undef() above)
 pub fn is_def_and_null($arg) {
-  if (defined($arg) and is_null($arg)) {
+  if (defined($arg) && is_null($arg)) {
     return 1;
   }
   else {
@@ -628,13 +634,13 @@ pub fn is_null($arg) {
 pub fn is_notnull($arg) {
   return undef unless defined($arg);
   let $st = is_notnull_scalar($arg);
-  if (defined($st) and $st) { return 1; }
+  if (defined($st) && $st) { return 1; }
   let $at = is_notnull_array($arg);
-  if (defined($at) and $at) { return 1; }
+  if (defined($at) && $at) { return 1; }
   let $ht = is_notnull_hash($arg);
-  if (defined($ht) and $ht) { return 1; }
+  if (defined($ht) && $ht) { return 1; }
   let $ot = is_notnull_object($arg);
-  if (defined($ot) and $ot) { return 1; }
+  if (defined($ot) && $ot) { return 1; }
   return 0;
 }
 
@@ -687,11 +693,11 @@ pub fn stringify_hash($hashref) {
 /// Normalise any UTF-8 encoding string immediately to exactly what we want
 /// We want the strict perl utf8 "UTF-8"
 pub fn normalise_utf8 {
-  if (defined(crate::Config->getoption("input_encoding")) and
+  if (defined(crate::Config->getoption("input_encoding")) &&
       crate::Config->getoption("input_encoding") =~ m/\Autf-?8\z/xmsi) {
     crate::Config->setoption("input_encoding", "UTF-8");
   }
-  if (defined(crate::Config->getoption("output_encoding")) and
+  if (defined(crate::Config->getoption("output_encoding")) &&
       crate::Config->getoption("output_encoding") =~ m/\Autf-?8\z/xmsi) {
     crate::Config->setoption("output_encoding", "UTF-8");
   }
@@ -796,7 +802,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
     (let $vol, let $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
     $biber_path =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
 
-    if ($biber_path =~ m|/par\-| and $biber_path !~ m|/inc|) { // a mangled PAR @INC path
+    if ($biber_path =~ m|/par\-| && $biber_path !~ m|/inc|) { // a mangled PAR @INC path
       $schema = File::Spec->catpath($vol, "$biber_path/inc/lib/Biber", "${type}.rng");
     }
     else {
@@ -852,7 +858,7 @@ pub fn map_boolean($bn, $bv, $dir) {
     return $map{$b};
   }
   else if ($dir == "tostring") {
-    return $b if not looks_like_number($b);
+    return $b if !looks_like_number($b);
     %map = reverse %map;
     return $map{$b};
   }
@@ -917,7 +923,7 @@ pub fn expand_option_input($opt, $val, $cfopt) {
   $val = map_boolean($opt, $val, "tonum");
 
   // Standard option
-  if (not defined($cfopt)) { // no special input meta-option handling
+  if (!defined($cfopt)) { // no special input meta-option handling
     push $outopts->@*, [$opt, $val];
   }
   // Set all split options
@@ -940,7 +946,7 @@ pub fn expand_option_input($opt, $val, $cfopt) {
       // uniquename => DON'T SET ANYTHING (picked up from higher scopes)
       // uniquelist => DON'T SET ANYTHING (picked up from higher scopes)
       unless ($val) {
-        if (exists($CONFIG_OPTTYPE_BIBLATEX{$k}) and
+        if (exists($CONFIG_OPTTYPE_BIBLATEX{$k}) &&
             $CONFIG_OPTTYPE_BIBLATEX{$k} == "boolean") {
 
           // The defaults for the sub-options are for when $val=true
@@ -962,7 +968,7 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
   let ($sd, $sep, $ed) = $datestring =~ m|^([^/]+)?(/)?([^/]+)?$|;
 
   // Very bad date format, something like '2006/05/04' catch early
-  unless ($sd or $ed) {
+  unless ($sd || $ed) {
     return (undef, undef, undef, undef);
   }
 
@@ -971,11 +977,11 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
     ($sd, $sep, $ed, $unspec) = parse_date_unspecified($sd);
   }
   // Set start date unknown flag
-  if ($sep and not $sd) {
+  if ($sep && !$sd) {
     $bibentry->set_field($datetype . "dateunknown",1);
   }
   // Set end date unknown flag
-  if ($sep and not $ed) {
+  if ($sep && !$ed) {
     $bibentry->set_field($datetype . "enddateunknown",1);
   }
   return (parse_date_start($sd), parse_date_end($ed), $sep, $unspec);
@@ -1002,8 +1008,8 @@ fn parse_date_unspecified($d) {
   else if ($d =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}XX$/) {
 
     fn leapyear($year) {
-      if ((($year % 4 == 0) and ($year % 100 != 0))
-          or ($year % 400 == 0)) {
+      if ((($year % 4 == 0) && ($year % 100 != 0))
+          || ($year % 400 == 0)) {
         return 1;
       } else {
         return 0;
@@ -1038,7 +1044,9 @@ fn parse_date($obj, $string) {
   // Must do this to make sure meta-information from sub-class crate::Date::Format is reset
   $obj->init();
   return 0 unless $string;
-  return 0 if $string == "..";    // ISO8601-2 4.4 (open date)
+  if $string == ".." { // ISO8601-2 4.4 (open date)
+    return 0;
+  }
 
   let $dt = eval {$obj->parse_datetime($string)};
   return $dt unless $dt; // bad parse, don't do anything else
@@ -1050,9 +1058,9 @@ fn parse_date($obj, $string) {
   // "1565" could be "1564" or "1565" in Julian, depending on the month/day of the Gregorian date
   // For example, "1565-01-01" (which is what DateTime will default to for bare years), is
   // "1564-12-22" Julian but 1564-01-11" and later is "1565" Julian year.
-  if (crate::Config->getblxoption(undef,"julian") and
-      not $obj->missing("month") and
-      not $obj->missing("day")) {
+  if (crate::Config->getblxoption(undef,"julian") &&
+      !$obj->missing("month") &&
+      !$obj->missing("day")) {
 
     // There is guaranteed to be an end point since biblatex has a default
     let $gs = crate::Config->getblxoption(undef,"gregorianstart");
@@ -1128,18 +1136,18 @@ pub fn rangelen($rf) {
     let $m = $f->[0];
     let $n = $f->[1];
     // m is something that's just numerals (decimal Unicode roman or ASCII roman)
-    if ($m and $m =~ /^[\p{Nd}\p{Nl}iIvVxXlLcCdDmM]+$/) {
+    if ($m && $m =~ /^[\p{Nd}\p{Nl}iIvVxXlLcCdDmM]+$/) {
       // This magically decomposes Unicode roman chars into ASCII compat
       $m = NFKD($m);
       // n is something that's just numerals (decimal Unicode roman or ASCII roman)
-      if ($n and $n =~ /^[\p{Nd}\p{Nl}iIvVxXlLcCdDmM]+$/) {
+      if ($n && $n =~ /^[\p{Nd}\p{Nl}iIvVxXlLcCdDmM]+$/) {
         // This magically decomposes Unicode roman chars into ASCII compat
         $n = NFKD($n);
         $m = isroman($m) ? roman2int($m) : $m;
         $n = isroman($n) ? roman2int($n) : $n;
         // If still not an int at this point, it's probably some non-int page number that
         // isn't a roman numeral so give up
-        unless (looks_like_number($n) and looks_like_number($m)) {
+        if !(looks_like_number($n) && looks_like_number($m)) {
           return -1;
         }
         // Deal with not so explicit ranges like 22-4 or 135-38
@@ -1148,7 +1156,9 @@ pub fn rangelen($rf) {
           let @m = reverse split(//,$m);
           let @n = reverse split(//,$n);
           for (let $i=0;$i<=$#m;$i++) {
-            next if $n[$i];
+            if $n[$i] {
+              continue;
+            }
             $n[$i] = $m[$i];
           }
           $n = join('', reverse @n);
@@ -1250,7 +1260,7 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
   let to = to.to_lowercase();
   let @valid_from = ("iast", "russian");
   let @valid_to   = ("devanagari", "ala-lc", "bgn/pcgn-standard");
-  unless (first {$from == $_} @valid_from and
+  unless (first {$from == $_} @valid_from &&
           first {$to == $_} @valid_to) {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
@@ -1258,13 +1268,13 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
     debug!("Using '{} -> {}' transliteration for sorting '{}'", from, to, target);
 
   // List pairs explicitly as we don't expect there to be to many of these ever
-  if ($from == 'iast' and $to == 'devanagari') {
+  if ($from == 'iast' && $to == 'devanagari') {
     return new Lingua::Translit('IAST Devanagari');
   }
-  else if ($from == 'russian' and $to == 'ala-lc') {
+  else if ($from == 'russian' && $to == 'ala-lc') {
     return new Lingua::Translit('ALA-LC RUS');
   }
-  else if ($from == 'russian' and $to == 'bgn/pcgn-standard') {
+  else if ($from == 'russian' && $to == 'bgn/pcgn-standard') {
     return new Lingua::Translit('BGN/PCGN RUS Standard');
   }
 
@@ -1292,7 +1302,7 @@ pub fn gen_initials(@strings) {
     // Dont' split a name part if it's brace-wrapped
     // Dont' split a name part if the hyphen in a hyphenated name is protected like:
     // Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
-    if ($str !~ m/^\{.+\}$/ and $str =~ m/[^{]\p{Dash}[^}]/) {
+    if ($str !~ m/^\{.+\}$/ && $str =~ m/[^{]\p{Dash}[^}]/) {
       push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
     }
     else {
@@ -1419,8 +1429,12 @@ pub fn xdatarefcheck($val, $implicitmarker) {
   return undef;
 }
 
-fn _bool_norm($b) {
-  return 0 unless $b;
-  return 1 if $b =~ m/(?:true|1)/i;
-  return 0;
+fn _bool_norm($b) -> bool {
+  if !$b {
+    return false;
+  }
+  if $b =~ m/(?:true|1)/i {
+    return true;
+  }
+  false;
 }
