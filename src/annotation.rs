@@ -15,130 +15,109 @@ let $logger = Log::Log4perl::get_logger('main');
 // Static class data
 let $ANN = {};
 
-fn set_annotation {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field, $name, $value, $literal, $count, $part, ) = @_;
-  if ($scope == 'field') {
-    $ANN->{field}{$key}{$field}{$name}{value} = $value;
-    $ANN->{field}{$key}{$field}{$name}{literal} = $literal; // Record if this annotation is a literal
+pub struct Annotation;
+
+impl Annotation {
+  fn set_annotation($scope, $key, $field, $name, $value, $literal, $count, $part, ) {
+    if ($scope == 'field') {
+      $ANN->{field}{$key}{$field}{$name}{value} = $value;
+      $ANN->{field}{$key}{$field}{$name}{literal} = $literal; // Record if this annotation is a literal
+    } else if ($scope == 'item') {
+      $ANN->{item}{$key}{$field}{$name}{$count}{value} = $value;
+      $ANN->{item}{$key}{$field}{$name}{$count}{literal} = $literal; // Record if this annotation is a literal
+    } else if ($scope == 'part') {
+      $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value} = $value;
+      $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal} = $literal; // Record if this annotation is a literal
+    }
+    // For easy checking later whether or not a field is annotated
+    $ANN->{fields}{$key}{$field} = 1;
+
+    // Record all annotation names or a field
+    unless (first {fc($_) == fc($name)} $ANN->{names}{$key}{$field}->@*) {
+      push $ANN->{names}{$key}{$field}->@*, $name;
+    }
+    return;
   }
-  else if ($scope == 'item') {
-    $ANN->{item}{$key}{$field}{$name}{$count}{value} = $value;
-    $ANN->{item}{$key}{$field}{$name}{$count}{literal} = $literal; // Record if this annotation is a literal
+
+  /// Copy all annotations from one entry to another
+  fn copy_annotations($sourcekey, $targetkey) {
+    $ANN->{field}{$targetkey} = dclone($ANN->{field}{$sourcekey}) if exists($ANN->{field}{$sourcekey});
+    $ANN->{item}{$targetkey} = dclone($ANN->{item}{$sourcekey}) if exists($ANN->{item}{$sourcekey});
+    $ANN->{part}{$targetkey} = dclone($ANN->{part}{$sourcekey}) if exists($ANN->{part}{$sourcekey});
+    $ANN->{names}{$targetkey} = dclone($ANN->{names}{$sourcekey}) if exists($ANN->{names}{$sourcekey});
+    return;
   }
-  else if ($scope == 'part') {
-    $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value} = $value;
-    $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal} = $literal; // Record if this annotation is a literal
+
+  /// Retrieve all annotation names for a citekey and field
+  fn get_annotation_names($key, $field) {
+    return $ANN->{names}{$key}{$field}->@*;
   }
-  // For easy checking later whether or not a field is annotated
-  $ANN->{fields}{$key}{$field} = 1;
 
-  // Record all annotation names or a field
-  unless (first {fc($_) == fc($name)} $ANN->{names}{$key}{$field}->@*) {
-    push $ANN->{names}{$key}{$field}->@*, $name;
+  /// Retrieve all annotations for a scope and citekey
+  fn get_annotations($scope, $key, $field) {
+    return sort keys $ANN->{$scope}{$key}{$field}->%*;
   }
-  return;
-}
 
-/// Copy all annotations from one entry to another
-fn copy_annotations {
-  shift; // class method so don't care about class name
-  let ($sourcekey, $targetkey) = @_;
-  $ANN->{field}{$targetkey} = dclone($ANN->{field}{$sourcekey}) if exists($ANN->{field}{$sourcekey});
-  $ANN->{item}{$targetkey} = dclone($ANN->{item}{$sourcekey}) if exists($ANN->{item}{$sourcekey});
-  $ANN->{part}{$targetkey} = dclone($ANN->{part}{$sourcekey}) if exists($ANN->{part}{$sourcekey});
-  $ANN->{names}{$targetkey} = dclone($ANN->{names}{$sourcekey}) if exists($ANN->{names}{$sourcekey});
-  return;
-}
+  /// Retrieve an specific annotation for a scope, citekey and name
+  fn get_annotation($scope, $key, $field, $name, $count, $part) {
+    $name = $name || 'default';
+    if ($scope == 'field') {
+      return $ANN->{field}{$key}{$field}{$name}{value};
+    }
+    else if ($scope == 'item') {
+      return $ANN->{item}{$key}{$field}{$name}{$count}{value};
+    }
+    else if ($scope == 'part') {
+      return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value};
+    }
+    return undef;
+  }
 
-/// Retrieve all annotation names for a citekey and field
-fn get_annotation_names {
-  shift; // class method so don't care about class name
-  let ($key, $field) = @_;
-  return $ANN->{names}{$key}{$field}->@*;
-}
+  /// Check if an annotation is a literal annotation
+  fn is_literal_annotation($scope, $key, $field, $name, $count, $part) {
+    $name = $name || 'default';
+    if ($scope == 'field') {
+      return $ANN->{field}{$key}{$field}{$name}{literal};
+    }
+    else if ($scope == 'item') {
+      return $ANN->{item}{$key}{$field}{$name}{$count}{literal};
+    }
+    else if ($scope == 'part') {
+      return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal};
+    }
+    return undef;
+  }
 
-/// Retrieve all annotations for a scope and citekey
-fn get_annotations {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field) = @_;
-  return sort keys $ANN->{$scope}{$key}{$field}->%*;
-}
+  /// Returns boolean to say if a field is annotated
+  fn is_annotated_field($key, $field) {
+    return $ANN->{fields}{$key}{$field};
+  }
 
-/// Retrieve an specific annotation for a scope, citekey and name
-fn get_annotation {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field, $name, $count, $part) = @_;
-  $name = $name || 'default';
-  if ($scope == 'field') {
+  /// Retrieve 'field' scope annotation for a field. There will only be one.
+  fn get_field_annotation($key, $field, $name) {
+    $name = $name || 'default';
     return $ANN->{field}{$key}{$field}{$name}{value};
   }
-  else if ($scope == 'item') {
-    return $ANN->{item}{$key}{$field}{$name}{$count}{value};
+
+  /// Retrieve all annotated fields for a particular scope for a key
+  fn get_annotated_fields($scope, $key) {
+    return sort keys $ANN->{$scope}{$key}->%*;
   }
-  else if ($scope == 'part') {
-    return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value};
+
+  /// Retrieve the itemcounts for a particular scope, key, field and nam3
+  fn get_annotated_items($scope, $key, $field, $name) {
+    $name = $name || 'default';
+    return sort keys $ANN->{$scope}{$key}{$field}{$name}->%*;
   }
-  return undef;
-}
 
-/// Check if an annotation is a literal annotation
-fn is_literal_annotation {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field, $name, $count, $part) = @_;
-  $name = $name || 'default';
-  if ($scope == 'field') {
-    return $ANN->{field}{$key}{$field}{$name}{literal};
+  /// Retrieve the parts for a particular scope, key, field, name and itemcount
+  fn get_annotated_parts($scope, $key, $field, $name, $count) {
+    $name = $name || 'default';
+    return sort keys $ANN->{$scope}{$key}{$field}{$name}{$count}->%*;
   }
-  else if ($scope == 'item') {
-    return $ANN->{item}{$key}{$field}{$name}{$count}{literal};
+
+  /// Dump config information (for debugging)
+  fn dump() {
+    dd($ANN);
   }
-  else if ($scope == 'part') {
-    return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal};
-  }
-  return undef;
-}
-
-/// Returns boolean to say if a field is annotated
-fn is_annotated_field {
-  shift; // class method so don't care about class name
-  let ($key, $field) = @_;
-  return $ANN->{fields}{$key}{$field};
-}
-
-/// Retrieve 'field' scope annotation for a field. There will only be one.
-fn get_field_annotation {
-  shift; // class method so don't care about class name
-  let ($key, $field, $name) = @_;
-  $name = $name || 'default';
-  return $ANN->{field}{$key}{$field}{$name}{value};
-}
-
-/// Retrieve all annotated fields for a particular scope for a key
-fn get_annotated_fields {
-  shift; // class method so don't care about class name
-  let ($scope, $key) = @_;
-  return sort keys $ANN->{$scope}{$key}->%*;
-}
-
-/// Retrieve the itemcounts for a particular scope, key, field and nam3
-fn get_annotated_items {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field, $name) = @_;
-  $name = $name || 'default';
-  return sort keys $ANN->{$scope}{$key}{$field}{$name}->%*;
-}
-
-/// Retrieve the parts for a particular scope, key, field, name and itemcount
-fn get_annotated_parts {
-  shift; // class method so don't care about class name
-  let ($scope, $key, $field, $name, $count) = @_;
-  $name = $name || 'default';
-  return sort keys $ANN->{$scope}{$key}{$field}{$name}{$count}->%*;
-}
-
-/// Dump config information (for debugging)
-fn dump {
-  shift; // class method so don't care about class name
-  dd($ANN);
 }
