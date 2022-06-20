@@ -57,7 +57,7 @@ our $BIBER_CONF_NAME = 'biber.conf';
 
 // Locale -  if nothing, set a default
 let $locale;
-unless ($locale) {
+if !($locale) {
   if ( $^O =~ /Win/) {
     $locale = 'English_United States.1252';
   }

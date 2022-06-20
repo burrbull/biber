@@ -71,7 +71,7 @@ fn output(self) {
   }
 
   // for debugging mainly
-  unless ($target) {
+  if !($target) {
     $target = new IO::File '>-';
   }
 
@@ -107,9 +107,13 @@ fn output(self) {
       // colour depends on whether cited, uncited, dataonly or key alias
       let $c = $section->has_citekey($citekey) ? '#a0d0ff' : '#deefff';
       if (let $options = $be->get_field('options')) {
-        $c = '#fdffd9' if $options =~ m/skip(?:bib|biblist|lab)/o;
+        if $options =~ m/skip(?:bib|biblist|lab)/o {
+          $c = "#fdffd9" ;
+        }
       }
-      $c = '#a1edec' if $section->get_citekey_alias($citekey);
+      if $section->get_citekey_alias($citekey) {
+        $c = "#a1edec" ;
+      }
 
       // make a set subgraph if a set member
       // This will make identically named subgraph sections for
@@ -177,16 +181,24 @@ fn output(self) {
     // Then add the requested links
 
     // crossrefs
-    _graph_inheritance('crossref', $secnum) if $gopts->{crossref};
+    if $gopts->{crossref} {
+      _graph_inheritance('crossref', $secnum);
+    }
 
     // xdata
-    _graph_inheritance('xdata', $secnum) if $gopts->{xdata};
+    if $gopts->{xdata} {
+      _graph_inheritance('xdata', $secnum);
+    }
 
     // xref
-    _graph_xref($secnum) if $gopts->{xref};
+    if $gopts->{xref} {
+      _graph_xref($secnum);
+    }
 
     // related
-    _graph_related($secnum) if $gopts->{related};
+    if $gopts->{related} {
+      _graph_related($secnum);
+    }
 
     // Close the section, if any
     if ($gopts->{section}) {

@@ -55,8 +55,10 @@ fn set_output_macro(self, macro) {
   let $acc = '';
 
   // Only output used macros unless we are asked to output all
-  unless (crate::Config->getoption('output_all_macrodefs')) {
-    return unless $USEDSTRINGS{$macro};
+  if !(crate::Config->getoption('output_all_macrodefs')) {
+    if !($USEDSTRINGS{$macro}) {
+      return;
+    }
   }
 
   // Make the right casing function
@@ -128,7 +130,7 @@ fn set_output_entry(
     if (let $names = $be->get_field($namefield)) {
 
       // XDATA is special
-      unless (crate::Config->getoption('output_resolve_xdata')) { // already resolved
+      if !(crate::Config->getoption('output_resolve_xdata')) { // already resolved
         if (let $xdata = $names->get_xdata) {
           $acc{$outmap->($namefield)} = xdatarefout($xdata);
           continue;
@@ -152,7 +154,7 @@ fn set_output_entry(
       foreach let $name ($names->names->@*) {
 
         // XDATA is special
-        unless (crate::Config->getoption('output_resolve_xdata')) {
+        if !(crate::Config->getoption('output_resolve_xdata')) {
           if (let $xdata = $name->get_xdata) {
             push @namelist, xdatarefout($xdata);
             continue;
@@ -177,7 +179,7 @@ fn set_output_entry(
       let $listsep = crate::Config->getoption('output_listsep');
       let @plainlist;
       foreach let $item ($list->@*) {
-        unless (crate::Config->getoption('output_resolve_xdata')) {
+        if !(crate::Config->getoption('output_resolve_xdata')) {
           let $xd = xdatarefcheck($item);
           $item = $xd.unwrap_or($item);
         }
@@ -192,7 +194,9 @@ fn set_output_entry(
   foreach let $opt (crate::Config->getblxentryoptions($secnum, $key)) {
     push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
   }
-  $acc{$outmap->('options')} = join(',', @entryoptions) if @entryoptions;
+  if @entryoptions {
+    $acc{$outmap->('options')} = join(',', @entryoptions);
+  }
 
   // Date fields
   foreach let $d ($dmh->{datefields}->@*) {
@@ -242,12 +246,14 @@ fn set_output_entry(
   // Standard fields
   foreach let $field ($dmh->{fields}->@*) {
     if (let $val = $be->get_field($field)) {
-      unless (crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption('output_resolve_xdata')) {
         let $xd = xdatarefcheck($val);
         $val = $xd.unwrap_or($val);
       }
       // Could have been set in dates above (MONTH, YEAR special handling)
-      $acc{$outmap->($field)} = $val unless $acc{$outmap->($field)};
+      if !($acc{$outmap->($field)}) {
+        $acc{$outmap->($field)} = $val;
+      }
     }
   }
 
@@ -272,7 +278,7 @@ fn set_output_entry(
   foreach let $rfield ($dmh->{ranges}->@*) {
     if ( let $rf = $be->get_field($rfield) ) {
       let $rfl = construct_range($rf);
-      unless (crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption('output_resolve_xdata')) {
         let $xd = xdatarefcheck($rfl);
         $rfl = $xd.unwrap_or($rfl);
       }
@@ -283,7 +289,7 @@ fn set_output_entry(
   // Verbatim fields
   foreach let $vfield ($dmh->{vfields}->@*) {
     if ( let $vf = $be->get_field($vfield) ) {
-      unless (crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption('output_resolve_xdata')) {
         let $xd = xdatarefcheck($vf);
         $vf = $xd.unwrap_or($vf);
       }
@@ -294,7 +300,7 @@ fn set_output_entry(
   // Keywords
   if ( let $k = $be->get_field('keywords') ) {
     let $kl = join(',', $k->@*);
-    unless (crate::Config->getoption('output_resolve_xdata')) {
+    if !(crate::Config->getoption('output_resolve_xdata')) {
       let $xd = xdatarefcheck($kl);
       $kl = $xd.unwrap_or($kl);
     }
@@ -397,7 +403,9 @@ fn output(self) {
     debug!("Preparing final output using class {}...", __PACKAGE__);
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption('output_encoding'));
-  info!('Converting UTF-8 to TeX macros on output') if crate::Config->getoption('output_safechars');
+  if crate::Config->getoption('output_safechars') {
+    info!("Converting UTF-8 to TeX macros on output");
+  }
 
   out($target, $data->{HEAD});
 
@@ -459,7 +467,7 @@ fn create_output_section(self) {
 
   // Create the macros output unless suppressed. This has to come after entry output creation
   // above as this gather information on which macros were actually used
-  unless (crate::Config->getoption('output_no_macrodefs')) {
+  if !(crate::Config->getoption('output_no_macrodefs')) {
     foreach let $m (sort values %RSTRINGS) {
       $self->set_output_macro($m);
     }
@@ -482,7 +490,9 @@ fn bibfield(field, value, max_field_len) {
   }
   $acc .= $ichar x $inum;
   $acc .= $field;
-  $acc .= ' ' x ($max_field_len - Unicode::GCString->new($field)->length) if $max_field_len;
+  if $max_field_len {
+    $acc .= ' ' x ($max_field_len - Unicode::GCString->new($field)->length);
+  }
   $acc .= ' = ';
 
   // Is the field value a macro? If so, replace with macro

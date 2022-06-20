@@ -156,7 +156,7 @@ fn set_namedis(self, $nlid, $nid, $ns, $nss, $nds) {
     if ($se->[0] == 'base') {
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring} = $nss->[$i];
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts} = $se->[1];
-      last;
+      break;
     }
   }
 
@@ -205,7 +205,9 @@ fn get_namedisschema(self, $nlid, $nid) {
 /// Get legacy uniquename summary for a name
 fn get_unsummary(self, $nlid, $nid) {
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
-  return undef unless defined($un);
+  if !defined($un) {
+    return undef;
+  }
   if ($un->[1] == 'none' || $un->[0] == 'base') {
     return 0;
   }
@@ -221,7 +223,9 @@ fn get_unsummary(self, $nlid, $nid) {
 /// Get uniquename summary part for a name
 fn get_unpart(self, $nlid, $nid) {
   let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
-  return undef unless defined($un);
+  if !defined($un) {
+    return undef;
+  }
   return $un->[0]
 }
 
@@ -308,7 +312,9 @@ fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
 
   // Don't set uniquelist unless the list is longer than maxcitenames as it was therefore
   // never truncated to mincitenames in the first place and uniquelist is a "local mincitenames"
-  return unless $num_names > $maxcn;
+  if !($num_names > $maxcn) {
+    return;
+  }
 
   // No disambiguation needed if uniquelist is <= mincitenames as this makes no sense
   // since it implies that disambiguation beyond mincitenames was needed.
@@ -336,7 +342,9 @@ fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
     // index where this namelist begins to differ from any other
     // Can't be 0 as that means it begins differently in which case $index is undef
     let $index = $self->namelist_differs_index($namelist);
-    return unless $index;
+    if !($index) {
+      return;
+    }
     // Now we know that some disambiguation is needed from other similar list(s)
     $uniquelist = $index+1;// convert zero-based index into 1-based uniquelist value
   }
@@ -495,7 +503,7 @@ fn get_seen_namedateparts(self, $ny) {
 fn incr_seen_namedateparts(self, $ns, $ys) {
   let $tmp = "$ns,$ys";
   // We can always increment this to 1
-  unless (exists($self->{state}{seen_namedateparts}{$tmp})) {
+  if !(exists($self->{state}{seen_namedateparts}{$tmp})) {
     $self->{state}{seen_namedateparts}{$tmp}++;
   }
   // But beyond that only if we have a labelname in the entry since
@@ -531,7 +539,7 @@ fn get_seen_nametitle(self, $nt) {
 fn incr_seen_nametitle(self, $ns, $ts) {
   let $tmp = "$ns,$ts";
   // We can always increment this to 1
-  unless ($self->{state}{seen_nametitle}{$tmp}) {
+  if !($self->{state}{seen_nametitle}{$tmp}) {
     $self->{state}{seen_nametitle}{$tmp}++;
   }
   // But beyond that only if we have a labeltitle in the entry since
@@ -560,7 +568,7 @@ fn get_seen_titleyear(self, $ty) {
 fn incr_seen_titleyear(self, $ts, $ys) {
   let $tmp = "$ts,$ys";
   // We can always increment this to 1
-  unless ($self->{state}{seen_titleyear}{$tmp}) {
+  if !($self->{state}{seen_titleyear}{$tmp}) {
     $self->{state}{seen_titleyear}{$tmp}++;
   }
   // But beyond that only if we have a labeltitle in the entry since
@@ -783,28 +791,36 @@ fn get_labelalphadata_for_key(self, $key) {
 
 /// Saves labelalpha field data for a key
 fn set_labelalphadata_for_key(self, $key, $la) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{labelalphadata}{$key} = $la;
   return;
 }
 
 /// Saves extradate field data for a key
 fn set_extradatedata_for_key(self, $key, $ed) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{extradatedata}{$key} = $ed;
   return;
 }
 
 /// Saves extraname field data for a key
 fn set_extranamedata_for_key(self, $key, $en) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{extranamedata}{$key} = $en;
   return;
 }
 
 /// Gets the extraname field data for a key
 fn get_extranamedata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{state}{extranamedata}{$key};
 }
 
@@ -816,13 +832,17 @@ fn set_extradatedata(self, $ed) {
 
 /// Gets the extradate field data for a key
 fn get_extradatedata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{state}{extradatedata}{$key};
 }
 
 /// Saves extratitle field data for a key
 fn set_extratitledata_for_key(self, $key, $ed) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{extratitledata}{$key} = $ed;
   return;
 }
@@ -835,13 +855,17 @@ fn set_extratitledata(self, $ed) {
 
 /// Gets the extratitle field data for a key
 fn get_extratitledata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{state}{extratitledata}{$key};
 }
 
 /// Saves extratitleyear field data for a key
 fn set_extratitleyeardata_for_key(self, $key, $ed) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{extratitleyeardata}{$key} = $ed;
   return;
 }
@@ -854,13 +878,17 @@ fn set_extratitleyeardata(self, $ed) {
 
 /// Gets the extratitleyear field data for a key
 fn get_extratitleyeardata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{state}{extratitleyeardata}{$key};
 }
 
 /// Saves extraalpha field data for a key
 fn set_extraalphadata_for_key(self, $key, $ed) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{state}{extraalphadata}{$key} = $ed;
   return;
 }
@@ -873,7 +901,9 @@ fn set_extraalphadata(self, $ed) {
 
 /// Gets the extraalpha field data for a key
 fn get_extraalphadata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{state}{extraalphadata}{$key};
 }
 
@@ -890,20 +920,26 @@ fn set_sortdataschema(self, $ss) {
 
 /// Saves sorting data in a list for a key
 fn set_sortdata(self, $key, $sd) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{sortdata}{$key} = $sd;
   return;
 }
 
 /// Gets the sorting data in a list for a key
 fn get_sortdata_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{sortdata}{$key};
 }
 
 /// Saves sortinit data for a specific key
 fn set_sortinitdata_for_key(self, $key, $init) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   $self->{sortinitdata}{$key} = {init => $init};
   return;
 }
@@ -916,7 +952,9 @@ fn set_sortinitdata(self, $sid) {
 
 /// Gets the sortinit in a list for a key
 fn get_sortinit_for_key(self, $key) {
-  return unless defined($key);
+  if !defined($key) {
+    return;
+  }
   return $self->{sortinitdata}{$key}{init};
 }
 
@@ -952,7 +990,9 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
   let $be = $section->bibentry($key);
   let $bee = $be->get_field('entrytype');
 
-  return '' unless $entry && $be;
+  if !($entry && $be) {
+    return "";
+  }
 
   let $dmh = crate::Config->get_dm_helpers;
 
@@ -1390,7 +1430,7 @@ fn namelist_differs_index(self, @list) {
         }
       }
       else {
-        last;
+        break;
       }
     }
   }

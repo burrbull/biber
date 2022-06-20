@@ -52,7 +52,9 @@ fn relclone(self) {
     foreach let $relkey (@$relkeys) {
       // Resolve any alias
       let $nrelkey = $section->get_citekey_alias($relkey).unwrap_or($relkey);
-        debug!("Resolved RELATED key alias '{}' to '{}'", relkey, nrelkey) if $relkey != $nrelkey;
+        if $relkey != $nrelkey {
+          debug!("Resolved RELATED key alias '{}' to '{}'", relkey, nrelkey);
+        }
         debug!("Looking at RELATED key '{}'", relkey);
       $relkey = $nrelkey;
 
@@ -191,7 +193,7 @@ fn add_xdata_ref(self, $reffield, $value, $reffieldposition) {
     if (let ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
       let $xdatasep = crate::Config->getoption('xdatasep');
       let ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
-      unless ($xf) { // There must be a field in a granular XDATA ref
+      if !($xf) { // There must be a field in a granular XDATA ref
         let $entry_key = $self->get_field('citekey');
         let $secnum = $crate::MASTER->get_current_section;
         biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
@@ -326,7 +328,9 @@ fn set_field(self, $key, $val) {
 /// Get a field for a crate::Entry object
 /// Uses // as fields can be null (end dates etc).
 fn get_field(self, $key) {
-  return undef unless $key;
+  if !($key) {
+    return undef;
+  }
   return $self->{datafields}{$key}.unwrap_or($self->{derivedfields}{$key});
 }
 
@@ -515,13 +519,13 @@ fn resolve_xdata(self, $xdata) {
 
   foreach let $xdatum ($xdata->@*) {
     foreach let $xdref ($xdatum->{xdataentries}->@*) {
-      unless (let $xdataentry = $section->bibentry($xdref)) {
+      if !(let $xdataentry = $section->bibentry($xdref)) {
         biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
         $xdatum->{resolved} = 0;
         continue;
       }
       else {
-        unless ($xdataentry->get_field('entrytype') == 'xdata') {
+        if !($xdataentry->get_field('entrytype') == 'xdata') {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
           $xdatum->{resolved} = 0;
           continue;
@@ -530,7 +534,7 @@ fn resolve_xdata(self, $xdata) {
         // record the XDATA resolve between these entries to prevent loops
         crate::Config->set_inheritance('xdata', $xdref, $entry_key);
         // Detect XDATA loops
-        unless (crate::Config->is_inheritance_path('xdata', $entry_key, $xdref)) {
+        if !(crate::Config->is_inheritance_path('xdata', $entry_key, $xdref)) {
           if (let $recurse_xdata = $xdataentry->get_xdata_refs) { // recurse
             $xdataentry->resolve_xdata($recurse_xdata);
           }
@@ -558,14 +562,14 @@ fn resolve_xdata(self, $xdata) {
             let $reffielddm = $dm->get_dm_for_field($reffield);
             let $xdatafielddm = $dm->get_dm_for_field($xdatafield);
 
-            unless ($reffielddm->{fieldtype} == $xdatafielddm->{fieldtype} &&
+            if !($reffielddm->{fieldtype} == $xdatafielddm->{fieldtype} &&
                     $reffielddm->{datatype} == $xdatafielddm->{datatype}) {
               biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
               $xdatum->{resolved} = 0;
               continue;
             }
 
-            unless ($xdataentry->get_field($xdatafield)) {
+            if !($xdataentry->get_field($xdatafield)) {
               biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
               $xdatum->{resolved} = 0;
               continue;
@@ -580,7 +584,7 @@ fn resolve_xdata(self, $xdata) {
                   debug!("Inserting at position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
               }
               else {
-                unless ($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
+                if !($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
                   biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                   $xdatum->{resolved} = 0;
                   continue;
@@ -600,7 +604,7 @@ fn resolve_xdata(self, $xdata) {
                   debug!("Inserting at position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
               }
               else {
-                unless ($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
+                if !($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
                   biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                   $xdatum->{resolved} = 0;
                   continue;
@@ -612,7 +616,6 @@ fn resolve_xdata(self, $xdata) {
             }
             // Non-list
             else {
-
               $self->set_datafield($reffield, $xdataentry->get_field($xdatafield));
                 debug!("Setting field '{}' in entry '{}' via XDATA", reffield, entry_key);
             }
@@ -648,7 +651,7 @@ fn inherit_from(self, $parent) {
   crate::Config->set_inheritance('crossref', $source_key, $target_key);
 
   // Detect crossref loops
-  unless (crate::Config->is_inheritance_path('crossref', $target_key, $source_key)) {
+  if !(crate::Config->is_inheritance_path('crossref', $target_key, $source_key)) {
     // cascading crossrefs
     if (let $ppkey = $parent->get_field('crossref')) {
       $parent->inherit_from($section->bibentry($ppkey));
@@ -673,9 +676,15 @@ fn inherit_from(self, $parent) {
   foreach let $type_pair ($defaults->{type_pair}->@*) {
     if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
         ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
-      $inherit_all = $type_pair->{inherit_all} if $type_pair->{inherit_all};
-      $override_target = $type_pair->{override_target} if $type_pair->{override_target};
-      $dignore = $type_pair->{ignore} if defined($type_pair->{ignore});
+      if $type_pair->{inherit_all} {
+        $inherit_all = $type_pair->{inherit_all};
+      }
+      if $type_pair->{override_target} {
+        $override_target = $type_pair->{override_target};
+      }
+      if defined($type_pair->{ignore}) {
+        $dignore = $type_pair->{ignore};
+      }
     }
   }
 

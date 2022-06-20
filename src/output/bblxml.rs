@@ -280,7 +280,9 @@ fn set_output_entry(
   // Output labelname hashes
   $xml->dataElement('BDS', 'NAMEHASH');
   let $fullhash = $be->get_field('fullhash');
-  $xml->dataElement([$xml_prefix, 'field'], _bblxml_norm($fullhash), name => 'fullhash') if $fullhash;
+  if $fullhash {
+    $xml->dataElement([$xml_prefix, 'field'], _bblxml_norm($fullhash), name => 'fullhash');
+  }
   $xml->dataElement('BDS', 'BIBNAMEHASH');
 
   // Output namelist hashes
@@ -320,7 +322,7 @@ fn set_output_entry(
 
   // labelprefix is list-specific. It is only defined if there is no shorthand
   // (see biblatex documentation)
-  unless ($be->get_field('shorthand')) {
+  if !($be->get_field('shorthand')) {
     $xml->dataElement('BDS', 'LABELPREFIX');
   }
 
@@ -403,7 +405,9 @@ fn set_output_entry(
 
         // Output absolute astronomical year by default (with year 0)
         // biblatex will adjust the years when printed with BCE/CE eras
-        $val = abs($val) if looks_like_number($val);
+        if looks_like_number($val) {
+          $val = abs($val);
+        }
 
         // Unspecified granularity
         if (let $unspec = $be->get_field("${d}dateunspecified")) {
@@ -640,7 +644,9 @@ fn output(self) {
     debug!("Preparing final output using class {}...", __PACKAGE__);
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
-  info!('Converting UTF-8 to TeX macros on output to .bbl') if crate::Config->getoption('output_safechars');
+  if crate::Config->getoption('output_safechars') {
+    info!("Converting UTF-8 to TeX macros on output to .bbl");
+  }
 
   foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
       debug!("Writing entries for section {}", secnum);
@@ -742,7 +748,7 @@ fn output(self) {
   }
 
   // Generate schema to accompany output
-  unless (crate::Config->getoption('no_bblxml_schema')) {
+  if !(crate::Config->getoption('no_bblxml_schema')) {
     $dm->generate_bblxml_schema($schemafile);
   }
 

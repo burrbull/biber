@@ -55,7 +55,9 @@ fn get_list(self, $name, $section, $type) {
     if ($type && ($list->get_type != $type)) {
       continue;
     }
-    return $list if $list->get_name == $name;
+    if $list->get_name == $name {
+      return $list ;
+    }
   }
   return undef;
 }

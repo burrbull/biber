@@ -51,7 +51,7 @@ fn _getnamehash(self, $citekey, $names, $dlist, $bib) {
   }
 
   // name list was truncated
-  unless ($nho) {
+  if !($nho) {
     if ($visible < $count || $names->get_morenames) {
       $hashkey .= '+';
     }
@@ -150,7 +150,7 @@ fn _getnamehash_u(self, $citekey, $names, $dlist) {
   }
 
   // name list was truncated
-  unless ($nho) {
+  if !($nho) {
     if ($visible < $count || $names->get_morenames) {
       $hashkey .= '+';
     }
@@ -203,7 +203,7 @@ fn _dispatch_table_label(field, dm) {
     return $id;
   }
   // Label elements which aren't fields
-  unless ($dm->is_field($field)) {
+  if !($dm->is_field($field)) {
     return undef;
   }
   // Fields which are part of the datamodel
@@ -230,7 +230,9 @@ fn _genlabel(self, $citekey, $dlist) {
     let $ret = _labelpart($self, $labelpart->{labelpart}, $citekey, $secnum, $section, $be, $dlist);
     $label .= $ret->[0] || '';
     $slabel .= $ret->[1] || '';
-    last if $LABEL_FINAL;
+    if $LABEL_FINAL {
+      break;
+    }
   }
 
   return [ $label, $slabel ];
@@ -247,7 +249,7 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
 
   foreach let $part ($labelpart->@*) {
     // Implement defaults not set by biblatex itself
-    unless (exists($part->{substring_fixed_threshold})) {
+    if !exists($part->{substring_fixed_threshold}) {
       $part->{substring_fixed_threshold} = 1;
     }
 
@@ -310,7 +312,7 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
       if $part->{final} {
         $LABEL_FINAL = 1;
       }
-      last;
+      break;
     }
   }
 
@@ -389,7 +391,9 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
   $lantname = crate::Config->getblxoption($secnum, 'labelalphanametemplatename', undef, $citekey).unwrap_or($lantname);
 
   // Shortcut - if there is no labelname, don't do anything
-  return ['',''] unless defined($be->get_labelname_info);
+  if !defined($be->get_labelname_info) {
+    return ["",""];
+  }
 
   let $namename = $args->[0];
   let $acc = '';// Must initialise to empty string as we need to return a string
@@ -551,14 +555,16 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 
       // put in names sep, if any
       if (let $nsep = $labelattrs->{namessep}) {
-        $acc .= $nsep unless ($i == $nr_end-1);
+        if !($i == $nr_end-1) {
+          $acc .= $nsep;
+        }
       }
     }
 
     $sortacc = $acc;
 
     // Add alphaothers if name list is truncated unless noalphaothers is specified
-    unless ($labelattrs->{noalphaothers}) {
+    if !($labelattrs->{noalphaothers}) {
       if ($numnames > $nr_end || $names->get_morenames) {
         $acc .= $alphaothers.unwrap_or(""); // alphaothers can be undef
         $sortacc .= $sortalphaothers.unwrap_or(""); // sortalphaothers can be undef
@@ -580,8 +586,9 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 // Complicated due to various label disambiguation schemes and also due to dealing with
 // name fields
 fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
-
-  return join('', map {$_->[0]} $fieldstrings->@*) unless $labelattrs;
+  if !($labelattrs) {
+    return join('', map {$_->[0]} $fieldstrings->@*);
+  }
   let $rfield_string;
   let $secnum = $self->get_current_section;
   let $section = $self->sections->get_section($secnum);
@@ -951,9 +958,9 @@ fn _gen_first_disambiguating_name_map(cache, array, indices) {
     for (let $j = 0; $j <= $len; $j++) {
       // if no other name equal to this one in same place, this is the index of the name
       // to use for disambiguation
-      unless (grep {$array->[$i][$j] == $_} map {$_->[$j]} @check_array) {
+      if !(grep {$array->[$i][$j] == $_} map {$_->[$j]} @check_array) {
         $cache->{name_map}[$indices->[$i]] = $j;
-        last;
+        break;
       }
     }
   }
@@ -1002,7 +1009,7 @@ fn _dispatch_table_sorting(field, dm) {
     return $id;
   }
   // Sorting elements which aren't fields
-  unless ($dm->is_field($field)) {
+  if !($dm->is_field($field)) {
     return undef;
   }
   // Fields which are part of the datamodel
@@ -1050,12 +1057,12 @@ fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist,
   if (let $se = crate::Config->getblxoption(undef, 'sortexclusion', '*')) {
     if ($se->{$sortfield}) {
       if (let $si = crate::Config->getblxoption(undef, 'sortinclusion', $be->get_field('entrytype'))) {
-        unless ($si->{$sortfield}) {
-          return '';
+        if !($si->{$sortfield}) {
+          return "";
         }
       }
       else {
-        return '';
+        return "";
       }
     }
   }
@@ -1153,7 +1160,7 @@ fn _sortset(self, $sortset, $citekey, $secnum, $section, $be, $dlist) {
         // that we sort correctly against all other entries without a value
         // for this "final" field
         $BIBER_SORT_FINAL = $out;
-        last;
+        break;
       }
       return $out;
     }
@@ -1387,9 +1394,15 @@ fn _sort_string(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattr
 //========================================================
 
 fn _process_sort_attributes(field_string, sortelementattributes) {
-  return 'BIBERZERO' if $field_string == '0'; // preserve real zeros
-  return $field_string unless $sortelementattributes;
-  return $field_string unless $field_string;
+  if $field_string == '0' {
+    return 'BIBERZERO'; // preserve real zeros
+  }
+  if !($sortelementattributes) {
+    return $field_string;
+  }
+  if !($field_string) {
+    return $field_string;
+  }
   // process substring
   if ($sortelementattributes->{substring_width} ||
       $sortelementattributes->{substring_side}) {
@@ -1540,7 +1553,9 @@ fn _namestring(self, citekey, field, dlist) {
         }
       }
       // Now append the key part string if the string is not empty
-      $str .= $kps if $kps;
+      if $kps {
+        $str .= $kps;
+      }
       push $kpa->@*, $kps;
     }
   }
@@ -1552,8 +1567,10 @@ fn _namestring(self, citekey, field, dlist) {
     $nso = $names->get_nosortothers;
   }
 
-  unless ($nso) {
-    $str .= $trunc if $visible < $count; // name list was truncated
+  if !($nso) {
+    if $visible < $count {
+      $str .= $trunc; // name list was truncated
+    }
   }
 
   return $str;
@@ -1566,7 +1583,9 @@ fn _liststring(self, $citekey, $field, $verbatim) {
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field('entrytype');
   let $f = $be->get_field($field); // _liststring is used in tests so there has to be
-  return '' unless defined($f);   // more error checking which will never be needed in normal use
+  if !defined($f) {
+    return "";   // more error checking which will never be needed in normal use
+  }
   let @items = $f->@*;
   let $str = '';
   let $truncated = 0;
@@ -1599,7 +1618,9 @@ fn _liststring(self, $citekey, $field, $verbatim) {
   }
 
   $str =~ s/\s+\z//xms;
-  $str .= $trunc if $truncated;
+  if $truncated {
+    $str .= $trunc;
+  }
   return $str;
 }
 

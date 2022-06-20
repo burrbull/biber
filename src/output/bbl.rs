@@ -94,7 +94,9 @@ fn _printfield(be, field, $str) {
   // biblatex will adjust the years when printed with BCE/CE eras
   if ($field =~ m/^(.*)(?!end)year$/) {
     if (let $y = $be->get_field("$1year")) {
-      $str = abs($y) if looks_like_number($y);
+      if looks_like_number($y) {
+        $str = abs($y);
+      }
     }
   }
 
@@ -335,7 +337,7 @@ fn set_output_entry(self, $be, $section, $dm) {
 
   // labelprefix is list-specific. It is only defined if there is no shorthand
   // (see biblatex documentation)
-  unless ($be->get_field('shorthand')) {
+  if !($be->get_field('shorthand')) {
     $acc .= "      <BDS>LABELPREFIX</BDS>\n";
   }
 
@@ -612,7 +614,9 @@ fn output(self) {
     debug!("Preparing final output using class {}...", __PACKAGE__);
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
-  info!('Converting UTF-8 to TeX macros on output to .bbl') if crate::Config->getoption('output_safechars');
+  if crate::Config->getoption('output_safechars') {
+    info!("Converting UTF-8 to TeX macros on output to .bbl");
+  }
 
   out($target, $data->{HEAD});
 

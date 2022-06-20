@@ -73,7 +73,9 @@ fn init_sets(set_d, set_e) {
 
       chomp $mapdata;
       $mapdata =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
-      $mapdata = undef unless $mapdata; // sanitise just in case it's an empty string
+      if !($mapdata) {
+        $mapdata = undef; // sanitise just in case it's an empty string
+      }
     }
     else {
       biber_error("Can't run kpsewhich to look for output_safechars data file: $err");
@@ -320,7 +322,9 @@ fn latex_decode(text, %opts) {
 /// Converts UTF-8 to LaTeX
 fn latex_encode(text) {
   // Optimisation - if virtual null set was specified, do nothing
-  return $text if $set_e == 'null';
+  if $set_e == 'null' {
+    return $text;
+  }
 
   foreach let $type ('greek', 'dings', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'diacritics', 'letters', 'punctuation', 'symbols') {
     let $map = $remap_e->{$type}{map};

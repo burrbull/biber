@@ -70,7 +70,9 @@ fn new() -> Self {
 /// Parse a BCP47 tag into its components
 fn parse(self, $tag) {
   let $tree = $self->{parser}->languagetag($tag);
-  return undef unless defined($tree);
+  if !defined($tree) {
+    return undef;
+  }
 
   return crate::LangTag->new(_bcp47extract($tree));
 }
@@ -79,8 +81,12 @@ fn _bcp47extract($tree, $part, $tag) {
   $part = $part.unwrap_or("");
   $tag = $tag.unwrap_or({});
 
-  return unless ref($tree) == 'ARRAY';
-  return unless scalar($tree->@*) > 0;
+  if ref($tree) != "ARRAY" {
+    return ;
+  }
+  if scalar($tree->@*) <= 0 {
+    return ;
+  }
   if $tree->[0] == 'seporend' { // ignore internal seps or end of tag
     return;
   }
@@ -91,7 +97,9 @@ fn _bcp47extract($tree, $part, $tag) {
       _bcp47extract($t, $part, $tag);
     }
     if ($part && $bcp47parts{$part} == 'multiple') {
-      push $tag->{$part}->@*, $tag->{acc} if $tag->{acc};
+      if $tag->{acc} {
+        push $tag->{$part}->@*, $tag->{acc};
+      }
     }
   }
   else if ($tree->[0] == 'alphanum') { // shortcut

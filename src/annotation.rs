@@ -41,10 +41,18 @@ impl Annotation {
 
   /// Copy all annotations from one entry to another
   fn copy_annotations($sourcekey, $targetkey) {
-    $ANN->{field}{$targetkey} = dclone($ANN->{field}{$sourcekey}) if exists($ANN->{field}{$sourcekey});
-    $ANN->{item}{$targetkey} = dclone($ANN->{item}{$sourcekey}) if exists($ANN->{item}{$sourcekey});
-    $ANN->{part}{$targetkey} = dclone($ANN->{part}{$sourcekey}) if exists($ANN->{part}{$sourcekey});
-    $ANN->{names}{$targetkey} = dclone($ANN->{names}{$sourcekey}) if exists($ANN->{names}{$sourcekey});
+    if exists($ANN->{field}{$sourcekey}) {
+      $ANN->{field}{$targetkey} = dclone($ANN->{field}{$sourcekey});
+    }
+    if exists($ANN->{item}{$sourcekey}) {
+      $ANN->{item}{$targetkey} = dclone($ANN->{item}{$sourcekey});
+    }
+    if exists($ANN->{part}{$sourcekey}) {
+      $ANN->{part}{$targetkey} = dclone($ANN->{part}{$sourcekey});
+    }
+    if exists($ANN->{names}{$sourcekey}) {
+      $ANN->{names}{$targetkey} = dclone($ANN->{names}{$sourcekey});
+    }
     return;
   }
 

@@ -109,7 +109,7 @@ fn new(dms) -> Self {
   // Early check for fatal datamodel errors
   // Make sure dates are named *date. A lot of code relies on this.
   foreach let $date (grep {$_->{datatype} == 'date'} $dm->{fields}{field}->@*) {
-    unless ($date->{content} =~ m/date$/) {
+    if !($date->{content} =~ m/date$/) {
       biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
     }
   }
@@ -562,7 +562,7 @@ fn check_mandatory_constraints(self, be) {
             $xorflag = 1;
           }
         }
-        unless ($flag) {
+        if !($flag) {
           push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
         }
       }
@@ -573,17 +573,17 @@ fn check_mandatory_constraints(self, be) {
         foreach let $of (@fs) {
           if ($be->field_exists($of)) {
             $flag = 1;
-            last;
+            break;
           }
         }
-        unless ($flag) {
+        if !($flag) {
           push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
         }
       }
     }
     // Simple mandatory field
     else {
-      unless ($be->field_exists($c)) {
+      if !($be->field_exists($c)) {
         push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field '$c'";
       }
     }
@@ -627,7 +627,7 @@ fn check_conditional_constraints(self, be) {
     // check consequent
     let @actual_cfs = (grep {$be->field_exists($_)} $cfs->@*);
     if ($cq == 'all') {
-      unless ($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
+      if !($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
             ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
@@ -645,7 +645,7 @@ fn check_conditional_constraints(self, be) {
       }
     }
     else if ($cq == 'one') {
-      unless (@actual_cfs) {    // ? -> ONE not satisfied
+      if !(@actual_cfs) {    // ? -> ONE not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
             ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
@@ -672,7 +672,7 @@ fn check_data_constraints(self, be) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -688,7 +688,7 @@ fn check_data_constraints(self, be) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -704,7 +704,7 @@ fn check_data_constraints(self, be) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          unless ($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == 'list') {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -720,14 +720,14 @@ fn check_data_constraints(self, be) {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
           if (let $fmin = $c->{rangemin}) {
-            unless ($fv >= $fmin) {
+            if !($fv >= $fmin) {
               push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '>=$fmin' - ignoring field";
               $be->del_field($f);
               continue;
             }
           }
           if (let $fmax = $c->{rangemax}) {
-            unless ($fv <= $fmax) {
+            if !($fv <= $fmax) {
               push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '<=$fmax' - ignoring field";
               $be->del_field($f);
               continue;
@@ -738,12 +738,12 @@ fn check_data_constraints(self, be) {
     }
     else if ($c->{datatype} == 'pattern') {
       let $patt;
-      unless ($patt = $c->{pattern}) {
+      if !($patt = $c->{pattern}) {
         push @warnings, "Datamodel: Pattern constraint has no pattern!";
       }
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
-          unless (imatch($fv, $patt)) {
+          if !(imatch($fv, $patt)) {
             push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value (pattern match fails) for field '$f'";
           }
         }
@@ -785,7 +785,7 @@ fn check_datatypes(self, be) {
       continue;
     }
 
-    unless ($dt->($fv, $f)) {
+    if !($dt->($fv, $f)) {
       push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be datatype '$fdt' - ignoring field";
       $be->del_field($f);
     }

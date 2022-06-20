@@ -100,7 +100,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   // fields like DATE etc.
   // This only applies to the XDATA field as more granular XDATA will already
   // have/have not been resolved on the basis of this variable
-  unless (crate::Config->getoption('output_resolve_xdata')) {
+  if !(crate::Config->getoption('output_resolve_xdata')) {
     if (let $xdata = $be->get_field('xdata')) {
       $xml->startTag([$xml_prefix, 'xdata']);
       $xml->startTag([$xml_prefix, 'list']);
@@ -111,7 +111,7 @@ fn set_output_entry(self, $be, $section, $dm) {
       $xml->endTag(); // xdata
     }
   }
-  unless (crate::Config->getoption('output_resolve_crossrefs')) {
+  if !(crate::Config->getoption('output_resolve_crossrefs')) {
     if (let $crossref = $be->get_field('crossref')) {
       $xml->dataElement([$xml_prefix, 'crossref'], NFC($crossref));
     }
@@ -122,7 +122,9 @@ fn set_output_entry(self, $be, $section, $dm) {
   foreach let $opt (crate::Config->getblxentryoptions($secnum, $key)) {
     push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
   }
-  $xml->dataElement([$xml_prefix, 'options'], NFC(join(',', @entryoptions))) if @entryoptions;
+  if @entryoptions {
+    $xml->dataElement([$xml_prefix, 'options'], NFC(join(',', @entryoptions)));
+  }
 
   // Output name fields
   foreach let $namefield ($dm->get_fields_of_type('list', 'name')->@*) {
@@ -336,7 +338,9 @@ fn set_output_entry(self, $be, $section, $dm) {
     let ($d) = $datefield =~ m/^(.*)date$/;
     if (let $sf = $be->get_field("${d}year") ) { // date exists if there is a year
 
-      push @attrs, ('type', $d) if $d; // ignore for main date
+      if $d {
+        push @attrs, ('type', $d); // ignore for main date
+      }
 
       $xml->startTag([$xml_prefix, 'date'], @attrs);
 
@@ -568,12 +572,12 @@ fn output(self) {
   let $schemafile = crate::Config->getoption('dsn') =~ s/\.(?:$exts)$/.rng/r;
 
   // Generate schema to accompany output
-  unless (crate::Config->getoption('no_bltxml_schema')) {
+  if !(crate::Config->getoption('no_bltxml_schema')) {
     $dm->generate_bltxml_schema($schemafile);
   }
 
   if (crate::Config->getoption('validate_bltxml')) {
-    validate_biber_xml($target_string, 'bltx', 'http://biblatex-biber.sourceforge.net/biblatexml', $schemafile);
+    validate_biber_xml($target_string, 'bltx', "http://biblatex-biber.sourceforge.net/biblatexml", $schemafile);
   }
 
   return;

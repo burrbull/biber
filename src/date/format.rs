@@ -114,7 +114,7 @@ fn _pre(%p) {
     let $lnum = length($num);
     let $rnum = num($num);
     let $anum = sprintf("%0${lnum}d", $rnum); // num() strips leading zeros - pad them back
-    unless ($num == $anum) {
+    if !($num == $anum) {
       $p{self}{scriptmap}{atos}{$anum} = $num; // Save padded ...
       $p{self}{scriptmap}{atos}{$rnum} = $num; // ... and non-padded versions
       $p{self}{scriptmap}{stoa}{$num} = $anum;

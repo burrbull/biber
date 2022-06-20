@@ -84,10 +84,10 @@ fn _initopts(opts) {
 
   // For testing, need to be able to force ignore of conf file in case user
   // already has one which interferes with test settings.
-  unless (defined($opts->{noconf})) {
+  if !(defined($opts->{noconf})) {
     // if a config file was given as cmd-line arg, it overrides all other
     // config file locations
-    unless ( defined($opts->{configfile}) && -f $opts->{configfile} ) {
+    if !( defined($opts->{configfile}) && -f $opts->{configfile} ) {
       $opts->{configfile} = config_file();
     }
   }
@@ -160,7 +160,9 @@ fn _initopts(opts) {
     // Set control file name. In a conditional as @ARGV might not be set in tests
     if (defined($ARGV[0])) {         // ARGV is ok even in a module
       let $bcf = $ARGV[0];
-      $bcf .= '.bcf' unless $bcf =~ m/\.bcf$/;
+      if !($bcf =~ m/\.bcf$/) {
+        $bcf .= '.bcf' ;
+      }
       crate::Config->setoption('bcf', $bcf);
     }
   }
@@ -273,13 +275,21 @@ fn _initopts(opts) {
   Log::Log4perl->init(\$l4pconf);
 
   let $vn = $VERSION;
-  $vn .= ' (beta)' if $BETA_VERSION;
+  if $BETA_VERSION {
+    $vn .= " (beta)";
+  }
   let $tool = crate::Config->getoption('tool') ? ' running in TOOL mode' : '';
 
-  info!("This is Biber {}{}", vn, tool) unless crate::Config->getoption('nolog');
+  if !crate::Config->getoption('nolog') {
+    info!("This is Biber {}{}", vn, tool) ;
+  }
 
-  info!("Config file is '{}'", $opts->{configfile}) if $opts->{configfile};
-  info!("Logfile is '{}'", biberlog) unless crate::Config->getoption('nolog');
+  if $opts->{configfile} {
+    info!("Config file is '{}'", $opts->{configfile});
+  }
+  if !crate::Config->getoption('nolog') {
+    info!("Logfile is '{}'", biberlog);
+  }
 
   if (crate::Config->getoption('debug')) {
     $screen->info("DEBUG mode: all messages are logged to '$biberlog'")
@@ -540,7 +550,7 @@ fn _config_file_set(conf) {
       // presort defaults
       foreach let $presort ($v->@*) {
         // Global presort default
-        unless (exists($presort->{type})) {
+        if !(exists($presort->{type})) {
           crate::Config->setblxoption(0, 'presort', $presort->{content});
         }
         // Per-type default
@@ -624,7 +634,9 @@ fn config_file {
 
     chomp $biberconf;
     $biberconf =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
-    $biberconf = undef unless $biberconf; // sanitise just in case it's an empty string
+    if !($biberconf) { // sanitise just in case it's an empty string
+      $biberconf = undef;
+    }
   }
   else {
     $biberconf = undef;
@@ -639,7 +651,9 @@ fn config_file {
 
 /// Track uniqueness ignore settings found in inheritance data
 fn add_uniq_ignore(key, field, uniqs) {
-  return unless $uniqs;
+  if !($uniqs) {
+    return ;
+  }
   foreach let $u (split(/\s*,\s*/, $uniqs)) {
     push $CONFIG->{state}{uniqignore}{$key}{$u}->@*, $field;
   }
@@ -667,7 +681,7 @@ fn postprocess_biber_opts() {
       else if ($CONFIG->{options}{biber}{$opt} == 'false') {
         $CONFIG->{options}{biber}{$opt} = 0;
       }
-      unless ($CONFIG->{options}{biber}{$opt} == '1' ||
+      if !($CONFIG->{options}{biber}{$opt} == '1' ||
               $CONFIG->{options}{biber}{$opt} == '0') {
         crate::Utils::biber_error("Invalid value for option '$opt'");
       }

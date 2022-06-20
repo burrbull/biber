@@ -75,7 +75,9 @@ fn reset_caches(self) {
 
 /// Check and record max namepart length. Needed to construct sort keys for names
 fn set_np_length(self, $np, $len) {
-  return unless defined $len;
+  if !(defined $len) {
+    return;
+  }
   if ($len > ($self->{namepartlengths}{$np}.unwrap_or(0))) {
     $self->{namepartlengths}{$np} = $len;
   }
@@ -145,7 +147,9 @@ fn get_keytods(self, $key) {
 /// undef  - Not seen this key at all in any case variant before
 fn has_badcasekey(self, $key) {
   let $ckey = $self->{everykey_lc}{lc($key)};
-  return undef unless $ckey;
+  if !($ckey) {
+    return undef;
+  }
   return $ckey != $key ? $ckey : undef;
 }
 
@@ -343,7 +347,9 @@ fn has_citekey(self, key) {
 
 /// Deletes a citekey from a crate::Section object
 fn del_citekey(self, key) {
-  return unless $self->has_citekey($key);
+  if !($self->has_citekey($key)) {
+    return ;
+  }
   $self->{citekeys}            = [ grep {$_ != $key} $self->{citekeys}->@* ];
   $self->{orig_order_citekeys} = [ grep {$_ != $key} $self->{orig_order_citekeys}->@* ];
   delete $self->{citekeys_h}{$key};

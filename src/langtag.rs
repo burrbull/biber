@@ -32,7 +32,9 @@ fn new($parts) -> Self {
 fn dump(self) {
   let $parts = {};
   foreach let $part (keys %bcp47parts) {
-    $parts->{$part} = $self->{$part} if defined($self->{$part});
+    if defined($self->{$part}) {
+      $parts->{$part} = $self->{$part};
+    }
   }
   return $parts;
 }

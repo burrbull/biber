@@ -79,7 +79,7 @@ fn extract_entries(filename, _encoding, keys) {
   trace!("Entering extract_entries() in driver 'biblatexml'");
 
   // Check for empty files because they confuse btparse
-  unless (check_empty($filename)) { // File is empty
+  if !(check_empty($filename)) { // File is empty
     biber_warn("Data source '$filename' is empty, ignoring");
     return @rkeys;
   }
@@ -120,7 +120,7 @@ fn extract_entries(filename, _encoding, keys) {
         debug!('Parsing BibLaTeXML entry object {}', $entry->nodePath);
 
       // If an entry has no key, ignore it and warn
-      unless ($entry->hasAttribute('id')) {
+      if !($entry->hasAttribute('id')) {
         biber_warn("Invalid or undefined BibLaTeXML entry key in file '$filename', skipping ...");
         continue;
       }
@@ -215,7 +215,7 @@ fn extract_entries(filename, _encoding, keys) {
         // See comment above about the importance of the case of the key
         // passed to create_entry()
         // Skip creation if it's already been done, for example, via a citekey alias
-        unless ($section->bibentries->entry_exists($wanted_key)) {
+        if !($section->bibentries->entry_exists($wanted_key)) {
 
           // Record a key->datasource name mapping for error reporting
           $section->set_keytods($wanted_key, $filename);
@@ -232,7 +232,7 @@ fn extract_entries(filename, _encoding, keys) {
 
         // Make sure there is a real, cited entry for the citekey alias
         // just in case only the alias is cited
-        unless ($section->bibentries->entry_exists($key)) {
+        if !($section->bibentries->entry_exists($key)) {
           let $entry = $xpc->findnodes("/$NS:entries/$NS:entry/[\@id='$key']");
 
           // Record a key->datasource name mapping for error reporting
@@ -334,7 +334,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           // new entry
           if (let $newkey = maploopreplace($step->{map_entry_new}, $maploop)) {
             let $newentrytype;
-            unless ($newentrytype = maploopreplace($step->{map_entry_newtype}, $maploop)) {
+            if !($newentrytype = maploopreplace($step->{map_entry_newtype}, $maploop)) {
               biber_warn("Source mapping (type=$level, key=$key): Missing type for new entry '$newkey', skipping step ...");
               continue;
             }
@@ -377,7 +377,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           let $etarget;
           let $etargetkey;
           if ($etargetkey = maploopreplace($step->{map_entrytarget}, $maploop)) {
-            unless ($etarget = $newentries{$etargetkey}) {
+            if !($etarget = $newentries{$etargetkey}) {
               biber_warn("Source mapping (type=$level, key=$key): Dynamically created entry target '$etargetkey' does not exist skipping step ...");
               continue;
             }
@@ -390,7 +390,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           // Entrytype map
           if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
             $typesource = lc($typesource);
-            unless ($etarget->getAttribute('entrytype') == $typesource) {
+            if !($etarget->getAttribute('entrytype') == $typesource) {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
@@ -518,7 +518,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // key is a pseudo-field. It's guaranteed to exist so
             // just check if that's what's being asked for
-            unless ($etarget->exists($xp_fieldsource)) {
+            if !($etarget->exists($xp_fieldsource)) {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): No field xpath '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_fieldsource_s);
@@ -563,7 +563,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             if (let $ms = $step->{map_matches}) {
               let @ms = split(/\s*,\s*/,$ms);
               let @rs = split(/\s*,\s*/,$step->{map_replace});
-              unless (scalar(@ms) == scalar(@rs)) {
+              if !(scalar(@ms) == scalar(@rs)) {
                 debug!("Source mapping (type={}, key={}): Different number of fixed matches vs replaces, skipping ...", level, etargetkey);
                 continue;
               }
@@ -588,7 +588,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 let $r = maploopreplace($step->{map_replace}, $maploop);
                   debug!("Source mapping (type={}, key={}): Doing match/replace '{}' -> '{}' on field xpath '{}'", level, etargetkey, m, r, xp_fieldsource_s);
 
-                unless (_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r, $caseinsensitive)), \$cnerror) {
+                if !(_changenode($etarget, $xp_fieldsource_s, ireplace($last_fieldval, $m, $r, $caseinsensitive)), \$cnerror) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -599,7 +599,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 // Be aware that imatch() uses m//g so @imatches can have multiple paren group
                 // captures which might be useful
                 $m =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
-                unless (@imatches = imatch($last_fieldval, $m, $negmatch)) {
+                if !(@imatches = imatch($last_fieldval, $m, $negmatch)) {
                   // Skip the rest of the map if this step doesn't match and match is final
                   if ($step->{map_final}) {
                       debug!("Source mapping (type={}, key={}): Field xpath '{}' does not match '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_fieldsource_s, m);
@@ -633,7 +633,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                     continue;
                 }
               }
-              unless (_changenode($etarget, $xp_target_s, $xp_fieldsource_s, \$cnerror)) {
+              if !(_changenode($etarget, $xp_target_s, $xp_fieldsource_s, \$cnerror)) {
                 biber_warn("Source mapping (type=$level, key=$key): $cnerror");
               }
               $etarget->findnodes($xp_fieldsource)->get_node(1)->unbindNode();
@@ -651,7 +651,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             }
             else {
               if ($etarget->exists($xp_node)) {
-                unless ($map->{map_overwrite}.or($smap->{map_overwrite})) {
+                if !($map->{map_overwrite}.or($smap->{map_overwrite})) {
                   if ($step->{map_final}) {
                     // map_final is set, ignore and skip rest of step
                       debug!("Source mapping (type={}, key={}): Field xpath '{}' exists, overwrite is not set and step has 'final' set, skipping rest of map ...", level, etargetkey, xp_node_s);
@@ -678,7 +678,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 }
                   debug!("Source mapping (type={}, key={}): Setting xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_type);
 
-                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_type), \$cnerror)) {
+                if !(_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_type), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
                 }
               }
@@ -687,7 +687,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   continue;
                 }
                   debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_fieldval);
-                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_fieldval), \$cnerror)) {
+                if !(_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_fieldval), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -696,7 +696,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   continue;
                 }
                   debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, last_field);
-                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_field), \$cnerror)) {
+                if !(_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $last_field), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$etargetkey): $cnerror");
                 }
               }
@@ -707,7 +707,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 // previous map_match
                 $fv =~ s/(?<!\\)\$(\d)/$imatches[$1-1]/ge;
                   debug!("Source mapping (type={}, key={}): Setting field xpath '{}' to '{}{}'", level, etargetkey, xp_node_s, orig, fv);
-                unless (_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $fv), \$cnerror)) {
+                if !(_changenode($etarget, $xp_node_s, appendstrict_check($step, $orig, $fv), \$cnerror)) {
                   biber_warn("Source mapping (type=$level, key=$key): $cnerror");
                 }
               }
@@ -866,7 +866,7 @@ fn _uri(bibentry, entry, f, key) {
     // URL escape if it doesn't look like it already is
     // This is useful if we are generating URLs automatically with maps which may
     // contain UTF-8 from other fields
-    unless ($setval =~ /\%/) {
+    if !($setval =~ /\%/) {
       $setval = URI->new($setval)->as_string;
     }
   }
@@ -936,12 +936,18 @@ fn _datetime(bibentry, entry, f, key) {
                                                                 $start->get_node(1)->textContent())) {
 
         // Save julian
-        $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
+        if $CONFIG_DATE_PARSERS{start}->julian {
+          $bibentry->set_field($datetype . 'datejulian', 1);
+        }
         // Save approximate information
-        $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
+        if $CONFIG_DATE_PARSERS{start}->approximate {
+          $bibentry->set_field($datetype . 'dateapproximate', 1);
+        }
 
         // Save uncertain date information
-        $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
+        if $CONFIG_DATE_PARSERS{start}->uncertain {
+          $bibentry->set_field($datetype . 'dateuncertain', 1);
+        }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
@@ -950,17 +956,19 @@ fn _datetime(bibentry, entry, f, key) {
           $bibentry->set_field($datetype . 'dateunspecified', $unspec);
         }
 
-        unless ($CONFIG_DATE_PARSERS{start}->missing('year')) {
+        if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
           $bibentry->set_datafield($datetype . 'year', $sdate->year);
           // Save era date information
           $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
         }
 
-        $bibentry->set_datafield($datetype . 'month', $sdate->month)
-          unless $CONFIG_DATE_PARSERS{start}->missing('month');
+        if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
+          $bibentry->set_datafield($datetype . 'month', $sdate->month);
+        }
 
-        $bibentry->set_datafield($datetype . 'day', $sdate->day)
-          unless $CONFIG_DATE_PARSERS{start}->missing('day');
+        if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
+          $bibentry->set_datafield($datetype . 'day', $sdate->day);
+        }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
@@ -968,11 +976,11 @@ fn _datetime(bibentry, entry, f, key) {
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
-        unless ($CONFIG_DATE_PARSERS{start}->missing('time')) {
+        if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
           $bibentry->set_datafield($datetype . 'hour', $sdate->hour);
           $bibentry->set_datafield($datetype . 'minute', $sdate->minute);
           $bibentry->set_datafield($datetype . 'second', $sdate->second);
-          unless ($sdate->time_zone->is_floating) { // ignore floating timezones
+          if !($sdate->time_zone->is_floating) { // ignore floating timezones
             $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
           }
         }
@@ -987,25 +995,33 @@ fn _datetime(bibentry, entry, f, key) {
         if ($edate) { // not an empty range
 
           // Save julian
-          $bibentry->set_field($datetype . 'enddatejulian', 1) if $CONFIG_DATE_PARSERS{end}->julian;
+          if $CONFIG_DATE_PARSERS{end}->julian {
+            $bibentry->set_field($datetype . 'enddatejulian', 1);
+          }
 
           // Save approximate information
-          $bibentry->set_field($datetype . 'enddateapproximate', 1) if $CONFIG_DATE_PARSERS{end}->approximate;
+          if $CONFIG_DATE_PARSERS{end}->approximate {
+            $bibentry->set_field($datetype . 'enddateapproximate', 1);
+          }
 
           // Save uncertain date information
-          $bibentry->set_field($datetype . 'enddateuncertain', 1) if $CONFIG_DATE_PARSERS{end}->uncertain;
+          if $CONFIG_DATE_PARSERS{end}->uncertain {
+            $bibentry->set_field($datetype . 'enddateuncertain', 1);
+          }
 
-          unless ($CONFIG_DATE_PARSERS{end}->missing('year')) {
+          if !($CONFIG_DATE_PARSERS{end}->missing('year')) {
             $bibentry->set_datafield($datetype . 'endyear', $edate->year);
             // Save era date information
             $bibentry->set_field($datetype . 'endera', lc($edate->secular_era));
           }
 
-          $bibentry->set_datafield($datetype . 'endmonth', $edate->month)
-            unless $CONFIG_DATE_PARSERS{end}->missing('month');
+          if !($CONFIG_DATE_PARSERS{end}->missing('month')) {
+            $bibentry->set_datafield($datetype . 'endmonth', $edate->month);
+          }
 
-          $bibentry->set_datafield($datetype . 'endday', $edate->day)
-            unless $CONFIG_DATE_PARSERS{end}->missing('day');
+          if !($CONFIG_DATE_PARSERS{end}->missing('day')) {
+            $bibentry->set_datafield($datetype . 'endday', $edate->day);
+          }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
@@ -1013,11 +1029,11 @@ fn _datetime(bibentry, entry, f, key) {
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
-          unless ($CONFIG_DATE_PARSERS{end}->missing('time')) {
+          if !($CONFIG_DATE_PARSERS{end}->missing('time')) {
             $bibentry->set_datafield($datetype . 'endhour', $edate->hour);
             $bibentry->set_datafield($datetype . 'endminute', $edate->minute);
             $bibentry->set_datafield($datetype . 'endsecond', $edate->second);
-            unless ($edate->time_zone->is_floating) { // ignore floating timezones
+            if !($edate->time_zone->is_floating) { // ignore floating timezones
               $bibentry->set_datafield($datetype . 'endtimezone', tzformat($edate->time_zone->name));
             }
           }
@@ -1037,12 +1053,18 @@ fn _datetime(bibentry, entry, f, key) {
                                                                 $node->textContent())) {
 
         // Save julian
-        $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
+        if $CONFIG_DATE_PARSERS{start}->julian {
+          $bibentry->set_field($datetype . 'datejulian', 1);
+        }
         // Save approximate information
-        $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
+        if $CONFIG_DATE_PARSERS{start}->approximate {
+          $bibentry->set_field($datetype . 'dateapproximate', 1);
+        }
 
         // Save uncertain date information
-        $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
+        if $CONFIG_DATE_PARSERS{start}->uncertain {
+          $bibentry->set_field($datetype . 'dateuncertain', 1);
+        }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
@@ -1051,17 +1073,19 @@ fn _datetime(bibentry, entry, f, key) {
           $bibentry->set_field($datetype . 'dateunspecified', $unspec);
         }
 
-        unless ($CONFIG_DATE_PARSERS{start}->missing('year')) {
+        if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
           $bibentry->set_datafield($datetype . 'year', $sdate->year);
           // Save era date information
           $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
         }
 
-        $bibentry->set_datafield($datetype . 'month', $sdate->month)
-          unless $CONFIG_DATE_PARSERS{start}->missing('month');
+        if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
+          $bibentry->set_datafield($datetype . 'month', $sdate->month);
+        }
 
-        $bibentry->set_datafield($datetype . 'day', $sdate->day)
-          unless $CONFIG_DATE_PARSERS{start}->missing('day');
+        if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
+          $bibentry->set_datafield($datetype . 'day', $sdate->day);
+        }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
@@ -1069,11 +1093,11 @@ fn _datetime(bibentry, entry, f, key) {
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
-        unless ($CONFIG_DATE_PARSERS{start}->missing('time')) {
+        if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
           $bibentry->set_datafield($datetype . 'hour', $sdate->hour);
           $bibentry->set_datafield($datetype . 'minute', $sdate->minute);
           $bibentry->set_datafield($datetype . 'second', $sdate->second);
-          unless ($sdate->time_zone->is_floating) { // ignore floating timezones
+          if !($sdate->time_zone->is_floating) { // ignore floating timezones
             $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
           }
         }
@@ -1201,7 +1225,9 @@ fn parsename(section, node, fieldname, key, count) {
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
-    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
+    if $nameparts{$np}{initial} {
+      $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*)));
+    }
   }
 
   let $newname = crate::Entry::Name->new(
@@ -1253,7 +1279,9 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
       // If this field itself is XDATA, don't analyse XDATA further, just split and return
       if (let $xdatav = $list[$i]->getAttribute('xdata')) {
         $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
-        $bibentry->add_xdata_ref(_norm($f), $xdatav, $i) unless $noxdata;
+        if !($noxdata) {
+          $bibentry->add_xdata_ref(_norm($f), $xdatav, $i);
+        }
         push @result, $xdatav;
       }
       else {
@@ -1344,7 +1372,7 @@ fn _changenode(e, xp_target_s, value, error) {
     for (let $i = 0; $i <= $#nodes; $i++) {
       let $node = $nodes[$i];
       $nodepath .= "/$node";
-      unless ($e->findnodes($nodepath)) {
+      if !($e->findnodes($nodepath)) {
         let $parent = $e->findnodes($nodeparent)->get_node(1);
         // Element
         let $f;
@@ -1399,7 +1427,9 @@ fn _changenode(e, xp_target_s, value, error) {
 }
 
 fn _getpath(string) {
-  return undef unless $string;
+  if !($string) {
+    return undef;
+  }
   let $dm = crate::Config->get_dm;
   if ($string =~ m|/|) {
     return $string;             // presumably already XPath

@@ -136,7 +136,7 @@ pub fn locate_data_file($source) {
               continue;
             }
             $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
-            last;
+            break;
           }
           foreach let $ca_path (qw{
                                    /etc/ssl/certs/
@@ -146,7 +146,7 @@ pub fn locate_data_file($source) {
               continue;
             }
             $ENV{PERL_LWP_SSL_CA_PATH} = $ca_path;
-            last;
+            break;
           }
         }
 
@@ -173,7 +173,7 @@ pub fn locate_data_file($source) {
       let $request = HTTP::Request->new("GET", $source, ['Zotero-Allowed-Request' => '1']);
       let $response = $ua->request($request, $tf->filename);
 
-      unless ($response->is_success) {
+      if !($response->is_success) {
         biber_error("Could not fetch '$source' (HTTP code: " . $response->code. ")");
       }
       $sourcepath = $tf->filename;
@@ -211,10 +211,14 @@ pub fn locate_data_file($source) {
   if (let $cfp = crate::Config->get_ctrlfile_path) {
     let ($ctlvolume, $ctldir, undef) = File::Spec->splitpath($cfp);
     if ($ctlvolume) { // add vol sep for windows if volume is set and there isn't one
-      $ctlvolume .= ':' unless $ctlvolume =~ /:\z/;
+      if !($ctlvolume =~ /:\z/) {
+        $ctlvolume .= ':' ;
+      }
     }
     if ($ctldir) { // add path sep if there isn't one
-      $ctldir .= '/' unless $ctldir =~ /\/\z/;
+      if !($ctldir =~ /\/\z/) {
+        $ctldir .= '/' ;
+      }
     }
 
     let $path = "$ctlvolume$ctldir$sourcepath";
@@ -300,7 +304,9 @@ pub fn check_exists($filename) {
 /// Wrapper around various warnings bits and pieces.
 /// Add warning to the list of .bbl warnings and the master list of warnings
 pub fn biber_warn($warning, $entry) {
-  $entry->add_warning($warning) if $entry;
+  if $entry {
+    $entry->add_warning($warning);
+  }
   push $crate::MASTER->{warnings}->@*, $warning;
   return;
 }
@@ -311,7 +317,7 @@ pub fn biber_error($error, $nodie) {
   $logger->error($error);
   $crate::MASTER->{errors}++;
   // exit unless user requested not to for errors
-  unless ($nodie || crate::Config->getoption("nodieonerror")) {
+  if !($nodie || crate::Config->getoption("nodieonerror")) {
     $crate::MASTER->display_end;
     exit EXIT_ERROR;
   }
@@ -342,8 +348,12 @@ pub fn latex_recode_output($string) {
 /// Removes elements which are not to be considered during initials generation
 /// in names
 pub fn strip_noinit($string) {
-  return '' unless $string; // Sanitise missing data
-  return $string unless let $noinit = crate::Config->getoption("noinit");
+  if !($string) {
+    return ""; // Sanitise missing data
+  }
+  if !(let $noinit = crate::Config->getoption("noinit")) {
+    return $string;
+  }
   foreach let $opt ($noinit->@*) {
     let $re = $opt->{value};
     $string =~ s/$re//gxms;
@@ -357,8 +367,12 @@ pub fn strip_noinit($string) {
 /// Removes elements which are not to be used in sorting a name from a string
 pub fn strip_nosort($string, $fieldname) {
   no autovivification;
-  return '' unless $string; // Sanitise missing data
-  return $string unless let $nosort = crate::Config->getoption("nosort");
+  if !($string) {
+    return ""; // Sanitise missing data
+  }
+  if !(let $nosort = crate::Config->getoption("nosort")) {
+    return $string;
+  }
 
   let $restrings;
 
@@ -375,7 +389,9 @@ pub fn strip_nosort($string, $fieldname) {
   }
 
   // If no nosort to do, just return string
-  return $string unless $restrings;
+  if !($restrings) {
+    return $string;
+  }
 
   foreach let $re ($restrings->@*) {
     $string =~ s/$re//gxms;
@@ -391,8 +407,12 @@ pub fn strip_nosort($string, $fieldname) {
 /// from a name
 pub fn strip_nonamestring($string, $fieldname) {
   no autovivification;
-  return '' unless $string; // Sanitise missing data
-  return $string unless let $nonamestring = crate::Config->getoption("nonamestring");
+  if !($string) {
+    return ""; // Sanitise missing data
+  }
+  if !(let $nonamestring = crate::Config->getoption("nonamestring")) {
+    return $string;
+  }
 
   let $restrings;
 
@@ -409,7 +429,9 @@ pub fn strip_nonamestring($string, $fieldname) {
   }
 
   // If no nonamestring to do, just return string
-  return $string unless $restrings;
+  if !($restrings) {
+    return $string;
+  }
 
   foreach let $re ($restrings->@*) {
     $string =~ s/$re//gxms;
@@ -420,7 +442,9 @@ pub fn strip_nonamestring($string, $fieldname) {
 /// Remove some things from a string for label generation. Don't strip \p{Dash}
 /// as this is needed to process compound names or label generation.
 pub fn normalise_string_label($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   let $nolabels = crate::Config->getoption("nolabel");
   $str =~ s/\\[A-Za-z]+//g;    // remove latex macros (assuming they have only ASCII letters)
   // Replace ties with spaces or they will be lost
@@ -438,7 +462,9 @@ pub fn normalise_string_label($str) {
 /// as well as leading and trailing whitespace for sorting strings.
 /// Control chars don't need to be stripped as they are completely ignorable in DUCET
 pub fn normalise_string_sort($str, $fieldname) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   // First strip nosort REs
   $str = strip_nosort($str, $fieldname);
   // Then replace ties with spaces or they will be lost
@@ -453,7 +479,9 @@ pub fn normalise_string_sort($str, $fieldname) {
 
 /// Some string normalisation for bblxml output
 pub fn normalise_string_bblxml($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   $str =~ s/\\[A-Za-z]+//g; // remove latex macros (assuming they have only ASCII letters)
   $str =~ s/\{([^\{\}]+)\}/$1/g; // remove pointless braces
   $str =~ s/~/ /g; // replace ties with spaces
@@ -464,7 +492,9 @@ pub fn normalise_string_bblxml($str) {
 /// as well as leading and trailing whitespace for sorting strings.
 /// Only decodes LaTeX character macros into Unicode if output is UTF-8
 pub fn normalise_string($str) (
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   // First replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
   return normalise_string_common($str);
@@ -490,7 +520,9 @@ fn normalise_string_common($str) {
 /// \v S -> v:
 /// \" -> 34:
 pub fn normalise_string_hash($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   $str =~ s/\\(\p{L}+)\s*/$1:/g; // remove tex macros
   $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; // remove accent macros like \"a
   $str =~ s/[\{\}~\.\s]+//g; // Remove brackes, ties, dots, spaces
@@ -499,7 +531,9 @@ pub fn normalise_string_hash($str) {
 
 /// Like normalise_string, but also substitutes ~ and whitespace with underscore.
 pub fn normalise_string_underscore($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
   $str = normalise_string($str);
   $str =~ s/\s+/_/g;
@@ -508,7 +542,9 @@ pub fn normalise_string_underscore($str) {
 
 /// Escapes a few special character which might be used in labels
 pub fn escape_label($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   $str =~ s/([_\^\$\#\%\&])/\\$1/g;
   $str =~ s/~/{\\textasciitilde}/g;
   $str =~ s/>/{\\textgreater}/g;
@@ -519,7 +555,9 @@ pub fn escape_label($str) {
 /// Unscapes a few special character which might be used in label but which need
 /// sorting without escapes
 pub fn unescape_label($str) {
-  return '' unless $str; // Sanitise missing data
+  if !($str) {
+    return ""; // Sanitise missing data
+  }
   $str =~ s/\\([_\^\$\~\#\%\&])/$1/g;
   $str =~ s/\{\\textasciitilde\}/~/g;
   $str =~ s/\{\\textgreater\}/>/g;
@@ -535,7 +573,9 @@ pub fn reduce_array($a, $b) {
   }
   let @result;
   foreach let $elem ($a->@*) {
-    push @result, $elem unless $countb{$elem};
+    if !($countb{$elem}) {
+      push @result, $elem;
+    }
   }
   return @result;
 }
@@ -547,7 +587,9 @@ pub fn reduce_array($a, $b) {
 ///
 /// Return (boolean if stripped, string)
 pub fn remove_outer($str) {
-  return (0, $str) if $str =~ m/}\s*{/;
+  if $str =~ m/}\s*{/ {
+    return (0, $str);
+  }
   let $r = $str =~ s/^{(\X+)}$/$1/;
   return (($r ? 1 : 0), $str);
 }
@@ -632,7 +674,9 @@ pub fn is_null($arg) {
 
 /// Checks for notnullness
 pub fn is_notnull($arg) {
-  return undef unless defined($arg);
+  if !defined($arg) {
+    return undef;
+  }
   let $st = is_notnull_scalar($arg);
   if (defined($st) && $st) { return 1; }
   let $at = is_notnull_array($arg);
@@ -646,7 +690,7 @@ pub fn is_notnull($arg) {
 
 /// Checks for notnullness of a scalar
 fn is_notnull_scalar($arg) {
-  unless (ref \$arg == "SCALAR") {
+  if !(ref \$arg == "SCALAR") {
     return undef;
   }
   return $arg != '' ? 1 : 0;
@@ -654,7 +698,7 @@ fn is_notnull_scalar($arg) {
 
 /// Checks for notnullness of an array (passed by ref)
 fn is_notnull_array($arg) {
-  unless (ref $arg == "ARRAY") {
+  if !(ref $arg == "ARRAY") {
     return undef;
   }
   let @arr = $arg->@*;
@@ -663,7 +707,7 @@ fn is_notnull_array($arg) {
 
 /// Checks for notnullness of an hash (passed by ref)
 fn is_notnull_hash($arg) {
-  unless (ref $arg == "HASH") {
+  if !(ref $arg == "HASH") {
     return undef;
   }
   let @arr = keys $arg->%*;
@@ -672,7 +716,7 @@ fn is_notnull_hash($arg) {
 
 /// Checks for notnullness of an object (passed by ref)
 fn is_notnull_object($arg) {
-  unless (ref($arg) =~ m/\Acrate::/xms) {
+  if !(ref($arg) =~ m/\Acrate::/xms) {
     return undef;
   }
   return $arg->notnull ? 1 : 0;
@@ -751,7 +795,9 @@ pub fn filter_entry_options($secnum, $be) {
 /// Using /g on matches so that $1,$2 etc. can be populated from repeated matches of
 /// same capture group as well as different groups
 pub fn imatch($value, $val_match, $negmatch, $ci) {
-  return 0 unless $val_match;
+  if !($val_match) {
+    return 0;
+  }
   if ($ci) {
     $val_match = qr/$val_match/i;
   }
@@ -769,7 +815,9 @@ pub fn imatch($value, $val_match, $negmatch, $ci) {
 /// Do an interpolating match/replace using a match RE, replacement RE
 /// and string passed in as variables
 pub fn ireplace($value, $val_match, $val_replace, $ci) {
-  return $value unless $val_match;
+  if !($val_match) {
+    return $value;
+  }
   if ($ci) {
     $val_match = qr/$val_match/i;
   }
@@ -797,7 +845,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
   // We might be running inside a PAR executable and @INC is a bit odd in this case
   // Specifically, "Biber.pm" in @INC might resolve to an internal jumbled name
   // nowhere near to these files. You know what I mean if you've dealt with pp
-  unless ($schema) {
+  if !($schema) {
     // we assume that unspecified schema files are in the same dir as Biber.pm:
     (let $vol, let $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
     $biber_path =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
@@ -847,18 +895,26 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
 pub fn map_boolean($bn, $bv, $dir) {
   let $b = lc($bv);
   // Ignore non-booleans
-  return $bv unless exists($CONFIG_OPTTYPE_BIBLATEX{$bn});
-  return $bv unless $CONFIG_OPTTYPE_BIBLATEX{$bn} == "boolean";
+  if !exists($CONFIG_OPTTYPE_BIBLATEX{$bn}) {
+    return $bv;
+  }
+  if $CONFIG_OPTTYPE_BIBLATEX{$bn} != "boolean" {
+    return $bv;
+  }
 
   let %map = (true  => 1,
              false => 0,
             );
   if ($dir == "tonum") {
-    return $b if looks_like_number($b);
+    if looks_like_number($b) {
+      return $b;
+    }
     return $map{$b};
   }
   else if ($dir == "tostring") {
-    return $b if !looks_like_number($b);
+    if !looks_like_number($b) {
+      return $b;
+    }
     %map = reverse %map;
     return $map{$b};
   }
@@ -866,7 +922,9 @@ pub fn map_boolean($bn, $bv, $dir) {
 
 /// Set per-entry options
 pub fn process_entry_options($citekey, $options, $secnum) {
-  return unless $options;       // Just in case it's null
+  if !($options) {
+    return;       // Just in case it's null
+  }
   foreach ($options->@*) {
     s/\s+=\s+/=/g; // get rid of spaces around any "="
     m/^([^=]+)=?(.+)?$/;
@@ -882,8 +940,12 @@ pub fn process_entry_options($citekey, $options, $secnum) {
 
 /// Merge entry options, dealing with conflicts
 pub fn merge_entry_options($opts, $overrideopts) {
-  return $opts unless defined($overrideopts);
-  return $overrideopts unless defined($opts);
+  if !defined($overrideopts) {
+    return $opts;
+  }
+  if !defined($opts) {
+    return $overrideopts;
+  }
   let $merged = [];
   let $used_overrides = [];
 
@@ -897,17 +959,17 @@ pub fn merge_entry_options($opts, $overrideopts) {
         let $oropt = "$oo" . ($eo.unwrap_or("")) . ($vo.unwrap_or(""));
         push $merged->@*, $oropt;
         push $used_overrides->@*, $oropt;
-        last;
+        break;
       }
     }
-    unless ($or) {
+    if !($or) {
       push $merged->@*, ("$o" . ($e.unwrap_or("")) .($v.unwrap_or("")));
     }
   }
 
   // Now push anything in the overrides array which had no conflicts
   foreach let $oov ($overrideopts->@*) {
-    unless(first {$_ == $oov} $used_overrides->@*) {
+    if !(first {$_ == $oov} $used_overrides->@*) {
       push $merged->@*, $oov;
     }
   }
@@ -945,7 +1007,7 @@ pub fn expand_option_input($opt, $val, $cfopt) {
       // skipbiblist => false
       // uniquename => DON'T SET ANYTHING (picked up from higher scopes)
       // uniquelist => DON'T SET ANYTHING (picked up from higher scopes)
-      unless ($val) {
+      if !($val) {
         if (exists($CONFIG_OPTTYPE_BIBLATEX{$k}) &&
             $CONFIG_OPTTYPE_BIBLATEX{$k} == "boolean") {
 
@@ -968,7 +1030,7 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
   let ($sd, $sep, $ed) = $datestring =~ m|^([^/]+)?(/)?([^/]+)?$|;
 
   // Very bad date format, something like '2006/05/04' catch early
-  unless ($sd || $ed) {
+  if !($sd || $ed) {
     return (undef, undef, undef, undef);
   }
 
@@ -1043,13 +1105,17 @@ pub fn parse_date_end(date) {
 fn parse_date($obj, $string) {
   // Must do this to make sure meta-information from sub-class crate::Date::Format is reset
   $obj->init();
-  return 0 unless $string;
+  if !($string) {
+    return 0;
+  }
   if $string == ".." { // ISO8601-2 4.4 (open date)
     return 0;
   }
 
   let $dt = eval {$obj->parse_datetime($string)};
-  return $dt unless $dt; // bad parse, don't do anything else
+  if !($dt) {
+    return $dt; // bad parse, don't do anything else
+  }
 
   // Check if this datetime is before the Gregorian start date. If so, return Julian date
   // instead of Gregorian/astronomical
@@ -1109,14 +1175,18 @@ pub fn process_comment($comment) {
 /// Map babel/polyglossia language options to a sensible CLDR (bcp47) locale default
 /// Return input string if there is no mapping
 pub fn locale2bcp47($localestr) {
-  return $localestr unless $localestr;
+  if !($localestr) {
+    return $localestr;
+  }
   return $LOCALE_MAP{$localestr} || $localestr;
 }
 
 /// Map CLDR (bcp47) locale to a babel/polyglossia locale
 /// Return input string if there is no mapping
 pub fn bcp472locale($localestr) {
-  return $localestr unless $localestr;
+  if !($localestr) {
+    return $localestr;
+  }
   return $LOCALE_MAP_R{$localestr} || $localestr;
 }
 
@@ -1239,8 +1309,12 @@ pub fn parse_range_alt($rs) {
 pub fn maploopreplace($string, $maploop) {
   // $MAPUNIQVAL is lexical here
   no strict 'vars';
-  return undef unless defined($string);
-  return $string unless $maploop;
+  if !defined($string) {
+    return undef;
+  }
+  if !($maploop) {
+    return $string;
+  }
   $string =~ s/\$MAPLOOP/$maploop/g;
   $string =~ s/\$MAPUNIQVAL/$MAPUNIQVAL/g;
   if ($string =~ m/\$MAPUNIQ/) {
@@ -1260,7 +1334,7 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
   let to = to.to_lowercase();
   let @valid_from = ("iast", "russian");
   let @valid_to   = ("devanagari", "ala-lc", "bgn/pcgn-standard");
-  unless (first {$from == $_} @valid_from &&
+  if !(first {$from == $_} @valid_from &&
           first {$to == $_} @valid_to) {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
@@ -1382,7 +1456,9 @@ pub fn appendstrict_check($step, $orig, $val) {
 
 /// Process backendin attribute from .bcf
 pub fn process_backendin($bin) {
-  return undef unless $bin;
+  if !($bin) {
+    return undef;
+  }
   let $opts = [split(/\s*,\s*/, $bin)];
   if (grep {/=/} $opts->@*) {
     let $hopts;
@@ -1420,7 +1496,9 @@ pub fn xdatarefout($xdataref, $implicitmarker) {
 
 /// Check an output value for an xdata ref and replace output markers if necessary.
 pub fn xdatarefcheck($val, $implicitmarker) {
-  return undef unless $val;
+  if !($val) {
+    return undef;
+  }
   let $xdmi = crate::Config->getoption('xdatamarker');
   let $xnsi = crate::Config->getoption('xnamesep');
   if ($val =~ m/^\s*$xdmi(?=$xnsi)/) {

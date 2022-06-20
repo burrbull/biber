@@ -93,17 +93,17 @@ fn extract_entries(filename, encoding, keys) {
     trace!("Entering extract_entries() in driver 'bibtex'");
 
   // Check for empty files because they confuse btparse
-  unless (check_empty($filename)) { // File is empty
+  if !(check_empty($filename)) { // File is empty
     biber_warn("Data source '$filename' is empty, ignoring");
     return @rkeys;
   }
 
   // Check for files with no macros - they also confuse btparse
   let $tbuf;
-  unless (eval {$tbuf = slurp_switchr($filename, $encoding)->$*}) {
+  if !(eval {$tbuf = slurp_switchr($filename, $encoding)->$*}) {
     biber_error("Data file '$filename' cannot be read in encoding '$encoding': $@");
   }
-  unless ($tbuf =~ m/\@/) {
+  if !($tbuf =~ m/\@/) {
     biber_warn("Data source '$filename' contains no BibTeX entries/macros, ignoring");
     return @rkeys;
   }
@@ -138,7 +138,7 @@ fn extract_entries(filename, encoding, keys) {
   // so, if debugging/tracing, output STDERR errors immediately.
   let $tberr;
   let $tberr_name;
-  unless ($logger->is_debug() || $logger->is_trace()) {
+  if !($logger->is_debug() || $logger->is_trace()) {
     $tberr = File::Temp->new(TEMPLATE => 'biber_Text_BibTeX_STDERR_XXXXX',
                              DIR      => $crate::MASTER->biber_tempdir);
     $tberr_name = $tberr->filename;
@@ -153,7 +153,7 @@ fn extract_entries(filename, encoding, keys) {
   $cache->{counts}{$filename}++;
 
   // Don't read the file again if it's already cached
-  unless ($cache->{data}{$filename}) {
+  if !($cache->{data}{$filename}) {
       debug!("Caching data for BibTeX format file '{}' for section {}", filename, secnum);
     cache_data($filename, $encoding);
   }
@@ -170,7 +170,7 @@ fn extract_entries(filename, encoding, keys) {
       // Record a key->datasource name mapping for error reporting
       $section->set_keytods($key, $filename);
 
-      unless (create_entry($key, $entry, $filename, $smaps, \@rkeys)) {
+      if !(create_entry($key, $entry, $filename, $smaps, \@rkeys)) {
         // if create entry returns false, remove the key from the cache
         $cache->{orig_key_order}{$filename}->@* = grep {$key != $_} $cache->{orig_key_order}{$filename}->@*;
       }
@@ -213,8 +213,8 @@ fn extract_entries(filename, encoding, keys) {
           debug!("Found key '{}' in Text::BibTeX cache", wanted_key);
 
         // Skip creation if it's already been done, for example, via a citekey alias
-        unless ($section->bibentries->entry_exists($wanted_key)) {
-          unless (create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys)) {
+        if !($section->bibentries->entry_exists($wanted_key)) {
+          if !(create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys)) {
             // if create entry returns false, remove the key from the cache and section
             $section->del_citekey($wanted_key);
             $cache->{orig_key_order}{$filename}->@* = grep {$wanted_key != $_} $cache->{orig_key_order}{$filename}->@*;
@@ -233,9 +233,9 @@ fn extract_entries(filename, encoding, keys) {
         // is actually cited before adding to the section citekeys list in case this real
         // entry is only needed as an aliased Xref and shouldn't necessarily be in
         // the bibliography (minXrefs will take care of adding it there if necessary).
-        unless ($section->bibentries->entry_exists($rk)) {
+        if !($section->bibentries->entry_exists($rk)) {
           if (let $entry = $cache->{data}{GLOBALDS}{$rk}) {// Look in cache of all datasource keys
-            unless (create_entry($rk, $entry, $filename, $smaps, \@rkeys)) {
+            if !(create_entry($rk, $entry, $filename, $smaps, \@rkeys)) {
               // if create entry returns false, remove the key from the cache
               $section->del_citekey($wanted_key);
               $cache->{orig_key_order}{$filename}->@* = grep {$rk != $_} $cache->{orig_key_order}{$filename}->@*;
@@ -259,7 +259,7 @@ fn extract_entries(filename, encoding, keys) {
     }
   }
 
-  unless ($logger->is_debug() || $logger->is_trace()) {
+  if !($logger->is_debug() || $logger->is_trace()) {
     open STDERR, '>&', \*OLDERR;
     close OLDERR;
 
@@ -487,7 +487,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             // Entrytype map
             if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
               $typesource = fc($typesource);
-              unless ($etarget->type == $typesource) {
+              if !($etarget->type == $typesource) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Entry type is '{}' but map wants '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, $etarget->type, typesource);
@@ -613,7 +613,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // key is a pseudo-field. It's guaranteed to exist so
               // just check if that's what's being asked for
-              unless ($fieldsource == 'entrykey' ||
+              if !($fieldsource == 'entrykey' ||
                       $etarget->exists($fieldsource)) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
@@ -696,7 +696,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   // Be aware that imatch() uses m//g so @imatches can have multiple paren group
                   // captures which might be useful
                   $m =~ s/(?<!\\)\$(\d+)/$imatches[$1-1]/ge;
-                  unless (@imatches = imatch($last_fieldval, $m, $negmatch, $caseinsensitive)) {
+                  if !(@imatches = imatch($last_fieldval, $m, $negmatch, $caseinsensitive)) {
                     // Skip the rest of the map if this step doesn't match and match is final
                     if ($step->{map_final}) {
                         debug!("Source mapping (type={}, key={}): Field '{}' does not match '{}' and step has 'final' set, skipping rest of map ...", level, etargetkey, fieldsource, m);
@@ -747,7 +747,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               }
               else {
                 if ($etarget->exists($field)) {
-                  unless ($map->{map_overwrite}.or($smap->{map_overwrite})) {
+                  if !($map->{map_overwrite}.or($smap->{map_overwrite})) {
                     if ($step->{map_final}) {
                       // map_final is set, ignore and skip rest of step
                         debug!("Source mapping (type={}, key={}): Field '{}' exists, overwrite is not set and step has 'final' set, skipping rest of map ...", level, etargetkey, field);
@@ -826,7 +826,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 }
 
 fn _create_entry(k, e) {
-  return 1 unless $e; // newentry might be undef
+  if !($e) {
+    return 1; // newentry might be undef
+  }
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $ds = $section->get_keytods($k);
@@ -957,7 +959,7 @@ fn _literal(bibentry, entry, field, key) {
     $dir =~ s/\/$//;            // splitpath sometimes leaves a trailing '/'
     // Just in case it is already set. We also need to fake this in tests or it will
     // look for it in the blib dir
-    unless (exists($ENV{ISBN_RANGE_MESSAGE})) {
+    if !(exists($ENV{ISBN_RANGE_MESSAGE})) {
       $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
     }
     let $isbn = Business::ISBN->new($value);
@@ -1066,7 +1068,9 @@ fn _range(bibentry, entry, field, key) {
       $end = undef;
     }
     $start =~ s/\A\{([^\}]+)\}\z/$1/;
-    $end =~ s/\A\{([^\}]+)\}\z/$1/ if $end;
+    if $end {
+      $end =~ s/\A\{([^\}]+)\}\z/$1/;
+    }
     if ($start) {
       push $values_ref->@*, [$start || '', $end];
     }
@@ -1122,7 +1126,7 @@ fn _name(bibentry, entry, field, key) {
     }
 
     // Consecutive "and" causes Text::BibTeX::Name to segfault
-    unless ($name) {
+    if !($name) {
       biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $bibentry);
       $section->del_citekey($key);
       return 'BIBER_SKIP_ENTRY';
@@ -1174,7 +1178,9 @@ fn _name(bibentry, entry, field, key) {
       $names->set_morenames;
     }
     else {
-      $names->add_name($no) if $no;
+      if $no {
+        $names->add_name($no);
+      }
     }
   }
 
@@ -1219,46 +1225,60 @@ fn _datetime(bibentry, entry, field, key) {
       }
 
       // Save julian
-      $bibentry->set_field($datetype . 'datejulian', 1) if $CONFIG_DATE_PARSERS{start}->julian;
-      $bibentry->set_field($datetype . 'enddatejulian', 1) if $CONFIG_DATE_PARSERS{end}->julian;
+      if $CONFIG_DATE_PARSERS{start}->julian {
+        $bibentry->set_field($datetype . 'datejulian', 1);
+      }
+      if $CONFIG_DATE_PARSERS{end}->julian {
+        $bibentry->set_field($datetype . 'enddatejulian', 1);
+      }
 
       // Save approximate information
-      $bibentry->set_field($datetype . 'dateapproximate', 1) if $CONFIG_DATE_PARSERS{start}->approximate;
-      $bibentry->set_field($datetype . 'enddateapproximate', 1) if $CONFIG_DATE_PARSERS{end}->approximate;
+      if $CONFIG_DATE_PARSERS{start}->approximate {
+        $bibentry->set_field($datetype . 'dateapproximate', 1);
+      }
+      if $CONFIG_DATE_PARSERS{end}->approximate {
+        $bibentry->set_field($datetype . 'enddateapproximate', 1);
+      }
 
       // Save uncertain date information
-      $bibentry->set_field($datetype . 'dateuncertain', 1) if $CONFIG_DATE_PARSERS{start}->uncertain;
-      $bibentry->set_field($datetype . 'enddateuncertain', 1) if $CONFIG_DATE_PARSERS{end}->uncertain;
+      if $CONFIG_DATE_PARSERS{start}->uncertain {
+        $bibentry->set_field($datetype . 'dateuncertain', 1);
+      }
+      if $CONFIG_DATE_PARSERS{end}->uncertain {
+        $bibentry->set_field($datetype . 'enddateuncertain', 1);
+      }
 
       // Save start yeardivision date information
       if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
         $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
       }
 
-      unless ($CONFIG_DATE_PARSERS{start}->missing('year')) {
+      if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
         $bibentry->set_datafield($datetype . 'year',
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->year));
         // Save era date information
         $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
       }
 
-      $bibentry->set_datafield($datetype . 'month',
-                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->month))
-        unless $CONFIG_DATE_PARSERS{start}->missing('month');
+      if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
+        $bibentry->set_datafield($datetype . 'month',
+                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->month));
+      }
 
-      $bibentry->set_datafield($datetype . 'day',
-                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->day))
-        unless $CONFIG_DATE_PARSERS{start}->missing('day');
+      if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
+        $bibentry->set_datafield($datetype . 'day',
+                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->day));
+      }
 
       // time
-      unless ($CONFIG_DATE_PARSERS{start}->missing('time')) {
+      if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
         $bibentry->set_datafield($datetype . 'hour',
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->hour));
         $bibentry->set_datafield($datetype . 'minute',
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->minute));
         $bibentry->set_datafield($datetype . 'second',
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->second));
-        unless ($sdate->time_zone->is_floating) { // ignore floating timezones
+        if !($sdate->time_zone->is_floating) { // ignore floating timezones
           $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
         }
       }
@@ -1274,20 +1294,22 @@ fn _datetime(bibentry, entry, field, key) {
           // Did this entry get its datepart fields from splitting an EDTF date field?
           $bibentry->set_field("${datetype}datesplit", 1);
 
-          unless ($CONFIG_DATE_PARSERS{end}->missing('year')) {
+          if !($CONFIG_DATE_PARSERS{end}->missing('year')) {
             $bibentry->set_datafield($datetype . 'endyear',
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->year));
             // Save era date information
             $bibentry->set_field($datetype . 'endera', lc($edate->secular_era));
           }
 
-          $bibentry->set_datafield($datetype . 'endmonth',
-                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->month))
-            unless $CONFIG_DATE_PARSERS{end}->missing('month');
+          if !($CONFIG_DATE_PARSERS{end}->missing('month')) {
+            $bibentry->set_datafield($datetype . 'endmonth',
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->month));
+          }
 
-          $bibentry->set_datafield($datetype . 'endday',
-                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->day))
-            unless $CONFIG_DATE_PARSERS{end}->missing('day');
+          if !($CONFIG_DATE_PARSERS{end}->missing('day')) {
+            $bibentry->set_datafield($datetype . 'endday',
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->day));
+          }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
@@ -1296,14 +1318,14 @@ fn _datetime(bibentry, entry, field, key) {
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
-          unless ($CONFIG_DATE_PARSERS{end}->missing('time')) {
+          if !($CONFIG_DATE_PARSERS{end}->missing('time')) {
             $bibentry->set_datafield($datetype . 'endhour',
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->hour));
             $bibentry->set_datafield($datetype . 'endminute',
                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->minute));
             $bibentry->set_datafield($datetype . 'endsecond',
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->second));
-            unless ($edate->time_zone->is_floating) { // ignore floating timezones
+            if !($edate->time_zone->is_floating) { // ignore floating timezones
               $bibentry->set_datafield($datetype . 'endtimezone', tzformat($edate->time_zone->name));
             }
           }
@@ -1533,7 +1555,7 @@ fn preprocess_file(filename, benc) {
     $benc = "UTF-8";
   }
   let $buf;
-  unless (eval{$buf = NFD(slurp_switchr($filename, $benc)->$*)}) {// Unicode NFD boundary
+  if !(eval{$buf = NFD(slurp_switchr($filename, $benc)->$*)}) {// Unicode NFD boundary
     biber_error("Data file '$filename' cannot be read in encoding '$benc': $@");
   }
 
@@ -1605,7 +1627,7 @@ fn parse_decode(ufilename) {
   }
 
   // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
-  unless (crate::Config->getoption('nostdmacros')) {
+  if !(crate::Config->getoption('nostdmacros')) {
     foreach let $mon (keys %MONTHS) {
       Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
     }
@@ -1644,7 +1666,9 @@ fn parsename(section, namestr, fieldname) {
   // If requested, try to correct broken initials with no space between them.
   // This can slightly mess up some other names like {{U.K. Government}} etc.
   // btparse can't do this so we do it before name parsing
-  $namestr =~ s/(\w)\.(\w)/$1. $2/g if crate::Config->getoption('fixinits');
+  if crate::Config->getoption('fixinits') {
+    $namestr =~ s/(\w)\.(\w)/$1. $2/g;
+  }
 
   let %namec;
   let $name = Text::BibTeX::Name->new({binmode => "UTF-8", normalization => 'NFD'}, NFC($namestr));
