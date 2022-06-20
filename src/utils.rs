@@ -25,7 +25,6 @@ use Text::CSV;
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
 use Unicode::GCString;
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Expands a data file glob to a list of filenames
 pub fn glob_data_file($source, $globflag) {
@@ -44,7 +43,7 @@ pub fn glob_data_file($source, $globflag) {
     debug!("Enabling Windows-style globbing");
     require Win32;
     require File::DosGlob;
-    File::DosGlob->import('glob');
+    File::DosGlob->import("glob");
   }
 
   push @sources, map {biber_decode_utf8($_)} glob NFC(qq("$source"));
@@ -693,7 +692,7 @@ fn is_notnull_scalar($arg) {
   if !(ref \$arg == "SCALAR") {
     return undef;
   }
-  return $arg != '' ? 1 : 0;
+  return $arg != "" ? 1 : 0;
 }
 
 /// Checks for notnullness of an array (passed by ref)
@@ -785,7 +784,7 @@ pub fn filter_entry_options($secnum, $be) {
 
     // By this point, all entry meta-options have been expanded by expand_option_input
     if ($cfopt) { // suppress only explicitly ignored output options
-      push $roptions->@*, $opt . ($val ? "=$val" : '') ;
+      push $roptions->@*, $opt . ($val ? "=$val" : "") ;
     }
   }
   return $roptions;
@@ -1197,9 +1196,9 @@ pub fn bcp472locale($localestr) {
 ///
 /// m-n -> [m, n]
 /// m   -> [m, undef]
-/// m-  -> [m, '']
-/// -n  -> ['', n]
-/// -   -> ['', undef]
+/// m-  -> [m, ""]
+/// -n  -> ["", n]
+/// -   -> ["", undef]
 pub fn rangelen($rf) {
   let $rl = 0;
   foreach let $f ($rf->@*) {
@@ -1231,11 +1230,11 @@ pub fn rangelen($rf) {
             }
             $n[$i] = $m[$i];
           }
-          $n = join('', reverse @n);
+          $n = join("", reverse @n);
         }
         $rl += (($n - $m) + 1);
       }
-      // n is ''
+      // n is ""
       else if (defined($n)) {
         // open-ended range can't be calculated, just return -1
         return -1;
@@ -1308,7 +1307,7 @@ pub fn parse_range_alt($rs) {
 /// Replace loop markers with values.
 pub fn maploopreplace($string, $maploop) {
   // $MAPUNIQVAL is lexical here
-  no strict 'vars';
+  no strict "vars";
   if !defined($string) {
     return undef;
   }
@@ -1342,13 +1341,13 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
     debug!("Using '{} -> {}' transliteration for sorting '{}'", from, to, target);
 
   // List pairs explicitly as we don't expect there to be to many of these ever
-  if ($from == 'iast' && $to == 'devanagari') {
+  if ($from == "iast" && $to == "devanagari") {
     return new Lingua::Translit('IAST Devanagari');
   }
-  else if ($from == 'russian' && $to == 'ala-lc') {
+  else if ($from == "russian" && $to == 'ala-lc') {
     return new Lingua::Translit('ALA-LC RUS');
   }
-  else if ($from == 'russian' && $to == 'bgn/pcgn-standard') {
+  else if ($from == "russian" && $to == 'bgn/pcgn-standard') {
     return new Lingua::Translit('BGN/PCGN RUS Standard');
   }
 
@@ -1427,9 +1426,9 @@ pub fn split_xsv($string, $sep) {
 /// Add a macro sep for minutes in timezones
 pub fn tzformat($tz) {
   if ($tz =~ m/^([+-])(\d{2}):?(\d{2})?/) {
-    return "$1$2" . ($3 ? "\\bibtzminsep $3" : '');
+    return "$1$2" . ($3 ? "\\bibtzminsep $3" : "");
   }
-  else if ($tz == 'UTC') {
+  else if ($tz == "UTC") {
     return 'Z';
   }
   else {
@@ -1445,7 +1444,7 @@ pub fn appendstrict_check($step, $orig, $val) {
       return $orig . $val;
     }
     else { // orig is empty, don't append
-      return '';
+      return "";
     }
   }
   // Normal append, don't care if orig is empty
@@ -1477,12 +1476,12 @@ pub fn process_backendin($bin) {
 /// Replace xnamesep/xdatasep with output variants
 /// Some datasource formats don't need the marker (biblatexml)
 pub fn xdatarefout($xdataref, $implicitmarker) {
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xdmo = crate::Config->getoption('output_xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
-  let $xnso = crate::Config->getoption('output_xnamesep');
-  let $xdsi = crate::Config->getoption('xdatasep');
-  let $xdso = crate::Config->getoption('output_xdatasep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xdmo = crate::Config->getoption("output_xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
+  let $xnso = crate::Config->getoption("output_xnamesep");
+  let $xdsi = crate::Config->getoption("xdatasep");
+  let $xdso = crate::Config->getoption("output_xdatasep");
   if ($implicitmarker) { // Don't want output marker at all
     $xdataref =~ s/^$xdmi$xnsi//x;
   }
@@ -1499,8 +1498,8 @@ pub fn xdatarefcheck($val, $implicitmarker) {
   if !($val) {
     return undef;
   }
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
   if ($val =~ m/^\s*$xdmi(?=$xnsi)/) {
     return xdatarefout($val, $implicitmarker);
   }

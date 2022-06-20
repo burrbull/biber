@@ -14,7 +14,6 @@ use Text::Wrap;
 use Unicode::Normalize;
 use URI;
 $Text::Wrap::columns = 80;
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Class for Biber output of .bbl
 pub struct Bbl;
@@ -54,11 +53,11 @@ fn create_output_misc(self) {
     $pa = join("%\n", $pa->@*);
 
     // If requested to convert UTF-8 to macros ...
-    if (crate::Config->getoption('output_safechars')) {
+    if (crate::Config->getoption("output_safechars")) {
       $pa = latex_recode_output($pa);
     }
     else {           // ... or, check for encoding problems and force macros
-      let $outenc = crate::Config->getoption('output_encoding');
+      let $outenc = crate::Config->getoption("output_encoding");
       if ($outenc != "UTF-8") {
         // Can this entry be represented in the output encoding?
         if (encode($outenc, NFC($pa), sub {"\0"}) =~ /\0/) { // Malformed data encoding char
@@ -75,7 +74,7 @@ fn create_output_misc(self) {
 
 /// Add the .bbl for a text field to the output accumulator.
 fn _printfield(be, field, $str) {
-  let $field_type = 'field';
+  let $field_type = "field";
   let $dm = crate::Config->get_dm;
 
   let $outfield = $dm->get_outcase($field);
@@ -84,10 +83,10 @@ fn _printfield(be, field, $str) {
     return "";
   }
 
-  // crossref and xref are of type 'strng' in the .bbl
-  if (lc($field) == 'crossref' ||
-      lc($field) == 'xref') {
-    $field_type = 'strng';
+  // crossref and xref are of type "strng" in the .bbl
+  if (lc($field) == "crossref" ||
+      lc($field) == "xref") {
+    $field_type = "strng";
   }
 
   // Output absolute astronomical year by default (with year 0)
@@ -103,11 +102,11 @@ fn _printfield(be, field, $str) {
   // auto-escape TeX special chars if:
   // * The entry is not a BibTeX entry (no auto-escaping for BibTeX data)
   // * It's not a string field
-  if ($field_type != 'strng' && $be->get_field('datatype') != 'bibtex') {
+  if ($field_type != "strng" && $be->get_field("datatype") != "bibtex") {
     $str =~ s/(?<!\\)(\#|\&|\%)/\\$1/gxms;
   }
 
-  if (crate::Config->getoption('wraplines')) {
+  if (crate::Config->getoption("wraplines")) {
     // 16 is the length of '      \field{}{}' or '      \strng{}{}'
     if ( 16 + Unicode::GCString->new($outfield)->length + Unicode::GCString->new($str)->length > 2*$Text::Wrap::columns ) {
       return "      \\${field_type}{$outfield}{%\n" . wrap('      ', '      ', $str) . "%\n      }\n";
@@ -152,14 +151,14 @@ fn set_output_undefkey(self, $key, $section) {
 /// Set the .bbl output for an entry. This is the meat of
 /// the .bbl output
 fn set_output_entry(self, $be, $section, $dm) {
-  let $bee = $be->get_field('entrytype');
+  let $bee = $be->get_field("entrytype");
   let $outtype = $dm->get_outcase($bee).unwrap_or($bee);
   let $secnum = $section->number;
-  let $key = $be->get_field('citekey');
-  let $acc = '';
+  let $key = $be->get_field("citekey");
+  let $acc = "";
   let $dmh = $dm->{helpers};
-  let $un = crate::Config->getblxoption($secnum, 'uniquename', $bee, $key);
-  let $ul = crate::Config->getblxoption($secnum, 'uniquelist', $bee, $key);
+  let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $key);
+  let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $key);
   let $lni = $be->get_labelname_info;
   let $nl = $be->get_field($lni);
 
@@ -181,11 +180,11 @@ fn set_output_entry(self, $be, $section, $dm) {
 
   // Generate set information.
   // Set parents are special and need very little
-  if ($bee == 'set') { // Set parents get \set entry ...
+  if ($bee == "set") { // Set parents get \set entry ...
     $acc .= "      <BDS>ENTRYSET</BDS>\n";
 
     // Set parents need this - it is the labelalpha from the first entry
-    if (crate::Config->getblxoption(undef, 'labelalpha', $bee, $key)) {
+    if (crate::Config->getblxoption(undef, "labelalpha", $bee, $key)) {
       $acc .= "      <BDS>LABELALPHA</BDS>\n";
       $acc .= "      <BDS>EXTRAALPHA</BDS>\n";
     }
@@ -198,12 +197,12 @@ fn set_output_entry(self, $be, $section, $dm) {
     $acc .= "      <BDS>LABELPREFIX</BDS>\n";
 
     // Label can be in set parents
-    if (let $lab = $be->get_field('label')) {
+    if (let $lab = $be->get_field("label")) {
       $acc .= "      \\field{label}{$lab}\n";
     }
 
     // Annotation can be in set parents
-    if (let $ann = $be->get_field('annotation')) {
+    if (let $ann = $be->get_field("annotation")) {
       $acc .= "      \\field{annotation}{$ann}\n";
     }
 
@@ -212,7 +211,7 @@ fn set_output_entry(self, $be, $section, $dm) {
     goto ENDENTRY;
   }
   else { // Everything else that isn't a set parent ...
-    if (let $es = $be->get_field('entryset')) { // ... gets a \inset if it's a set member
+    if (let $es = $be->get_field("entryset")) { // ... gets a \inset if it's a set member
       $acc .= "      \\inset{" . join(',', $es->@*) . "}\n";
     }
   }
@@ -242,13 +241,13 @@ fn set_output_entry(self, $be, $section, $dm) {
 
       let $total = $nf->count;
 
-      let $nfv = '';
+      let $nfv = "";
 
       if (defined($lni) && $lni == $namefield) {
         let @plo;
 
         // Add uniquelist if requested
-        if ($ul != 'false') {
+        if ($ul != "false") {
           push @plo, "<BDS>UL-${nlid}</BDS>";
         }
 
@@ -258,7 +257,7 @@ fn set_output_entry(self, $be, $section, $dm) {
             let $nlov = $nf->${\"get_$nlo"};
 
             if ($CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{OUTPUT}) {
-              push @plo, $nlo . '=' . map_boolean($nlo, $nlov, 'tostring');
+              push @plo, $nlo . '=' . map_boolean($nlo, $nlov, "tostring");
             }
           }
         }
@@ -278,7 +277,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   foreach let $listfield ($dmh->{lists}->@*) {
     // Performance - as little as possible here - loop over DM fields for every entry
     if (let $lf = $be->get_field($listfield)) {
-      if ( lc($lf->[-1]) == crate::Config->getoption('others_string') ) {
+      if ( lc($lf->[-1]) == crate::Config->getoption("others_string") ) {
         $acc .= "      \\true{more$listfield}\n";
         pop $lf->@*; // remove the last element in the array
       }
@@ -293,7 +292,7 @@ fn set_output_entry(self, $be, $section, $dm) {
 
   // Output labelname hashes
   $acc .= "      <BDS>NAMEHASH</BDS>\n";
-  let $fullhash = $be->get_field('fullhash');
+  let $fullhash = $be->get_field("fullhash");
   if $fullhash {
     $acc .= "      \\strng{fullhash}{$fullhash}\n";
   }
@@ -317,7 +316,7 @@ fn set_output_entry(self, $be, $section, $dm) {
     $acc .= "      <BDS>EXTRANAME</BDS>\n";
   }
 
-  if ( crate::Config->getblxoption(undef, 'labelalpha', $bee, $key) ) {
+  if ( crate::Config->getblxoption(undef, "labelalpha", $bee, $key) ) {
     $acc .= "      <BDS>LABELALPHA</BDS>\n";
   }
 
@@ -325,42 +324,42 @@ fn set_output_entry(self, $be, $section, $dm) {
   $acc .= "      <BDS>SORTINITHASH</BDS>\n";
 
   // The labeldateparts option determines whether "extradate" is output
-  if (crate::Config->getblxoption(undef, 'labeldateparts', $bee, $key)) {
+  if (crate::Config->getblxoption(undef, "labeldateparts", $bee, $key)) {
     $acc .= "      <BDS>EXTRADATE</BDS>\n";
-    if (let $edscope = $be->get_field('extradatescope')) {
+    if (let $edscope = $be->get_field("extradatescope")) {
       $acc .= "      \\field{extradatescope}{$edscope}\n";
     }
-    if ($be->field_exists('labeldatesource')) {
-      $acc .= "      \\field{labeldatesource}{" . $be->get_field('labeldatesource') .  "}\n";
+    if ($be->field_exists("labeldatesource")) {
+      $acc .= "      \\field{labeldatesource}{" . $be->get_field("labeldatesource") .  "}\n";
     }
   }
 
   // labelprefix is list-specific. It is only defined if there is no shorthand
   // (see biblatex documentation)
-  if !($be->get_field('shorthand')) {
+  if !($be->get_field("shorthand")) {
     $acc .= "      <BDS>LABELPREFIX</BDS>\n";
   }
 
   // The labeltitle option determines whether "extratitle" is output
-  if ( crate::Config->getblxoption(undef, 'labeltitle', $bee, $key)) {
+  if ( crate::Config->getblxoption(undef, "labeltitle", $bee, $key)) {
     $acc .= "      <BDS>EXTRATITLE</BDS>\n";
   }
 
   // The labeltitleyear option determines whether "extratitleyear" is output
-  if ( crate::Config->getblxoption(undef, 'labeltitleyear', $bee, $key)) {
+  if ( crate::Config->getblxoption(undef, "labeltitleyear", $bee, $key)) {
     $acc .= "      <BDS>EXTRATITLEYEAR</BDS>\n";
   }
 
   // The labelalpha option determines whether "extraalpha" is output
-  if ( crate::Config->getblxoption(undef, 'labelalpha', $bee, $key)) {
+  if ( crate::Config->getblxoption(undef, "labelalpha", $bee, $key)) {
     $acc .= "      <BDS>EXTRAALPHA</BDS>\n";
   }
 
-  if (defined($be->get_field('crossrefsource'))) {
+  if (defined($be->get_field("crossrefsource"))) {
     $acc .= "      \\true{crossrefsource}\n";
   }
 
-  if (defined($be->get_field('xrefsource'))) {
+  if (defined($be->get_field("xrefsource"))) {
     $acc .= "      \\true{xrefsource}\n";
   }
 
@@ -380,7 +379,7 @@ fn set_output_entry(self, $be, $section, $dm) {
     $acc .= "      \\field{labeltitlesource}{$lti}\n";
   }
 
-  if (let $ck = $be->get_field('clonesourcekey')) {
+  if (let $ck = $be->get_field("clonesourcekey")) {
     $acc .= "      \\field{clonesourcekey}{$ck}\n";
   }
 
@@ -395,13 +394,13 @@ fn set_output_entry(self, $be, $section, $dm) {
       // we skip outputting the crossref or xref when the parent is not cited
       // sets are a special case so always output crossref/xref for them since their
       // children will always be in the .bbl otherwise they make no sense.
-      if !($bee == 'set') {
-        if ($field == 'crossref' &&
-                 !$section->has_citekey($be->get_field('crossref'))) {
+      if !($bee == "set") {
+        if ($field == "crossref" &&
+                 !$section->has_citekey($be->get_field("crossref"))) {
           continue;
         }
-        if ($field == 'xref' &&
-                 !$section->has_citekey($be->get_field('xref'))) {
+        if ($field == "xref" &&
+                 !$section->has_citekey($be->get_field("xref"))) {
           continue;
         }
       }
@@ -473,7 +472,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   foreach let $field ($dmh->{xsv}->@*) {
     // keywords is by default field/xsv/keyword but it is in fact
     // output with its own special macro below
-    if $field == 'keywords' {
+    if $field == "keywords" {
       continue;
     }
     if (let $f = $be->get_field($field)) {
@@ -482,7 +481,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   }
 
   // Output nocite boolean
-  if ($be->get_field('nocite')) {
+  if ($be->get_field("nocite")) {
     $acc .= "      \\true{nocite}\n";
   }
 
@@ -494,7 +493,7 @@ fn set_output_entry(self, $be, $section, $dm) {
       let @pr;
       foreach let $f ($rf->@*) {
         if (defined($f->[1])) {
-          push @pr, $f->[0] . '\bibrangedash' . ($f->[1] ? ' ' . $f->[1] : '');
+          push @pr, $f->[0] . '\bibrangedash' . ($f->[1] ? ' ' . $f->[1] : "");
         }
         else {
           push @pr, $f->[0];
@@ -510,7 +509,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   foreach let $vfield ($dmh->{vfields}->@*) {
     // Performance - as little as possible here - loop over DM fields for every entry
     if ( let $vf = $be->get_field($vfield) ) {
-      if ($vfield == 'url') {
+      if ($vfield == "url") {
         $acc .= "      \\verb{urlraw}\n";
         $acc .= "      \\verb $vf\n      \\endverb\n";
         // Unicode NFC boundary (before hex encoding)
@@ -524,14 +523,14 @@ fn set_output_entry(self, $be, $section, $dm) {
   // verbatim lists
   foreach let $vlist ($dmh->{vlists}->@*) {
     if ( let $vlf = $be->get_field($vlist) ) {
-      if ( lc($vlf->[-1]) == crate::Config->getoption('others_string') ) {
+      if ( lc($vlf->[-1]) == crate::Config->getoption("others_string") ) {
         $acc .= "      \\true{more$vlist}\n";
         pop $vlf->@*; // remove the last element in the array
       }
       let $total = $vlf->$#* + 1;
       $acc .= "      \\lverb{$vlist}{$total}\n";
       foreach let $f ($vlf->@*) {
-        if ($vlist == 'urls') {
+        if ($vlist == "urls") {
           // Unicode NFC boundary (before hex encoding)
           $f = URI->new(NFC($f))->as_string;
         }
@@ -541,36 +540,36 @@ fn set_output_entry(self, $be, $section, $dm) {
     }
   }
 
-  if ( let $k = $be->get_field('keywords') ) {
+  if ( let $k = $be->get_field("keywords") ) {
     $k = join(',', $k->@*);
     $acc .= "      \\keyw{$k}\n";
   }
 
   // Output annotations
-  foreach let $f (crate::Annotation->get_annotated_fields('field', $key)) {
-    foreach let $n (crate::Annotation->get_annotations('field', $key, $f)) {
-      let $v = crate::Annotation->get_annotation('field', $key, $f, $n);
-      let $l = crate::Annotation->is_literal_annotation('field', $key, $f, $n);
+  foreach let $f (crate::Annotation->get_annotated_fields("field", $key)) {
+    foreach let $n (crate::Annotation->get_annotations("field", $key, $f)) {
+      let $v = crate::Annotation->get_annotation("field", $key, $f, $n);
+      let $l = crate::Annotation->is_literal_annotation("field", $key, $f, $n);
       $acc .= "      \\annotation{field}{$f}{$n}{}{}{$l}{$v}\n";
     }
   }
 
-  foreach let $f (crate::Annotation->get_annotated_fields('item', $key)) {
-    foreach let $n (crate::Annotation->get_annotations('item', $key, $f)) {
-      foreach let $c (crate::Annotation->get_annotated_items('item', $key, $f, $n)) {
-        let $v = crate::Annotation->get_annotation('item', $key, $f, $n, $c);
-        let $l = crate::Annotation->is_literal_annotation('item', $key, $f, $n, $c);
+  foreach let $f (crate::Annotation->get_annotated_fields("item", $key)) {
+    foreach let $n (crate::Annotation->get_annotations("item", $key, $f)) {
+      foreach let $c (crate::Annotation->get_annotated_items("item", $key, $f, $n)) {
+        let $v = crate::Annotation->get_annotation("item", $key, $f, $n, $c);
+        let $l = crate::Annotation->is_literal_annotation("item", $key, $f, $n, $c);
         $acc .= "      \\annotation{item}{$f}{$n}{$c}{}{$l}{$v}\n";
       }
     }
   }
 
-  foreach let $f (crate::Annotation->get_annotated_fields('part', $key)) {
-    foreach let $n (crate::Annotation->get_annotations('part', $key, $f)) {
-      foreach let $c (crate::Annotation->get_annotated_items('part', $key, $f, $n)) {
-        foreach let $p (crate::Annotation->get_annotated_parts('part', $key, $f, $n, $c)) {
-          let $v = crate::Annotation->get_annotation('part', $key, $f, $n, $c, $p);
-          let $l = crate::Annotation->is_literal_annotation('part', $key, $f, $n, $c, $p);
+  foreach let $f (crate::Annotation->get_annotated_fields("part", $key)) {
+    foreach let $n (crate::Annotation->get_annotations("part", $key, $f)) {
+      foreach let $c (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
+        foreach let $p (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
+          let $v = crate::Annotation->get_annotation("part", $key, $f, $n, $c, $p);
+          let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
           $acc .= "      \\annotation{part}{$f}{$n}{$c}{$p}{$l}{$v}\n";
         }
       }
@@ -578,7 +577,7 @@ fn set_output_entry(self, $be, $section, $dm) {
   }
 
   // Append any warnings to the entry, if any
-  if (let $w = $be->get_field('warnings')) {
+  if (let $w = $be->get_field("warnings")) {
     foreach let $warning ($w->@*) {
       $acc .= "      \\warn{\\item $warning}\n";
     }
@@ -605,8 +604,8 @@ fn output(self) {
 
   if (!$target || $target_string == '-') {
     let $enc_out;
-    if (crate::Config->getoption('output_encoding')) {
-      $enc_out = ':encoding(' . crate::Config->getoption('output_encoding') . ')';
+    if (crate::Config->getoption("output_encoding")) {
+      $enc_out = ':encoding(' . crate::Config->getoption("output_encoding") . ')';
   }
     $target = new IO::File ">-$enc_out";
   }
@@ -614,7 +613,7 @@ fn output(self) {
     debug!("Preparing final output using class {}...", __PACKAGE__);
 
   info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
-  if crate::Config->getoption('output_safechars') {
+  if crate::Config->getoption("output_safechars") {
     info!("Converting UTF-8 to TeX macros on output to .bbl");
   }
 
@@ -631,8 +630,8 @@ fn output(self) {
     // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
     // but omit global sort lists so that we can add them last
     foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-      if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, 'sortingtemplatename') &&
-          $list->get_type == 'entry') {
+      if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
+          $list->get_type == "entry") {
         continue;
       }
       push @lists, $list;
@@ -643,8 +642,8 @@ fn output(self) {
     // previously read ones and the global list determines the order of labelnumber
     // and sortcites etc. when not using defernumbers
     push @lists, $crate::MASTER->datalists->get_lists_by_attrs(section => $secnum,
-                                                               type    => 'entry',
-                                                               sortingtemplatename => crate::Config->getblxoption(undef, 'sortingtemplatename'))->@*;
+                                                               type    => "entry",
+                                                               sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"))->@*;
 
     foreach let $list (@lists) {
       if !($list->count_keys) { // skip empty lists
@@ -667,11 +666,11 @@ fn output(self) {
         let $entry_string = $list->instantiate_entry($section, $entry, $k);
 
         // If requested to convert UTF-8 to macros ...
-        if (crate::Config->getoption('output_safechars')) {
+        if (crate::Config->getoption("output_safechars")) {
           $entry_string = latex_recode_output($entry_string);
         }
         else { // ... or, check for encoding problems and force macros
-          let $outenc = crate::Config->getoption('output_encoding');
+          let $outenc = crate::Config->getoption("output_encoding");
           if ($outenc != "UTF-8") {
             // Can this entry be represented in the output encoding?
             // We must have an ASCII-safe replacement string for encode which is unlikely to be
@@ -685,7 +684,7 @@ fn output(self) {
         }
 
         // If requested, add a printable sorting key to the output - useful for debugging
-        if (crate::Config->getoption('sortdebug')) {
+        if (crate::Config->getoption("sortdebug")) {
           $entry_string = "    % sorting key for '$k':\n    % " . $list->get_sortdata_for_key($k)->[0] . "\n" . $entry_string;
         }
 

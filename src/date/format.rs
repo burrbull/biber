@@ -142,7 +142,7 @@ fn _pre(%p) {
 
   // ISO8601-1 4.2.2 (time zone)
   if ($p{input} =~ s/Z$//) {
-    $p{parsed}{time_zone} = 'UTC';
+    $p{parsed}{time_zone} = "UTC";
   }
   else if ($p{input} =~ s/([+-]\d\d:\d\d)$//) {
     $p{parsed}{time_zone} = $1;

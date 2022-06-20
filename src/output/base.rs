@@ -6,7 +6,6 @@ use Text::Wrap;
 $Text::Wrap::columns = 80;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Unicode::Normalize;
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Base class for Biber output modules.
 pub struct Base;
@@ -14,15 +13,15 @@ pub struct Base;
 /// Initialize a crate::Output::base object
 fn new(obj) -> Self {
   let $self;
-  if (defined($obj) && ref($obj) == 'HASH') {
+  if (defined($obj) && ref($obj) == "HASH") {
     $self = bless $obj, $class;
   }
   else {
     $self = bless {}, $class;
   }
 
-  $self->{output_data}{HEAD} = '';
-  $self->{output_data}{TAIL} = '';
+  $self->{output_data}{HEAD} = "";
+  $self->{output_data}{TAIL} = "";
 
   return $self;
 }
@@ -34,7 +33,7 @@ fn set_output_target_file(self, $file, $init) {
 
   $self->{output_target_file} = $file;
   let $enc_out;
-  if (let $enc = crate::Config->getoption('output_encoding')) {
+  if (let $enc = crate::Config->getoption("output_encoding")) {
     $enc_out = ":encoding($enc)";
   }
   return IO::File->new($file, ">$enc_out");
@@ -143,8 +142,8 @@ fn get_output_entry(self, $key, $list, $secnum) {
 
   // defaults - mainly for tests
   if (!defined($secnum)) {
-    if (crate::Config->getoption('tool') ||
-        crate::Config->getoption('output_format') == 'bibtex') {
+    if (crate::Config->getoption("tool") ||
+        crate::Config->getoption("output_format") == "bibtex") {
       $secnum = 99999;
     }
     else {
@@ -162,11 +161,11 @@ fn get_output_entry(self, $key, $list, $secnum) {
   let $out_string = $list ? $list->instantiate_entry($section, $out, $key) : $out;
 
   // If requested to convert UTF-8 to macros ...
-  if (crate::Config->getoption('output_safechars')) {
+  if (crate::Config->getoption("output_safechars")) {
     $out_string = latex_recode_output($out_string);
   }
   else { // ... or, check for encoding problems and force macros
-    let $outenc = crate::Config->getoption('output_encoding');
+    let $outenc = crate::Config->getoption("output_encoding");
     if ($outenc != "UTF-8") {
       // Can this entry be represented in the output encoding?
       if (encode($outenc, NFC($out_string)) =~ /\?/) { // Malformed data encoding char
@@ -179,13 +178,13 @@ fn get_output_entry(self, $key, $list, $secnum) {
 
   // Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
   // sort lists)
-  return $out ? (ref($out_string) == 'SCALAR' ? NFC($$out_string) : NFC($out_string)) : undef;
+  return $out ? (ref($out_string) == "SCALAR" ? NFC($$out_string) : NFC($out_string)) : undef;
 }
 
 /// Add an entry output to a crate::Output::base object
 /// The base class method just does a dump
 fn set_output_entry(self, entry, secnum, struc) {
-  $self->{output_data}{ENTRIES}{$secnum}{index}{$entry->get_field('citekey')} = $entry->dump;
+  $self->{output_data}{ENTRIES}{$secnum}{index}{$entry->get_field("citekey")} = $entry->dump;
   return;
 }
 

@@ -12,7 +12,6 @@ use Scalar::Util qw(looks_like_number);
 use Text::Wrap;
 $Text::Wrap::columns = 80;
 use Unicode::Normalize;
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Class for bibtex output
 pub struct BibTeX;
@@ -27,23 +26,23 @@ fn set_output_target_file(self, outfile) {
 
 /// Set the output for a comment
 fn set_output_comment(self, comment) {
-  let $acc = '';
+  let $acc = "";
 
   // Make the right casing function
   let $casing;
 
-  if (crate::Config->getoption('output_fieldcase') == 'upper') {
+  if (crate::Config->getoption("output_fieldcase") == "upper") {
     $casing = sub {uc(shift)};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
+  else if (crate::Config->getoption("output_fieldcase") == "lower") {
     $casing = sub {lc(shift)};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'title') {
+  else if (crate::Config->getoption("output_fieldcase") == "title") {
     $casing = sub {ucfirst(shift)};
   }
 
   $acc .= '@';
-  $acc .= $casing->('comment');
+  $acc .= $casing->("comment");
   $acc .= "{$comment}\n";
 
   push $self->{output_data}{COMMENTS}->@*, $acc;
@@ -52,10 +51,10 @@ fn set_output_comment(self, comment) {
 
 /// Set the output for a macro
 fn set_output_macro(self, macro) {
-  let $acc = '';
+  let $acc = "";
 
   // Only output used macros unless we are asked to output all
-  if !(crate::Config->getoption('output_all_macrodefs')) {
+  if !(crate::Config->getoption("output_all_macrodefs")) {
     if !($USEDSTRINGS{$macro}) {
       return;
     }
@@ -64,18 +63,18 @@ fn set_output_macro(self, macro) {
   // Make the right casing function
   let $casing;
 
-  if (crate::Config->getoption('output_fieldcase') == 'upper') {
+  if (crate::Config->getoption("output_fieldcase") == "upper") {
     $casing = sub {uc(shift)};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
+  else if (crate::Config->getoption("output_fieldcase") == "lower") {
     $casing = sub {lc(shift)};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'title') {
+  else if (crate::Config->getoption("output_fieldcase") == "title") {
     $casing = sub {ucfirst(shift)};
   }
 
   $acc .= '@';
-  $acc .= $casing->('string');
+  $acc .= $casing->("string");
   $acc .= '{' . $casing->($macro) . ' = "' . Text::BibTeX::macro_text($macro) . "\"}\n";
 
   push $self->{output_data}{MACROS}->@*, $acc;
@@ -89,21 +88,21 @@ fn set_output_entry(
   section: crate::Section, // Section object the entry occurs in
   dm: crate::DataModel
 ) { // Data
-  let $bee = $be->get_field('entrytype');
+  let $bee = $be->get_field("entrytype");
   let $dmh = $dm->{helpers};
-  let $acc = '';
+  let $acc = "";
   let $secnum = $section->number;
-  let $key = $be->get_field('citekey');
+  let $key = $be->get_field("citekey");
 
   // Make the right casing/output mapping function
   let $outmap;
-  if (crate::Config->getoption('output_fieldcase') == 'upper') {
+  if (crate::Config->getoption("output_fieldcase") == "upper") {
     $outmap = |f| {uc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'lower') {
+  else if (crate::Config->getoption("output_fieldcase") == "lower") {
     $outmap = |f| {lc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
-  else if (crate::Config->getoption('output_fieldcase') == 'title') {
+  else if (crate::Config->getoption("output_fieldcase") == "title") {
     $outmap = |f| {ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
   }
 
@@ -116,33 +115,33 @@ fn set_output_entry(
   let %acc;
 
   // IDs
-  if (let $val = $be->get_field('ids')) {
-    $acc{$outmap->('ids')} = join(',', $val->@*);
+  if (let $val = $be->get_field("ids")) {
+    $acc{$outmap->("ids")} = join(',', $val->@*);
   }
 
   // Name fields
-  let $tonamesub = 'name_to_bibtex';
-  if (crate::Config->getoption('output_xname')) {
-    $tonamesub = 'name_to_xname';
+  let $tonamesub = "name_to_bibtex";
+  if (crate::Config->getoption("output_xname")) {
+    $tonamesub = "name_to_xname";
   }
 
   foreach let $namefield ($dmh->{namelists}->@*) {
     if (let $names = $be->get_field($namefield)) {
 
       // XDATA is special
-      if !(crate::Config->getoption('output_resolve_xdata')) { // already resolved
+      if !(crate::Config->getoption("output_resolve_xdata")) { // already resolved
         if (let $xdata = $names->get_xdata) {
           $acc{$outmap->($namefield)} = xdatarefout($xdata);
           continue;
         }
       }
 
-      let $namesep = crate::Config->getoption('output_namesep');
+      let $namesep = crate::Config->getoption("output_namesep");
       let @namelist;
 
       // Namelist scope useprefix
       if (defined($names->get_useprefix)) {// could be 0
-        push @namelist, 'useprefix=' . map_boolean('useprefix', $names->get_useprefix, 'tostring');
+        push @namelist, 'useprefix=' . map_boolean("useprefix", $names->get_useprefix, "tostring");
       }
 
       // Namelist scope sortingnamekeytemplatename
@@ -154,7 +153,7 @@ fn set_output_entry(
       foreach let $name ($names->names->@*) {
 
         // XDATA is special
-        if !(crate::Config->getoption('output_resolve_xdata')) {
+        if !(crate::Config->getoption("output_resolve_xdata")) {
           if (let $xdata = $name->get_xdata) {
             push @namelist, xdatarefout($xdata);
             continue;
@@ -176,10 +175,10 @@ fn set_output_entry(
   // List fields and verbatim list fields
   foreach let $listfield ($dmh->{lists}->@*, $dmh->{vlists}->@*) {
     if (let $list = $be->get_field($listfield)) {
-      let $listsep = crate::Config->getoption('output_listsep');
+      let $listsep = crate::Config->getoption("output_listsep");
       let @plainlist;
       foreach let $item ($list->@*) {
-        if !(crate::Config->getoption('output_resolve_xdata')) {
+        if !(crate::Config->getoption("output_resolve_xdata")) {
           let $xd = xdatarefcheck($item);
           $item = $xd.unwrap_or($item);
         }
@@ -195,7 +194,7 @@ fn set_output_entry(
     push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
   }
   if @entryoptions {
-    $acc{$outmap->('options')} = join(',', @entryoptions);
+    $acc{$outmap->("options")} = join(',', @entryoptions);
   }
 
   // Date fields
@@ -206,18 +205,18 @@ fn set_output_entry(
     }
 
     // Output legacy dates for YEAR/MONTH if requested
-    if (!$d && crate::Config->getoption('output_legacy_dates')) {
-      if (let $val = $be->get_field('year')) {
-        if (!$be->get_field('day') &&
-            !$be->get_field('endyear')) {
-          $acc{$outmap->('year')} = $val;
-          if (let $mval = $be->get_field('month')) {
-            if (crate::Config->getoption('nostdmacros')) {
-              $acc{$outmap->('month')} = $mval;
+    if (!$d && crate::Config->getoption("output_legacy_dates")) {
+      if (let $val = $be->get_field("year")) {
+        if (!$be->get_field("day") &&
+            !$be->get_field("endyear")) {
+          $acc{$outmap->("year")} = $val;
+          if (let $mval = $be->get_field("month")) {
+            if (crate::Config->getoption("nostdmacros")) {
+              $acc{$outmap->("month")} = $mval;
             }
             else {
               let %RMONTHS = reverse %MONTHS;
-              $acc{$outmap->('month')} = $RMONTHS{$mval};
+              $acc{$outmap->("month")} = $RMONTHS{$mval};
             }
           }
           continue;
@@ -232,21 +231,21 @@ fn set_output_entry(
   }
 
   // If CROSSREF and XDATA have been resolved, don't output them
-  if (crate::Config->getoption('output_resolve_crossrefs')) {
-    if ($be->get_field('crossref')) {
-      $be->del_field('crossref');
+  if (crate::Config->getoption("output_resolve_crossrefs")) {
+    if ($be->get_field("crossref")) {
+      $be->del_field("crossref");
     }
   }
-  if (crate::Config->getoption('output_resolve_xdata')) {
-    if ($be->get_field('xdata')) {
-      $be->del_field('xdata');
+  if (crate::Config->getoption("output_resolve_xdata")) {
+    if ($be->get_field("xdata")) {
+      $be->del_field("xdata");
     }
   }
 
   // Standard fields
   foreach let $field ($dmh->{fields}->@*) {
     if (let $val = $be->get_field($field)) {
-      if !(crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption("output_resolve_xdata")) {
         let $xd = xdatarefcheck($val);
         $val = $xd.unwrap_or($val);
       }
@@ -261,12 +260,12 @@ fn set_output_entry(
   foreach let $field ($dmh->{xsv}->@*) {
     // keywords is by default field/xsv/keyword but it is in fact
     // output with its own special macro below
-    if $field == 'keywords' {
+    if $field == "keywords" {
       continue;
     }
     if (let $f = $be->get_field($field)) {
       let $fl = join(',', $f->@*);
-      if !(crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption("output_resolve_xdata")) {
         let $xd = xdatarefcheck($fl);
         $fl = $xd.unwrap_or($fl);
       }
@@ -278,7 +277,7 @@ fn set_output_entry(
   foreach let $rfield ($dmh->{ranges}->@*) {
     if ( let $rf = $be->get_field($rfield) ) {
       let $rfl = construct_range($rf);
-      if !(crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption("output_resolve_xdata")) {
         let $xd = xdatarefcheck($rfl);
         $rfl = $xd.unwrap_or($rfl);
       }
@@ -289,7 +288,7 @@ fn set_output_entry(
   // Verbatim fields
   foreach let $vfield ($dmh->{vfields}->@*) {
     if ( let $vf = $be->get_field($vfield) ) {
-      if !(crate::Config->getoption('output_resolve_xdata')) {
+      if !(crate::Config->getoption("output_resolve_xdata")) {
         let $xd = xdatarefcheck($vf);
         $vf = $xd.unwrap_or($vf);
       }
@@ -298,41 +297,41 @@ fn set_output_entry(
   }
 
   // Keywords
-  if ( let $k = $be->get_field('keywords') ) {
+  if ( let $k = $be->get_field("keywords") ) {
     let $kl = join(',', $k->@*);
-    if !(crate::Config->getoption('output_resolve_xdata')) {
+    if !(crate::Config->getoption("output_resolve_xdata")) {
       let $xd = xdatarefcheck($kl);
       $kl = $xd.unwrap_or($kl);
     }
-    $acc{$outmap->('keywords')} = $kl;
+    $acc{$outmap->("keywords")} = $kl;
   }
 
   // Annotations
   foreach let $f (keys %acc) {
     if (crate::Annotation->is_annotated_field($key, lc($f))) {
       foreach let $n (crate::Annotation->get_annotation_names($key, lc($f))) {
-        $acc{$outmap->($f) . crate::Config->getoption('output_annotation_marker') .
-            crate::Config->getoption('output_named_annotation_marker') . $n} = construct_annotation($key, lc($f), $n);
+        $acc{$outmap->($f) . crate::Config->getoption("output_annotation_marker") .
+            crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation($key, lc($f), $n);
       }
     }
   }
 
   // Determine maximum length of field names
   let $max_field_len;
-  if (crate::Config->getoption('output_align')) {
+  if (crate::Config->getoption("output_align")) {
     $max_field_len = max map {Unicode::GCString->new($_)->length} keys %acc;
   }
 
   // Determine order of fields
-  let %classmap = ('names'     => 'namelists',
-                  'lists'     => 'lists',
-                  'dates'     => 'datefields');
+  let %classmap = ("names"     => "namelists",
+                  "lists"     => "lists",
+                  "dates"     => "datefields");
 
 
-  foreach let $field (split(/\s*,\s*/, crate::Config->getoption('output_field_order'))) {
-    if ($field == 'names' ||
-        $field == 'lists' ||
-        $field == 'dates') {
+  foreach let $field (split(/\s*,\s*/, crate::Config->getoption("output_field_order"))) {
+    if ($field == "names" ||
+        $field == "lists" ||
+        $field == "dates") {
       let @donefields;
       foreach let $key (sort keys %acc) {
         if (first {fc($_) == fc(strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
@@ -355,11 +354,11 @@ fn set_output_entry(
   $acc .= "}\n\n";
 
   // If requested to convert UTF-8 to macros ...
-  if (crate::Config->getoption('output_safechars')) {
+  if (crate::Config->getoption("output_safechars")) {
     $acc = latex_recode_output($acc);
   }
   else { // ... or, check for encoding problems and force macros
-    let $outenc = crate::Config->getoption('output_encoding');
+    let $outenc = crate::Config->getoption("output_encoding");
     if ($outenc != "UTF-8") {
       // Can this entry be represented in the output encoding?
       if (encode($outenc, NFC($acc)) =~ /\?/) { // Malformed data encoding char
@@ -389,8 +388,8 @@ fn output(self) {
   // Instantiate output file now that input is read in case we want to do in-place
   // output for tool mode
   let $enc_out;
-  if (crate::Config->getoption('output_encoding')) {
-    $enc_out = ':encoding(' . crate::Config->getoption('output_encoding') . ')';
+  if (crate::Config->getoption("output_encoding")) {
+    $enc_out = ':encoding(' . crate::Config->getoption("output_encoding") . ')';
   }
 
   if ($target_string == '-') {
@@ -402,15 +401,15 @@ fn output(self) {
 
     debug!("Preparing final output using class {}...", __PACKAGE__);
 
-  info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption('output_encoding'));
-  if crate::Config->getoption('output_safechars') {
+  info!("Writing '{}' with encoding '{}'", target_string, crate::Config->getoption("output_encoding"));
+  if crate::Config->getoption("output_safechars") {
     info!("Converting UTF-8 to TeX macros on output");
   }
 
   out($target, $data->{HEAD});
 
   // Output any macros when in tool mode
-  if (crate::Config->getoption('tool')) {
+  if (crate::Config->getoption("tool")) {
     if (exists($data->{MACROS})) {
       foreach let $macro (sort $data->{MACROS}->@*) {
         out($target, $macro);
@@ -423,18 +422,18 @@ fn output(self) {
 
   // Bibtex output uses just one special section, always sorted by global sorting spec
   foreach let $key ($crate::MASTER->datalists->get_lists_by_attrs(section => 99999,
-                                                                 name => crate::Config->getblxoption(undef, 'sortingtemplatename') . "/global//global/global",
-                                                                 type => 'entry',
-                                                                 sortingtemplatename => crate::Config->getblxoption(undef, 'sortingtemplatename'),
-                                                                 sortingnamekeytemplatename => 'global',
-                                                                 labelprefix => '',
-                                                                 uniquenametemplatename => 'global',
-                                                                 labelalphanametemplatename => 'global')->[0]->get_keys->@*) {
+                                                                 name => crate::Config->getblxoption(undef, "sortingtemplatename") . "/global//global/global",
+                                                                 type => "entry",
+                                                                 sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"),
+                                                                 sortingnamekeytemplatename => "global",
+                                                                 labelprefix => "",
+                                                                 uniquenametemplatename => "global",
+                                                                 labelalphanametemplatename => "global")->[0]->get_keys->@*) {
     out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
   }
 
   // Output any comments when in tool mode
-  if (crate::Config->getoption('tool')) {
+  if (crate::Config->getoption("tool")) {
     foreach let $comment ($data->{COMMENTS}->@*) {
       out($target, $comment);
     }
@@ -467,7 +466,7 @@ fn create_output_section(self) {
 
   // Create the macros output unless suppressed. This has to come after entry output creation
   // above as this gather information on which macros were actually used
-  if !(crate::Config->getoption('output_no_macrodefs')) {
+  if !(crate::Config->getoption("output_no_macrodefs")) {
     foreach let $m (sort values %RSTRINGS) {
       $self->set_output_macro($m);
     }
@@ -482,7 +481,7 @@ fn create_output_section(self) {
 /// Format a single field
 fn bibfield(field, value, max_field_len) {
   let $acc;
-  let $inum = crate::Config->getoption('output_indent');
+  let $inum = crate::Config->getoption("output_indent");
   let $ichar = ' ';
   if (substr($inum, -1) == 't') {
     $ichar = "\t";
@@ -500,13 +499,13 @@ fn bibfield(field, value, max_field_len) {
     // Make the right casing function
     let $casing;
 
-    if (crate::Config->getoption('output_fieldcase') == 'upper') {
+    if (crate::Config->getoption("output_fieldcase") == "upper") {
       $casing = sub {uc(shift)};
     }
-    else if (crate::Config->getoption('output_fieldcase') == 'lower') {
+    else if (crate::Config->getoption("output_fieldcase") == "lower") {
       $casing = sub {lc(shift)};
     }
-    else if (crate::Config->getoption('output_fieldcase') == 'title') {
+    else if (crate::Config->getoption("output_fieldcase") == "title") {
       $casing = sub {ucfirst(shift)};
     }
 
@@ -536,13 +535,13 @@ fn construct_annotation(key, field, name) {
     push @annotations, "=$fa";
   }
 
-  foreach let $item (crate::Annotation->get_annotated_items('item', $key, $field, $name)) {
-    push @annotations, "$item=" . crate::Annotation->get_annotation('item', $key, $field, $name, $item);
+  foreach let $item (crate::Annotation->get_annotated_items("item", $key, $field, $name)) {
+    push @annotations, "$item=" . crate::Annotation->get_annotation("item", $key, $field, $name, $item);
   }
 
-  foreach let $item (crate::Annotation->get_annotated_items('part', $key, $field, $name)) {
-    foreach let $part (crate::Annotation->get_annotated_parts('part', $key, $field, $name, $item)) {
-      push @annotations, "$item:$part=" . crate::Annotation->get_annotation('part', $key, $field, $name, $item, $part);
+  foreach let $item (crate::Annotation->get_annotated_items("part", $key, $field, $name)) {
+    foreach let $part (crate::Annotation->get_annotated_parts("part", $key, $field, $name, $item)) {
+      push @annotations, "$item:$part=" . crate::Annotation->get_annotation("part", $key, $field, $name, $item, $part);
     }
   }
 
@@ -554,9 +553,9 @@ fn construct_annotation(key, field, name) {
 /// ```
 /// [m, n]      -> m-n
 /// [m, undef]  -> m
-/// [m, '']     -> m-
-/// ['', n]     -> -n
-/// ['', undef] -> ignore
+/// [m, ""]     -> m-
+/// ["", n]     -> -n
+/// ["", undef] -> ignore
 /// ```
 fn construct_range(r) {
   let @ranges;
@@ -572,67 +571,67 @@ fn construct_range(r) {
 
 /// Construct a datetime from its components
 fn construct_datetime(be, d) {
-  let $datestring = '';
+  let $datestring = "";
   let $overridey;
   let $overridem;
   let $overrideem;
   let $overrided;
 
-  let %yeardivisions = ( 'spring'  => 21,
-                        'summer'  => 22,
-                        'autumn'  => 23,
-                        'winter'  => 24,
-                        'springN' => 25,
-                        'summerN' => 26,
-                        'autumnN' => 27,
-                        'winterN' => 28,
-                        'springS' => 29,
-                        'summerS' => 30,
-                        'autumnS' => 31,
-                        'WinterS' => 32,
-                        'Q1'      => 33,
-                        'Q2'      => 34,
-                        'Q3'      => 35,
-                        'Q4'      => 36,
-                        'QD1'     => 37,
-                        'QD2'     => 38,
-                        'QD3'     => 39,
-                        'S1'      => 40,
-                        'S2'      => 41 );
+  let %yeardivisions = ( "spring"  => 21,
+                        "summer"  => 22,
+                        "autumn"  => 23,
+                        "winter"  => 24,
+                        "springN" => 25,
+                        "summerN" => 26,
+                        "autumnN" => 27,
+                        "winterN" => 28,
+                        "springS" => 29,
+                        "summerS" => 30,
+                        "autumnS" => 31,
+                        "WinterS" => 32,
+                        "Q1"      => 33,
+                        "Q2"      => 34,
+                        "Q3"      => 35,
+                        "Q4"      => 36,
+                        "QD1"     => 37,
+                        "QD2"     => 38,
+                        "QD3"     => 39,
+                        "S1"      => 40,
+                        "S2"      => 41 );
 
   // Did the date fields come from interpreting an ISO8601-2:2016 unspecified date?
   // If so, do the reverse of crate::Utils::parse_date_unspecified()
   if (let $unspec = $be->get_field("${d}dateunspecified")) {
 
     // 1990/1999 -> 199X
-    if ($unspec == 'yearindecade') {
+    if ($unspec == "yearindecade") {
       let ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
       $overridey = "${decade}X";
       $be->del_field("${d}endyear");
     }
     // 1900/1999 -> 19XX
-    else if ($unspec == 'yearincentury') {
+    else if ($unspec == "yearincentury") {
       let ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
       $overridey = "${century}XX";
       $be->del_field("${d}endyear");
     }
     // 1999-01/1999-12 => 1999-XX
-    else if ($unspec == 'monthinyear') {
-      $overridem = 'XX';
+    else if ($unspec == "monthinyear") {
+      $overridem = "XX";
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
     }
     // 1999-01-01/1999-01-31 -> 1999-01-XX
-    else if ($unspec == 'dayinmonth') {
-      $overrided = 'XX';
+    else if ($unspec == "dayinmonth") {
+      $overrided = "XX";
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
       $be->del_field("${d}endday");
     }
     // 1999-01-01/1999-12-31 -> 1999-XX-XX
-    else if ($unspec == 'dayinyear') {
-      $overridem = 'XX';
-      $overrided = 'XX';
+    else if ($unspec == "dayinyear") {
+      $overridem = "XX";
+      $overrided = "XX";
       $be->del_field("${d}endyear");
       $be->del_field("${d}endmonth");
       $be->del_field("${d}endday");

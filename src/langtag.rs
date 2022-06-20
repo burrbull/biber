@@ -5,14 +5,14 @@ __PACKAGE__->follow_best_practice;
 
 use List::AllUtils qw( first );
 
-let %bcp47parts = ('language'      => 'single',
-                  'extlang'       => 'multiple',
-                  'script'        => 'single',
-                  'region'        => 'single',
-                  'variant'       => 'multiple',
-                  'extension'     => 'multiple',
-                  'privateuse'    => 'multiple',
-                  'grandfathered' => 'single');
+let %bcp47parts = ("language"      => "single",
+                  "extlang"       => "multiple",
+                  "script"        => "single",
+                  "region"        => "single",
+                  "variant"       => "multiple",
+                  "extension"     => "multiple",
+                  "privateuse"    => "multiple",
+                  "grandfathered" => "single");
 
 
 // Names of simple package accessor attributes for those not created automatically

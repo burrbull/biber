@@ -31,9 +31,7 @@ use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
 
-our $logger  = Log::Log4perl::get_logger('main');
-our $screen  = Log::Log4perl::get_logger('screen');
-our $logfile = Log::Log4perl::get_logger('logfile');
+our $screen  = Log::Log4perl::get_logger("screen");
 
 // Static (class) data
 our $CONFIG;
@@ -60,7 +58,7 @@ $CONFIG->{state}{graph} = {};
 $CONFIG->{state}{keyorder} = {};
 
 // Location of the control file
-$CONFIG->{state}{control_file_location} = '';
+$CONFIG->{state}{control_file_location} = "";
 
 // Data files per section being used by biber
 $CONFIG->{state}{datafiles} = [];
@@ -68,7 +66,7 @@ $CONFIG->{state}{datafiles} = [];
 /// Reset internal hashes to defaults.
 fn _init {
   $CONFIG->{state}{uniqignore} = {};
-  $CONFIG->{state}{control_file_location} = '';
+  $CONFIG->{state}{control_file_location} = "";
   $CONFIG->{state}{crossrefkeys} = {};
   $CONFIG->{state}{xrefkeys} = {};
   $CONFIG->{state}{datafiles} = [];
@@ -98,12 +96,12 @@ fn _initopts(opts) {
       crate::Config->setoption($k, $v->{content});
     }
     // mildly complex options
-    else if (lc($k) == 'dot_include' ||
-           lc($k) == 'collate_options' ||
-           lc($k) == 'nosort' ||
-           lc($k) == 'nolabel' ||
-           lc($k) == 'nolabelwidthcount' ||
-           lc($k) == 'noinit' ) {
+    else if (lc($k) == "dot_include" ||
+           lc($k) == "collate_options" ||
+           lc($k) == "nosort" ||
+           lc($k) == "nolabel" ||
+           lc($k) == "nolabelwidthcount" ||
+           lc($k) == "noinit" ) {
       crate::Config->setoption($k, $v->{option});
     }
   }
@@ -135,14 +133,14 @@ fn _initopts(opts) {
   foreach let $copt (keys $opts->%*) {
     // This is a tricky option as we need to keep non-overriden defaults
     // If we don't we can get errors when contructing the sorting call to eval() later
-    if (lc($copt) == 'collate_options') {
-      let $collopts = crate::Config->getoption('collate_options');
+    if (lc($copt) == "collate_options") {
+      let $collopts = crate::Config->getoption("collate_options");
       let $copt_h = (eval "{ $opts->{$copt} }").expect("Bad command-line collation options");
       // Override defaults with any cmdline settings
       foreach let $co (keys $copt_h->%*) {
         $collopts->{$co} = $copt_h->{$co};
       }
-      crate::Config->setconfigfileoption('collate_options', $collopts);
+      crate::Config->setconfigfileoption("collate_options", $collopts);
     }
     else {
       crate::Config->setcmdlineoption($copt, $opts->{$copt});
@@ -150,10 +148,10 @@ fn _initopts(opts) {
   }
 
   // Record the $ARGV[0] name for future use
-  if (crate::Config->getoption('tool')) {
+  if (crate::Config->getoption("tool")) {
     // Set datasource file name. In a conditional as @ARGV might not be set in tests
     if (let $dsn = $ARGV[0]) {         // ARGV is ok even in a module
-      crate::Config->setoption('dsn', $dsn);
+      crate::Config->setoption("dsn", $dsn);
     }
   }
   else {
@@ -163,19 +161,19 @@ fn _initopts(opts) {
       if !($bcf =~ m/\.bcf$/) {
         $bcf .= '.bcf' ;
       }
-      crate::Config->setoption('bcf', $bcf);
+      crate::Config->setoption("bcf", $bcf);
     }
   }
 
   // Set log file name
   let $biberlog;
-  if (let $log = crate::Config->getoption('logfile')) { // user specified logfile name
+  if (let $log = crate::Config->getoption("logfile")) { // user specified logfile name
     // Sanitise user-specified log name
     $log =~ s/\.blg\z//xms;
     $biberlog = $log . '.blg';
   }
   else if (!@ARGV) { // default if no .bcf file specified - mainly in tests
-    crate::Config->setoption('nolog', 1);
+    crate::Config->setoption("nolog", 1);
   }
   else {                        // set log to \jobname.blg
     let $bcf = $ARGV[0];         // ARGV is ok even in a module
@@ -185,12 +183,12 @@ fn _initopts(opts) {
   }
 
   // prepend output directory for log, if specified
-  if (let $outdir = crate::Config->getoption('output_directory')) {
+  if (let $outdir = crate::Config->getoption("output_directory")) {
     $biberlog = File::Spec->catfile($outdir, $biberlog);
   }
 
   // Parse output-field-replace into something easier to use
-  if (let $ofrs = crate::Config->getoption('output_field_replace')) {
+  if (let $ofrs = crate::Config->getoption("output_field_replace")) {
     foreach let $ofr (split(/\s*,\s*/, $ofrs)) {
       let ($f, $fr) = $ofr =~ m/^([^:]+):([^:]+)$/;
       $CONFIG_OUTPUT_FIELDREPLACE{$f} = $fr;
@@ -198,32 +196,32 @@ fn _initopts(opts) {
   }
 
   // cache meta markers since they are referenced in the oft-called _get_handler
-  $CONFIG_META_MARKERS{annotation} = quotemeta(crate::Config->getoption('annotation_marker'));
-  $CONFIG_META_MARKERS{namedannotation} = quotemeta(crate::Config->getoption('named_annotation_marker'));
+  $CONFIG_META_MARKERS{annotation} = quotemeta(crate::Config->getoption("annotation_marker"));
+  $CONFIG_META_MARKERS{namedannotation} = quotemeta(crate::Config->getoption("named_annotation_marker"));
 
   // Setting up Log::Log4perl
   let $LOGLEVEL;
-  if (crate::Config->getoption('trace')) {
-    $LOGLEVEL = 'TRACE'
+  if (crate::Config->getoption("trace")) {
+    $LOGLEVEL = "TRACE"
   }
-  else if (crate::Config->getoption('debug')) {
-    $LOGLEVEL = 'DEBUG'
+  else if (crate::Config->getoption("debug")) {
+    $LOGLEVEL = "DEBUG"
   }
-  else if (crate::Config->getoption('quiet') == 1) {
-    $LOGLEVEL = 'ERROR'
+  else if (crate::Config->getoption("quiet") == 1) {
+    $LOGLEVEL = "ERROR"
   }
-  else if (crate::Config->getoption('quiet') > 1) {
-    $LOGLEVEL = 'FATAL'
+  else if (crate::Config->getoption("quiet") > 1) {
+    $LOGLEVEL = "FATAL"
   }
   else {
-    $LOGLEVEL = 'INFO'
+    $LOGLEVEL = "INFO"
   }
 
   let $LOGLEVEL_F;
   let $LOG_MAIN;
-  if (crate::Config->getoption('nolog')) {
-    $LOG_MAIN = 'Screen';
-    $LOGLEVEL_F = 'OFF'
+  if (crate::Config->getoption("nolog")) {
+    $LOG_MAIN = "Screen";
+    $LOGLEVEL_F = "OFF"
   }
   else {
     $LOG_MAIN = 'Logfile, Screen';
@@ -231,19 +229,19 @@ fn _initopts(opts) {
   }
 
   let $LOGLEVEL_S;
-  if (crate::Config->getoption('onlylog')) {
-    $LOGLEVEL_S = 'OFF'
+  if (crate::Config->getoption("onlylog")) {
+    $LOGLEVEL_S = "OFF"
   }
   else {
     // Max screen loglevel is INFO
-    if (crate::Config->getoption('quiet') == 1) {
-      $LOGLEVEL_S = 'ERROR';
+    if (crate::Config->getoption("quiet") == 1) {
+      $LOGLEVEL_S = "ERROR";
     }
-    else if (crate::Config->getoption('quiet') > 1) {
-      $LOGLEVEL_S = 'FATAL'
+    else if (crate::Config->getoption("quiet") > 1) {
+      $LOGLEVEL_S = "FATAL"
     }
     else {
-      $LOGLEVEL_S = 'INFO';
+      $LOGLEVEL_S = "INFO";
     }
   }
 
@@ -259,7 +257,7 @@ fn _initopts(opts) {
 |;
 
   // Only want a logfile appender if --nolog isn't set
-  if ($LOGLEVEL_F != 'OFF') {
+  if ($LOGLEVEL_F != "OFF") {
     $l4pconf .= qq|
     log4perl.category.logfile                          = $LOGLEVEL_F, Logfile
     log4perl.appender.Logfile                          = Log::Log4perl::Appender::File
@@ -278,20 +276,20 @@ fn _initopts(opts) {
   if $BETA_VERSION {
     $vn .= " (beta)";
   }
-  let $tool = crate::Config->getoption('tool') ? ' running in TOOL mode' : '';
+  let $tool = crate::Config->getoption("tool") ? ' running in TOOL mode' : "";
 
-  if !crate::Config->getoption('nolog') {
+  if !crate::Config->getoption("nolog") {
     info!("This is Biber {}{}", vn, tool) ;
   }
 
   if $opts->{configfile} {
     info!("Config file is '{}'", $opts->{configfile});
   }
-  if !crate::Config->getoption('nolog') {
+  if !crate::Config->getoption("nolog") {
     info!("Logfile is '{}'", biberlog);
   }
 
-  if (crate::Config->getoption('debug')) {
+  if (crate::Config->getoption("debug")) {
     $screen->info("DEBUG mode: all messages are logged to '$biberlog'")
   }
 
@@ -309,8 +307,8 @@ fn _config_file_set(conf) {
     let $buf = NFD(crate::Utils::slurp_switchr($conf)->$*);// Unicode NFD boundary
 
     $userconf = XML::LibXML::Simple::XMLin($buf,
-                                           'ForceContent' => 1,
-                                           'ForceArray' => [
+                                           "ForceContent" => 1,
+                                           "ForceArray" => [
                                                             qr/\Aoption\z/,
                                                             qr/\Amaps\z/,
                                                             qr/\Amap\z/,
@@ -349,8 +347,8 @@ fn _config_file_set(conf) {
                                                             qr/\Aoptionscope\z/,
                                                             qr/\Asortingnamekeytemplate\z/,
                                                            ],
-                                           'NsStrip' => 1,
-                                           'KeyAttr' => []).expect(format!("Failed to read biber config file '{}'\n {}", conf, $@));
+                                           "NsStrip" => 1,
+                                           "KeyAttr" => []).expect(format!("Failed to read biber config file '{}'\n {}", conf, $@));
   }
   // Option scope has to be set first
   foreach let $bcfscopeopts ($userconf->{optionscope}->@*) {
@@ -385,7 +383,7 @@ fn _config_file_set(conf) {
   foreach let $s ($userconf->{datafieldset}->@*) {
     let $name = $s->{name};
     foreach let $m ($s->{member}->@*) {
-      if (let $field = $m->{field}[0]) {// 'field' has forcearray for other things
+      if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
         push $DATAFIELD_SETS{$name}->@*, $field;
       }
       else {
@@ -400,21 +398,21 @@ fn _config_file_set(conf) {
   while (let ($k, $v) = each $userconf->%*) {
     // Has to be an array ref and so must come before
     // the later options tests which assume hash refs
-    if (lc($k) == 'labelalphatemplate') {
+    if (lc($k) == "labelalphatemplate") {
       foreach let $t ($v->@*) {
         let $latype = $t->{type};
-        if ($latype == 'global') {
-          crate::Config->setblxoption(0, 'labelalphatemplate', $t);
+        if ($latype == "global") {
+          crate::Config->setblxoption(0, "labelalphatemplate", $t);
         }
         else {
-          crate::Config->setblxoption(0, 'labelalphatemplate',
+          crate::Config->setblxoption(0, "labelalphatemplate",
                                       $t,
-                                      'ENTRYTYPE',
+                                      "ENTRYTYPE",
                                       $latype);
         }
       }
     }
-    else if (lc($k) == 'labelalphanametemplate') {
+    else if (lc($k) == "labelalphanametemplate") {
       foreach let $t ($v->@*) {
         let $lants;
         let $lant;
@@ -428,10 +426,10 @@ fn _config_file_set(conf) {
 
         }
         $lants->{$t->{name}} = $lant;
-        crate::Config->setblxoption(0, 'labelalphanametemplate', $lants);
+        crate::Config->setblxoption(0, "labelalphanametemplate", $lants);
       }
     }
-    else if (lc($k) == 'uniquenametemplate') {
+    else if (lc($k) == "uniquenametemplate") {
       let $unts;
       foreach let $unt ($v->@*) {
         let $untval = [];
@@ -443,9 +441,9 @@ fn _config_file_set(conf) {
         }
         $unts->{$unt->{name}} = $untval;
       }
-      crate::Config->setblxoption(0, 'uniquenametemplate', $unts);
+      crate::Config->setblxoption(0, "uniquenametemplate", $unts);
     }
-    else if (lc($k) == 'sortingnamekeytemplate') {
+    else if (lc($k) == "sortingnamekeytemplate") {
       let $snss;
       foreach let $sns ($v->@*) {
         let $snkps;
@@ -453,8 +451,8 @@ fn _config_file_set(conf) {
           let $snps;
           foreach let $snp (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
             let $np;
-            if ($snp->{type} == 'namepart') {
-              $np = { type => 'namepart', value => $snp->{content} };
+            if ($snp->{type} == "namepart") {
+              $np = { type => "namepart", value => $snp->{content} };
               if (exists($snp->{use})) {
                 $np->{use} = $snp->{use};
               }
@@ -462,8 +460,8 @@ fn _config_file_set(conf) {
                 $np->{inits} = $snp->{inits};
               }
             }
-            else if ($snp->{type} == 'literal') {
-              $np = { type => 'literal', value => $snp->{content} };
+            else if ($snp->{type} == "literal") {
+              $np = { type => "literal", value => $snp->{content} };
             }
             push $snps->@*, $np;
           }
@@ -472,17 +470,17 @@ fn _config_file_set(conf) {
         $snss->{$sns->{name}}{visibility} = $sns->{visibility};
         $snss->{$sns->{name}}{template} = $snkps;
       }
-      crate::Config->setblxoption(0, 'sortingnamekeytemplate', $snss);
+      crate::Config->setblxoption(0, "sortingnamekeytemplate", $snss);
     }
-    else if (lc($k) == 'transliteration') {
+    else if (lc($k) == "transliteration") {
       foreach let $tr ($v->@*) {
         if ($tr->{entrytype}[0] == '*') { // already array forced for another option
-          crate::Config->setblxoption(0, 'translit', $tr->{translit});
+          crate::Config->setblxoption(0, "translit", $tr->{translit});
         }
         else {                  // per_entrytype
-          crate::Config->setblxoption(0, 'translit',
+          crate::Config->setblxoption(0, "translit",
                                       $tr->{translit},
-                                      'ENTRYTYPE',
+                                      "ENTRYTYPE",
                                       $tr->{entrytype}[0]);
 
 
@@ -490,27 +488,27 @@ fn _config_file_set(conf) {
       }
     }
     // mildly complex options - nosort/collate_options
-    else if (lc($k) == 'nosort' ||
-           lc($k) == 'noinit' ||
-           lc($k) == 'nolabel' ) {
+    else if (lc($k) == "nosort" ||
+           lc($k) == "noinit" ||
+           lc($k) == "nolabel" ) {
       crate::Config->setconfigfileoption($k, $v->{option});
     }
     // rather complex options
-    else if (lc($k) == 'collate_options') {
-      let $collopts = crate::Config->getoption('collate_options');
+    else if (lc($k) == "collate_options") {
+      let $collopts = crate::Config->getoption("collate_options");
       // Override defaults with any user settings
       foreach let $co ($v->{option}->@*) {
         $collopts->{$co->{name}} = $co->{value};
       }
       crate::Config->setconfigfileoption($k, $collopts);
     }
-    else if (lc($k) == 'sourcemap') {
+    else if (lc($k) == "sourcemap") {
       let $sms;
       foreach let $sm ($v->{maps}->@*) {
-        if (defined($sm->{level}) && $sm->{level} == 'driver') {
+        if (defined($sm->{level}) && $sm->{level} == "driver") {
           carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
         }
-        else if (defined($sm->{level}) && $sm->{level} == 'style') {
+        else if (defined($sm->{level}) && $sm->{level} == "style") {
           carp("You can't set style level sourcemaps via biber - use \\DeclareStyleSourcemap in biblatex. Ignoring map.");
         }
         else {
@@ -519,58 +517,58 @@ fn _config_file_set(conf) {
       }
       crate::Config->setconfigfileoption($k, $sms);
     }
-    else if (lc($k) == 'inheritance') {// This is a biblatex option
+    else if (lc($k) == "inheritance") {// This is a biblatex option
       crate::Config->setblxoption(0, $k, $v);
     }
-    else if (lc($k) == 'sortexclusion') {// This is a biblatex option
+    else if (lc($k) == "sortexclusion") {// This is a biblatex option
       foreach let $sex ($v->@*) {
         let $excludes;
         foreach let $ex ($sex->{exclusion}->@*) {
           $excludes->{$ex->{content}} = 1;
         }
-        crate::Config->setblxoption(0, 'sortexclusion',
+        crate::Config->setblxoption(0, "sortexclusion",
                                     $excludes,
-                                    'ENTRYTYPE',
+                                    "ENTRYTYPE",
                                     $sex->{type});
       }
     }
-    else if (lc($k) == 'sortinclusion') {// This is a biblatex option
+    else if (lc($k) == "sortinclusion") {// This is a biblatex option
       foreach let $sin ($v->@*) {
         let $includes;
         foreach let $in ($sin->{inclusion}->@*) {
           $includes->{$in->{content}} = 1;
         }
-        crate::Config->setblxoption(0, 'sortinclusion',
+        crate::Config->setblxoption(0, "sortinclusion",
                                     $includes,
-                                    'ENTRYTYPE',
+                                    "ENTRYTYPE",
                                     $sin->{type});
       }
     }
-    else if (lc($k) == 'presort') {// This is a biblatex option
+    else if (lc($k) == "presort") {// This is a biblatex option
       // presort defaults
       foreach let $presort ($v->@*) {
         // Global presort default
         if !(exists($presort->{type})) {
-          crate::Config->setblxoption(0, 'presort', $presort->{content});
+          crate::Config->setblxoption(0, "presort", $presort->{content});
         }
         // Per-type default
         else {
-          crate::Config->setblxoption(0, 'presort',
+          crate::Config->setblxoption(0, "presort",
                                       $presort->{content},
-                                      'ENTRYTYPE',
+                                      "ENTRYTYPE",
                                       $presort->{type});
         }
       }
     }
-    else if (lc($k) == 'sortingtemplate') {// This is a biblatex option
+    else if (lc($k) == "sortingtemplate") {// This is a biblatex option
       let $sorttemplates;
       foreach let $ss ($v->@*) {
         $sorttemplates->{$ss->{name}} = crate::_parse_sort($ss);
       }
-      crate::Config->setblxoption(0, 'sortingtemplate', $sorttemplates);
+      crate::Config->setblxoption(0, "sortingtemplate", $sorttemplates);
     }
-    else if (lc($k) == 'datamodel') {// This is a biblatex option
-      crate::Config->addtoblxoption(0, 'datamodel', $v);
+    else if (lc($k) == "datamodel") {// This is a biblatex option
+      crate::Config->addtoblxoption(0, "datamodel", $v);
     }
     else if (exists($v->{content})) { // simple option
       crate::Config->setconfigfileoption($k, $v->{content});
@@ -625,9 +623,9 @@ fn config_file {
     -f File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME) ) {
     $biberconf = File::Spec->catfile($ENV{APPDATA}, "biber", $BIBER_CONF_NAME);
   }
-  else if ( can_run('kpsewhich') ) {
+  else if ( can_run("kpsewhich") ) {
     let $err;
-    run3 [ 'kpsewhich', $BIBER_CONF_NAME ], \undef, \$biberconf, \$err, { return_if_system_error => 1};
+    run3 [ "kpsewhich", $BIBER_CONF_NAME ], \undef, \$biberconf, \$err, { return_if_system_error => 1};
     if ($? == -1) {
       biber_error("Error running kpsewhich to look for config file: $err");
     }
@@ -673,12 +671,12 @@ fn postprocess_biber_opts() {
   // They are not booleans on the command-line/config file so that they
   // mirror biblatex option syntax for users, for example
 
-  foreach let $opt ('sortcase', 'sortupper') {
+  foreach let $opt ("sortcase", "sortupper") {
     if (exists($CONFIG->{options}{biber}{$opt})) {
-      if ($CONFIG->{options}{biber}{$opt} == 'true') {
+      if ($CONFIG->{options}{biber}{$opt} == "true") {
         $CONFIG->{options}{biber}{$opt} = 1;
       }
-      else if ($CONFIG->{options}{biber}{$opt} == 'false') {
+      else if ($CONFIG->{options}{biber}{$opt} == "false") {
         $CONFIG->{options}{biber}{$opt} = 0;
       }
       if !($CONFIG->{options}{biber}{$opt} == '1' ||
@@ -783,7 +781,7 @@ fn setblxoption(secnum, opt, val, scope, scopeval) {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
     }
   }
-  else if ($scope == 'ENTRY') {
+  else if ($scope == "ENTRY") {
     if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope}) {
       $CONFIG->{options}{biblatex}{$scope}{$scopeval}{$secnum}{$opt} = $val;
     }
@@ -798,7 +796,7 @@ fn setblxoption(secnum, opt, val, scope, scopeval) {
 
 /// Get a biblatex option from the global, per-type or per entry scope
 ///
-/// getblxoption('secnum', 'option', ['entrytype'], ['citekey'])
+/// getblxoption("secnum", "option", ["entrytype"], ["citekey"])
 ///
 /// Returns the value of option. In order of decreasing preference, returns:
 /// 1. Biblatex option defined for entry
@@ -841,20 +839,20 @@ fn getblxentryoptions(secnum, key) {
 
 /// Record node and arc connection types for .dot output
 fn set_graph(type) {
-  if ($type == 'set') {
+  if ($type == "set") {
     let ($source_key, $target_key) = @_;
-      debug!("Saving DOT graph information type 'set' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
+      debug!("Saving DOT graph information type "set" with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
     $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
     $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
   }
-  else if ($type == 'xref') {
+  else if ($type == "xref") {
     let ($source_key, $target_key) = @_;
-      debug!("Saving DOT graph information type 'xref' with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
+      debug!("Saving DOT graph information type "xref" with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
     $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
   }
-  else if ($type == 'related') {
+  else if ($type == "related") {
     let ($clone_key, $related_key, $target_key) = @_;
-      debug!("Saving DOT graph information type 'related' with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}", clone_key, related_key, target_key);
+      debug!("Saving DOT graph information type "related" with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}", clone_key, related_key, target_key);
     $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
     $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
   }

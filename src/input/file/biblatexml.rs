@@ -24,41 +24,40 @@ use Unicode::Normalize;
 use Unicode::GCString;
 use URI;
 
-let $logger = Log::Log4perl::get_logger('main');
 let $orig_key_order = {};
 
-let $BIBLATEXML_NAMESPACE_URI = 'http://biblatex-biber.sourceforge.net/biblatexml';
-let $NS = 'bltx';
+let $BIBLATEXML_NAMESPACE_URI = "http://biblatex-biber.sourceforge.net/biblatexml";
+let $NS = "bltx";
 
 // Determine handlers from data model
 let $dm = crate::Config->get_dm;
 let $handlers = {
-                'CUSTOM' => {'related' => \&_related,
-                             'annotation' => \&_annotation},
-                'field' => {
-                            'default' => {
-                                          'code'     => \&_literal,
-                                          'date'     => \&_datetime,
-                                          'entrykey' => \&_literal,
-                                          'integer'  => \&_literal,
-                                          'key'      => \&_literal,
-                                          'literal'  => \&_literal,
-                                          'range'    => \&_range,
-                                          'verbatim' => \&_literal,
-                                          'uri'      => \&_uri
+                "CUSTOM" => {"related" => \&_related,
+                             "annotation" => \&_annotation},
+                "field" => {
+                            "default" => {
+                                          "code"     => \&_literal,
+                                          "date"     => \&_datetime,
+                                          "entrykey" => \&_literal,
+                                          "integer"  => \&_literal,
+                                          "key"      => \&_literal,
+                                          "literal"  => \&_literal,
+                                          "range"    => \&_range,
+                                          "verbatim" => \&_literal,
+                                          "uri"      => \&_uri
                                          },
-                            'xsv'     => {
-                                           'entrykey' => \&_xsv,
-                                           'keyword'  => \&_xsv,
-                                           'option'   => \&_xsv,
+                            "xsv"     => {
+                                           "entrykey" => \&_xsv,
+                                           "keyword"  => \&_xsv,
+                                           "option"   => \&_xsv,
                                          }
                            },
-                'list' => {
-                           'default' => {
-                                         'entrykey' => \&_list,
-                                         'key'      => \&_list,
-                                         'literal'  => \&_list,
-                                         'name'     => \&_name
+                "list" => {
+                           "default" => {
+                                         "entrykey" => \&_list,
+                                         "key"      => \&_list,
+                                         "literal"  => \&_list,
+                                         "name"     => \&_name
                                         }
                           }
 };
@@ -87,18 +86,18 @@ fn extract_entries(filename, _encoding, keys) {
   // Get a reference to the correct sourcemap sections, if they exist
   let $smaps = [];
   // Maps are applied in order USER->STYLE->DRIVER
-  if (defined(crate::Config->getoption('sourcemap'))) {
+  if (defined(crate::Config->getoption("sourcemap"))) {
     // User maps
-    if (let @m = grep {$_->{datatype} == 'biblatexml' && $_->{level} == 'user' } @{crate::Config->getoption('sourcemap')} ) {
+    if (let @m = grep {$_->{datatype} == "biblatexml" && $_->{level} == "user" } @{crate::Config->getoption("sourcemap")} ) {
       push $smaps->@*, @m;
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
-    if (let @m = grep {$_->{datatype} == 'biblatexml' && $_->{level} == 'style' } @{crate::Config->getoption('sourcemap')} ) {
+    if (let @m = grep {$_->{datatype} == "biblatexml" && $_->{level} == "style" } @{crate::Config->getoption("sourcemap")} ) {
       push $smaps->@*, @m;
     }
     // Driver default maps
-    if (let $m = first {$_->{datatype} == 'biblatexml' && $_->{level} == 'driver'} @{crate::Config->getoption('sourcemap')} ) {
+    if (let $m = first {$_->{datatype} == "biblatexml" && $_->{level} == "driver"} @{crate::Config->getoption("sourcemap")} ) {
       push $smaps->@*, $m;
     }
   }
@@ -120,12 +119,12 @@ fn extract_entries(filename, _encoding, keys) {
         debug!('Parsing BibLaTeXML entry object {}', $entry->nodePath);
 
       // If an entry has no key, ignore it and warn
-      if !($entry->hasAttribute('id')) {
+      if !($entry->hasAttribute("id")) {
         biber_warn("Invalid or undefined BibLaTeXML entry key in file '$filename', skipping ...");
         continue;
       }
 
-      let $key = $entry->getAttribute('id');
+      let $key = $entry->getAttribute("id");
 
       // Check if this key has already been registered as a citekey alias, if
       // so, the key takes priority and we delete the alias
@@ -206,7 +205,7 @@ fn extract_entries(filename, _encoding, keys) {
         // Check to see if there is more than one entry with this key and warn if so
         if ($#entries > 0) {
           biber_warn("Found more than one entry for key '$wanted_key' in '$filename': " .
-                       join(',', map {$_->getAttribute('id')} @entries) . ' - skipping duplicates ...');
+                       join(',', map {$_->getAttribute("id")} @entries) . ' - skipping duplicates ...');
         }
         let $entry = $entries[0];
 
@@ -277,7 +276,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       }
 
       // defaults to the entrytype unless changed below
-      let $last_type = $entry->getAttribute('entrytype');
+      let $last_type = $entry->getAttribute("entrytype");
       let $last_field = undef;
       let $last_fieldval = undef;
       let $cnerror;
@@ -294,7 +293,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
       // Check negated pertype restrictions
       if (exists($map->{per_nottype}) &&
-          first {lc($_->{content}) == $entry->getAttribute('entrytype')} @{$map->{per_nottype}}) {
+          first {lc($_->{content}) == $entry->getAttribute("entrytype")} @{$map->{per_nottype}}) {
         continue;
       }
 
@@ -308,7 +307,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       }
 
       // Set up any mapping foreach loop
-      let @maploop = ('');
+      let @maploop = ("");
       if (let $foreach = $map->{map_foreach}) {
         // just a field name, make it XPATH
         if ($foreach !~ m|/|) {
@@ -340,8 +339,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             }
               debug!("Source mapping (type={}, key={}): Creating new entry with key '$newkey'", level, key);
             let $newentry = XML::LibXML::Element->new("$NS:entry");
-            $newentry->setAttribute('id', NFC($newkey));
-            $newentry->setAttribute('entrytype', NFC($newentrytype));
+            $newentry->setAttribute("id", NFC($newkey));
+            $newentry->setAttribute("entrytype", NFC($newentrytype));
 
             // found a new entry key, remove it from the list of keys we want since we
             // have "found" it by creating it
@@ -390,23 +389,23 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           // Entrytype map
           if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
             $typesource = lc($typesource);
-            if !($etarget->getAttribute('entrytype') == $typesource) {
+            if !($etarget->getAttribute("entrytype") == $typesource) {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
-                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute('entrytype') . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
+                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute("entrytype") . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
                 continue 'MAP;
               }
               else {
                 // just ignore this step
-                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute('entrytype') . "' but map wants '$typesource', skipping step ...");
+                  debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute("entrytype") . "' but map wants '$typesource', skipping step ...");
                   continue;
               }
             }
             // Change entrytype if requested
-            $last_type = $etarget->getAttribute('entrytype');
+            $last_type = $etarget->getAttribute("entrytype");
             let $t = lc(maploopreplace($step->{map_type_target}, $maploop));
               debug!("Source mapping (type={}, key={}): Changing entry type from '{}' to {}", level, etargetkey, last_type, t);
-            $etarget->setAttribute('entrytype', NFC($t));
+            $etarget->setAttribute("entrytype", NFC($t));
           }
 
           let $fieldcontinue = 0;
@@ -665,11 +664,11 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 }
               }
 
-              let $orig = '';
+              let $orig = "";
               // If append or appendstrict is set, keep the original value
               // and append the new.
               if ($step->{map_append} || $step->{map_appendstrict}) {
-                $orig = $etarget->findvalue($xp_node) || '';
+                $orig = $etarget->findvalue($xp_node) || "";
               }
 
               if ($step->{map_origentrytype}) {
@@ -725,18 +724,18 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
     }
 
     let $bibentry = new crate::Entry;
-    let $k = $e->getAttribute('id');
-    $bibentry->set_field('citekey', $k);
+    let $k = $e->getAttribute("id");
+    $bibentry->set_field("citekey", $k);
       debug!("Creating entry with key '{}'", k);
 
     // We put all the fields we find modulo field aliases into the object.
     // Validation happens later and is not datasource dependent
-    foreach let $f (uniq map { if (_norm($_->nodeName) == 'names') { $_->getAttribute('type') }
+    foreach let $f (uniq map { if (_norm($_->nodeName) == "names") { $_->getAttribute("type") }
                               else { $_->nodeName()} }  $e->findnodes('*')) {
 
       // We have to process local options as early as possible in order
       // to make them available for things that need them like name parsing
-      if (_norm($f) == 'options') {
+      if (_norm($f) == "options") {
         if (let $node = $entry->findnodes("./$NS:options")->get_node(1)) {
           process_entry_options($k, [ split(/\s*,\s*/, $node->textContent()) ], $secnum);
         }
@@ -749,8 +748,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       }
     }
 
-    $bibentry->set_field('entrytype', $e->getAttribute('entrytype'));
-    $bibentry->set_field('datatype', 'biblatexml');
+    $bibentry->set_field("entrytype", $e->getAttribute("entrytype"));
+    $bibentry->set_field("datatype", "biblatexml");
     $bibentries->add_entry($k, $bibentry);
   }
   return;
@@ -759,21 +758,21 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 // Annotations are special - there is a literal field and also more complex annotations
 fn _annotation(bibentry, entry, f, key) {
   foreach let $node ($entry->findnodes("./$f")) {
-    let $field = $node->getAttribute('field');
-    let $name = $node->getAttribute('name') || 'default';
-    let $literal = $node->getAttribute('literal') || '0';
+    let $field = $node->getAttribute("field");
+    let $name = $node->getAttribute("name") || "default";
+    let $literal = $node->getAttribute("literal") || '0';
     let $ann = $node->textContent();
-    let $item = $node->getAttribute('item');
-    let $part = $node->getAttribute('part');
+    let $item = $node->getAttribute("item");
+    let $part = $node->getAttribute("part");
     if ($field) {// Complex metadata annotation for another field
       if ($part) {
-        crate::Annotation->set_annotation('part', $key, $field, $name, $ann, $literal, $item, $part);
+        crate::Annotation->set_annotation("part", $key, $field, $name, $ann, $literal, $item, $part);
       }
       else if ($item) {
-        crate::Annotation->set_annotation('item', $key, $field, $name, $ann, $literal, $item);
+        crate::Annotation->set_annotation("item", $key, $field, $name, $ann, $literal, $item);
       }
       else {
-        crate::Annotation->set_annotation('field', $key, $field, $name, $ann, $literal);
+        crate::Annotation->set_annotation("field", $key, $field, $name, $ann, $literal);
       }
     }
     else {// Generic entry annotation
@@ -785,18 +784,18 @@ fn _annotation(bibentry, entry, f, key) {
 
 // Related entries
 fn _related(bibentry, entry, f, key) {
-  let $Srx = crate::Config->getoption('xsvsep');
+  let $Srx = crate::Config->getoption("xsvsep");
   let $S = qr/$Srx/;
   let $node = $entry->findnodes("./$f")->get_node(1);
   foreach let $item ($node->findnodes("./$NS:list/$NS:item")) {
-    $bibentry->set_datafield('related', [ split(/$S/, $item->getAttribute('ids')) ]);
-    $bibentry->set_datafield('relatedtype', $item->getAttribute('type'));
-    if (let $string = $item->getAttribute('string')) {
-      $bibentry->set_datafield('relatedstring', $string);
+    $bibentry->set_datafield("related", [ split(/$S/, $item->getAttribute("ids")) ]);
+    $bibentry->set_datafield("relatedtype", $item->getAttribute("type"));
+    if (let $string = $item->getAttribute("string")) {
+      $bibentry->set_datafield("relatedstring", $string);
     }
-    if (let $string = $item->getAttribute('options')) {
-      $bibentry->set_datafield('relatedoptions',
-                               [ split(/$S/, $item->getAttribute('relatedoptions')) ]);
+    if (let $string = $item->getAttribute("options")) {
+      $bibentry->set_datafield("relatedoptions",
+                               [ split(/$S/, $item->getAttribute("relatedoptions")) ]);
     }
   }
   return;
@@ -806,11 +805,11 @@ fn _related(bibentry, entry, f, key) {
 fn _literal(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
   let $setval = $node->textContent();
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
 
   // XDATA is special, if found, set it
-  if (let $xdatav = $node->getAttribute('xdata')) {
+  if (let $xdatav = $node->getAttribute("xdata")) {
     $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
     $bibentry->add_xdata_ref(_norm($f), $xdatav);
     $setval = $xdatav;
@@ -818,9 +817,9 @@ fn _literal(bibentry, entry, f, key) {
 
   // eprint is special case
   if ($f == "$NS:eprint") {
-    $bibentry->set_datafield('eprinttype', $node->getAttribute('type'));
-    if (let $ec = $node->getAttribute('class')) {
-      $bibentry->set_datafield('eprintclass', $ec);
+    $bibentry->set_datafield("eprinttype", $node->getAttribute("type"));
+    if (let $ec = $node->getAttribute("class")) {
+      $bibentry->set_datafield("eprintclass", $ec);
     }
   }
   else {
@@ -835,10 +834,10 @@ fn _xsv(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
   // XDATA is special
-  if (fc(_norm($f)) == 'xdata') {
+  if (fc(_norm($f)) == "xdata") {
     // Just split with no XDATA setting on list items
     let $value = _split_list($bibentry, $node, $key, $f, 1);
-    $bibentry->add_xdata_ref('xdata', $value);
+    $bibentry->add_xdata_ref("xdata", $value);
     $bibentry->set_datafield(_norm($f), $value);
   }
   else {
@@ -853,11 +852,11 @@ fn _xsv(bibentry, entry, f, key) {
 fn _uri(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
   let $setval = $node->textContent();
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
 
   // XDATA is special, if found, set it
-  if (let $xdatav = $node->getAttribute('xdata')) {
+  if (let $xdatav = $node->getAttribute("xdata")) {
     $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
     $bibentry->add_xdata_ref(_norm($f), $xdatav);
     $setval = $xdatav;
@@ -889,11 +888,11 @@ fn _list(bibentry, entry, f, key) {
 // Range fields
 fn _range(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
 
   // XDATA is special, if found, set it
-  if (let $xdatav = $node->getAttribute('xdata')) {
+  if (let $xdatav = $node->getAttribute("xdata")) {
     $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
     $bibentry->add_xdata_ref(_norm($f), $xdatav);
     $bibentry->set_datafield(_norm($f), [$xdatav]);
@@ -922,7 +921,7 @@ fn _datetime(bibentry, entry, f, key) {
 
   foreach let $node ($entry->findnodes("./$f")) {
 
-    let $datetype = $node->getAttribute('type').unwrap_or("");
+    let $datetype = $node->getAttribute("type").unwrap_or("");
 
     $bibentry->set_field("${datetype}datesplit", 1);
 
@@ -937,51 +936,51 @@ fn _datetime(bibentry, entry, f, key) {
 
         // Save julian
         if $CONFIG_DATE_PARSERS{start}->julian {
-          $bibentry->set_field($datetype . 'datejulian', 1);
+          $bibentry->set_field($datetype . "datejulian", 1);
         }
         // Save approximate information
         if $CONFIG_DATE_PARSERS{start}->approximate {
-          $bibentry->set_field($datetype . 'dateapproximate', 1);
+          $bibentry->set_field($datetype . "dateapproximate", 1);
         }
 
         // Save uncertain date information
         if $CONFIG_DATE_PARSERS{start}->uncertain {
-          $bibentry->set_field($datetype . 'dateuncertain', 1);
+          $bibentry->set_field($datetype . "dateuncertain", 1);
         }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
         // from non-ranges only
         if ($unspec) {
-          $bibentry->set_field($datetype . 'dateunspecified', $unspec);
+          $bibentry->set_field($datetype . "dateunspecified", $unspec);
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
-          $bibentry->set_datafield($datetype . 'year', $sdate->year);
+        if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
+          $bibentry->set_datafield($datetype . "year", $sdate->year);
           // Save era date information
-          $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
+          $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
-          $bibentry->set_datafield($datetype . 'month', $sdate->month);
+        if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
+          $bibentry->set_datafield($datetype . "month", $sdate->month);
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
-          $bibentry->set_datafield($datetype . 'day', $sdate->day);
+        if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
+          $bibentry->set_datafield($datetype . "day", $sdate->day);
         }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-          $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
+          $bibentry->set_field($datetype . "yeardivision", $yeardivision);
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
-        if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
-          $bibentry->set_datafield($datetype . 'hour', $sdate->hour);
-          $bibentry->set_datafield($datetype . 'minute', $sdate->minute);
-          $bibentry->set_datafield($datetype . 'second', $sdate->second);
+        if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
+          $bibentry->set_datafield($datetype . "hour", $sdate->hour);
+          $bibentry->set_datafield($datetype . "minute", $sdate->minute);
+          $bibentry->set_datafield($datetype . "second", $sdate->second);
           if !($sdate->time_zone->is_floating) { // ignore floating timezones
-            $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
+            $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
           }
         }
       }
@@ -996,50 +995,50 @@ fn _datetime(bibentry, entry, f, key) {
 
           // Save julian
           if $CONFIG_DATE_PARSERS{end}->julian {
-            $bibentry->set_field($datetype . 'enddatejulian', 1);
+            $bibentry->set_field($datetype . "enddatejulian", 1);
           }
 
           // Save approximate information
           if $CONFIG_DATE_PARSERS{end}->approximate {
-            $bibentry->set_field($datetype . 'enddateapproximate', 1);
+            $bibentry->set_field($datetype . "enddateapproximate", 1);
           }
 
           // Save uncertain date information
           if $CONFIG_DATE_PARSERS{end}->uncertain {
-            $bibentry->set_field($datetype . 'enddateuncertain', 1);
+            $bibentry->set_field($datetype . "enddateuncertain", 1);
           }
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('year')) {
-            $bibentry->set_datafield($datetype . 'endyear', $edate->year);
+          if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
+            $bibentry->set_datafield($datetype . "endyear", $edate->year);
             // Save era date information
-            $bibentry->set_field($datetype . 'endera', lc($edate->secular_era));
+            $bibentry->set_field($datetype . "endera", lc($edate->secular_era));
           }
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('month')) {
-            $bibentry->set_datafield($datetype . 'endmonth', $edate->month);
+          if !($CONFIG_DATE_PARSERS{end}->missing("month")) {
+            $bibentry->set_datafield($datetype . "endmonth", $edate->month);
           }
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('day')) {
-            $bibentry->set_datafield($datetype . 'endday', $edate->day);
+          if !($CONFIG_DATE_PARSERS{end}->missing("day")) {
+            $bibentry->set_datafield($datetype . "endday", $edate->day);
           }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
-            $bibentry->set_field($datetype . 'endyeardivision', $yeardivision);
+            $bibentry->set_field($datetype . "endyeardivision", $yeardivision);
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
-          if !($CONFIG_DATE_PARSERS{end}->missing('time')) {
-            $bibentry->set_datafield($datetype . 'endhour', $edate->hour);
-            $bibentry->set_datafield($datetype . 'endminute', $edate->minute);
-            $bibentry->set_datafield($datetype . 'endsecond', $edate->second);
+          if !($CONFIG_DATE_PARSERS{end}->missing("time")) {
+            $bibentry->set_datafield($datetype . "endhour", $edate->hour);
+            $bibentry->set_datafield($datetype . "endminute", $edate->minute);
+            $bibentry->set_datafield($datetype . "endsecond", $edate->second);
             if !($edate->time_zone->is_floating) { // ignore floating timezones
-              $bibentry->set_datafield($datetype . 'endtimezone', tzformat($edate->time_zone->name));
+              $bibentry->set_datafield($datetype . "endtimezone", tzformat($edate->time_zone->name));
             }
           }
         }
         else { // open ended range - edate is defined but empty
-          $bibentry->set_datafield($datetype . 'endyear', '');
+          $bibentry->set_datafield($datetype . "endyear", "");
         }
       }
       else {
@@ -1054,51 +1053,51 @@ fn _datetime(bibentry, entry, f, key) {
 
         // Save julian
         if $CONFIG_DATE_PARSERS{start}->julian {
-          $bibentry->set_field($datetype . 'datejulian', 1);
+          $bibentry->set_field($datetype . "datejulian", 1);
         }
         // Save approximate information
         if $CONFIG_DATE_PARSERS{start}->approximate {
-          $bibentry->set_field($datetype . 'dateapproximate', 1);
+          $bibentry->set_field($datetype . "dateapproximate", 1);
         }
 
         // Save uncertain date information
         if $CONFIG_DATE_PARSERS{start}->uncertain {
-          $bibentry->set_field($datetype . 'dateuncertain', 1);
+          $bibentry->set_field($datetype . "dateuncertain", 1);
         }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
         // from non-ranges only
         if ($unspec) {
-          $bibentry->set_field($datetype . 'dateunspecified', $unspec);
+          $bibentry->set_field($datetype . "dateunspecified", $unspec);
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
-          $bibentry->set_datafield($datetype . 'year', $sdate->year);
+        if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
+          $bibentry->set_datafield($datetype . "year", $sdate->year);
           // Save era date information
-          $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
+          $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
-          $bibentry->set_datafield($datetype . 'month', $sdate->month);
+        if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
+          $bibentry->set_datafield($datetype . "month", $sdate->month);
         }
 
-        if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
-          $bibentry->set_datafield($datetype . 'day', $sdate->day);
+        if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
+          $bibentry->set_datafield($datetype . "day", $sdate->day);
         }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-          $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
+          $bibentry->set_field($datetype . "yeardivision", $yeardivision);
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
-        if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
-          $bibentry->set_datafield($datetype . 'hour', $sdate->hour);
-          $bibentry->set_datafield($datetype . 'minute', $sdate->minute);
-          $bibentry->set_datafield($datetype . 'second', $sdate->second);
+        if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
+          $bibentry->set_datafield($datetype . "hour", $sdate->hour);
+          $bibentry->set_datafield($datetype . "minute", $sdate->minute);
+          $bibentry->set_datafield($datetype . "second", $sdate->second);
           if !($sdate->time_zone->is_floating) { // ignore floating timezones
-            $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
+            $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
           }
         }
       }
@@ -1114,12 +1113,12 @@ fn _datetime(bibentry, entry, f, key) {
 fn _name(bibentry, entry, f, key) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
-  let $bee = $bibentry->get_field('entrytype');
+  let $bee = $bibentry->get_field("entrytype");
   let $node = $entry->findnodes("./$NS:names[\@type='$f']")->get_node(1);
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
 
-  let $names = crate::Entry::Names->new('type' => $f);
+  let $names = crate::Entry::Names->new("type" => $f);
 
   // per-namelist options
   foreach let $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
@@ -1128,7 +1127,7 @@ fn _name(bibentry, entry, f, key) {
       let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
       foreach let $o ($oo->@*) {
-        let $method = 'set_' . $o->[0];
+        let $method = "set_" . $o->[0];
         $names->$method($o->[1]);
       }
     }
@@ -1139,7 +1138,7 @@ fn _name(bibentry, entry, f, key) {
     let $namenode = $names[$i];
 
     // XDATA is special, if found, set it
-    if (let $xdatav = $namenode->getAttribute('xdata')) {
+    if (let $xdatav = $namenode->getAttribute("xdata")) {
       $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
       if ($bibentry->add_xdata_ref(_norm($f), $xdatav, $i)) {
         // Add special xdata ref empty name as placeholder
@@ -1152,7 +1151,7 @@ fn _name(bibentry, entry, f, key) {
   }
 
   // Deal with explicit "moreenames" in data source
-  if ($node->getAttribute('morenames')) {
+  if ($node->getAttribute("morenames")) {
     $names->set_morenames;
   }
 
@@ -1166,17 +1165,17 @@ fn _name(bibentry, entry, f, key) {
 /// Returns an object which internally looks a bit like this:
 ///
 /// ```
-/// { given             => {string => 'John', initial => ['J']},
-///   family            => {string => 'Doe', initial => ['D']},
-///   middle            => {string => 'Fred', initial => ['F']},
+/// { given             => {string => "John", initial => ['J']},
+///   family            => {string => "Doe", initial => ['D']},
+///   middle            => {string => "Fred", initial => ['F']},
 ///   prefix            => {string => undef, initial => undef},
 ///   suffix            => {string => undef, initial => undef},
-///   basenamestring    => 'Doe',
+///   basenamestring    => "Doe",
 ///   namestring        => 'Doe, John Fred',
-///   nameinitstring    => 'Doe_JF',
+///   nameinitstring    => "Doe_JF",
 ///   gender            => sm,
 ///   useprefix         => 1,
-///   sortingnamekeytemplatename => 'templatename'
+///   sortingnamekeytemplatename => "templatename"
 /// }
 /// ```
 fn parsename(section, node, fieldname, key, count) {
@@ -1184,7 +1183,7 @@ fn parsename(section, node, fieldname, key, count) {
 
   let %namec;
 
-  foreach let $n ($dm->get_constant_value('nameparts')) { // list type so returns list
+  foreach let $n ($dm->get_constant_value("nameparts")) { // list type so returns list
     // If there is a namepart node for this component ...
     if (let $npnode = $node->findnodes("./$NS:namepart[\@type='$n']")->get_node(1)) {
 
@@ -1195,7 +1194,7 @@ fn parsename(section, node, fieldname, key, count) {
           debug!("Found namepart '{}': {}", n, $namec{$n});
         let @partinits;
         foreach let $part (@npnodes) {
-          if (let $pi = $part->getAttribute('initial')) {
+          if (let $pi = $part->getAttribute("initial")) {
             push @partinits, $pi;
           }
           else {
@@ -1208,7 +1207,7 @@ fn parsename(section, node, fieldname, key, count) {
       else if (let $t = $npnode->textContent()) {
         $namec{$n} = $t;
           debug!("Found namepart '{}': {}", n, t);
-        if (let $ni = $node->getAttribute('initial')) {
+        if (let $ni = $node->getAttribute("initial")) {
           $namec{"${n}-i"} = [$ni];
         }
         else {
@@ -1219,20 +1218,20 @@ fn parsename(section, node, fieldname, key, count) {
   }
 
   let %nameparts;
-  foreach let $np ($dm->get_constant_value('nameparts')) { // list type so returns list
+  foreach let $np ($dm->get_constant_value("nameparts")) { // list type so returns list
     $nameparts{$np} = {string  => $namec{$np}.unwrap_or(undef),
                        initial => namec.get(np).map(|_| namec[&format!("{np}-i")])};
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
     if $nameparts{$np}{initial} {
-      $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*)));
+      $section->set_np_length("${np}-i", length(join("", $nameparts{$np}{initial}->@*)));
     }
   }
 
   let $newname = crate::Entry::Name->new(
                                         %nameparts,
-                                        gender => $node->getAttribute('gender')
+                                        gender => $node->getAttribute("gender")
                                        );
 
   // per-name options
@@ -1242,7 +1241,7 @@ fn parsename(section, node, fieldname, key, count) {
       let $oo = expand_option_input($no, $nov, $CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{INPUT});
 
       foreach let $o ($oo->@*) {
-        let $method = 'set_' . $o->[0];
+        let $method = "set_" . $o->[0];
         $newname->$method($o->[1]);
       }
     }
@@ -1253,8 +1252,8 @@ fn parsename(section, node, fieldname, key, count) {
 
 // parses a range and returns a ref to an array of start and end values
 fn _parse_range_list(rangenode) {
-  let $start = '';
-  let $end = '';
+  let $start = "";
+  let $end = "";
   if (let $s = $rangenode->findnodes("./$NS:start")) {
     $start = $s->get_node(1)->textContent();
   }
@@ -1266,8 +1265,8 @@ fn _parse_range_list(rangenode) {
 
 // Splits a list field into an array ref
 fn _split_list(bibentry, node, key, f, noxdata) {}
-  let $xdmi = crate::Config->getoption('xdatamarker');
-  let $xnsi = crate::Config->getoption('xnamesep');
+  let $xdmi = crate::Config->getoption("xdatamarker");
+  let $xnsi = crate::Config->getoption("xnamesep");
 
   if (let @list = $node->findnodes("./$NS:list/$NS:item")) {
 
@@ -1277,7 +1276,7 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
 
       // Record any XDATA and skip if we did
       // If this field itself is XDATA, don't analyse XDATA further, just split and return
-      if (let $xdatav = $list[$i]->getAttribute('xdata')) {
+      if (let $xdatav = $list[$i]->getAttribute("xdata")) {
         $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
         if !($noxdata) {
           $bibentry->add_xdata_ref(_norm($f), $xdatav, $i);
@@ -1308,7 +1307,7 @@ fn _get_handler(field) {
     return $h;
   }
   else {
-    return $handlers->{$dm->get_fieldtype(_norm($field))}{$dm->get_fieldformat(_norm($field)) || 'default'}{$dm->get_datatype(_norm($field))};
+    return $handlers->{$dm->get_fieldtype(_norm($field))}{$dm->get_fieldformat(_norm($field)) || "default"}{$dm->get_datatype(_norm($field))};
   }
 }
 
@@ -1320,7 +1319,7 @@ fn _changenode(e, xp_target_s, value, error) {
   // names are special and can be specified by just the string
   if ($dm->is_field($value)) {
     let $dmv = $dm->get_dm_for_field($value);
-    if ($dmv->{fieldtype} == 'list' && $dmv->{datatype} == 'name') {
+    if ($dmv->{fieldtype} == "list" && $dmv->{datatype} == "name") {
       $value = _getpath($value);
     }
   }
@@ -1382,11 +1381,11 @@ fn _changenode(e, xp_target_s, value, error) {
           if ($np =~ /names\[\@type\s*=\s*'(.+)'\]/) {
             $f = $1;
           }
-          if ($dm->field_is_fieldtype('list', $f) &&
-              $dm->field_is_datatype('name', $f)) {
-            let $newnode = $parent->appendChild(XML::LibXML::Element->new('names'));
-            $newnode->setNamespace($BIBLATEXML_NAMESPACE_URI, 'bltx');
-            $newnode->setAttribute('type', $f);
+          if ($dm->field_is_fieldtype("list", $f) &&
+              $dm->field_is_datatype("name", $f)) {
+            let $newnode = $parent->appendChild(XML::LibXML::Element->new("names"));
+            $newnode->setNamespace($BIBLATEXML_NAMESPACE_URI, "bltx");
+            $newnode->setAttribute("type", $f);
             if ($i == $#nodes) { // terminal node
               if ($nodeval) {
                 foreach let $cn ($value->childNodes) {
@@ -1401,7 +1400,7 @@ fn _changenode(e, xp_target_s, value, error) {
           }
           else {
             let $newnode = $parent->appendChild(XML::LibXML::Element->new($node =~ s|^bltx:||r));
-            $newnode->setNamespace($BIBLATEXML_NAMESPACE_URI, 'bltx');
+            $newnode->setNamespace($BIBLATEXML_NAMESPACE_URI, "bltx");
             if ($i == $#nodes) { // terminal node
               $newnode->appendTextNode(NFC($value));
             }
@@ -1437,7 +1436,7 @@ fn _getpath(string) {
   else {
     if ($dm->is_field($string)) {
       let $dms = $dm->get_dm_for_field($string);
-      if ($dms->{fieldtype} == 'list' && $dms->{datatype} == 'name') {
+      if ($dms->{fieldtype} == "list" && $dms->{datatype} == "name") {
         return "./bltx:names[\@type='$string']";
       }
       else {

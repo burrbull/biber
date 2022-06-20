@@ -13,7 +13,6 @@ use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 use Unicode::Normalize;
 no autovivification;
-let $logger = Log::Log4perl::get_logger('main');
 
 // Names of simple package accessor attributes for those not created automatically
 // by the option scope in the .bcf
@@ -52,8 +51,8 @@ impl Name {
           $name->{nameparts}{$np} = $params{$np};
         }
       }
-      $name->{rawstring} = join('',
-                                map {$name->{nameparts}{$_}{string}.unwrap_or('')} keys $name->{nameparts}->%*);
+      $name->{rawstring} = join("",
+                                map {$name->{nameparts}{$_}{string}.unwrap_or("")} keys $name->{nameparts}->%*);
       $name->{id} = suniqid;
       return bless $name, $class;
     }

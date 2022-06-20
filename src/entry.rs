@@ -9,8 +9,6 @@ use Encode;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 
-let $logger = Log::Log4perl::get_logger('main');
-
 pub struct Entry;
 
 /// Initialize a crate::Entry object
@@ -31,7 +29,7 @@ pub struct Entry;
 /// copy/clone.
 fn new(obj) -> Self {
   let $self;
-  if (defined($obj) && ref($obj) == 'HASH') {
+  if (defined($obj) && ref($obj) == "HASH") {
     $self = bless $obj, $class;
   }
   else {
@@ -42,11 +40,11 @@ fn new(obj) -> Self {
 
 /// Recursively create related entry clones starting with an entry
 fn relclone(self) {
-  let $citekey = $self->get_field('citekey');
+  let $citekey = $self->get_field("citekey");
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $dmh = crate::Config->get_dm_helpers;
-  if (let $relkeys = $self->get_field('related')) {
+  if (let $relkeys = $self->get_field("related")) {
       debug!("Found RELATED field in '{}' with contents {}", citekey, join(',', @$relkeys));
     let @clonekeys;
     foreach let $relkey (@$relkeys) {
@@ -65,8 +63,8 @@ fn relclone(self) {
         push @clonekeys, $ck;
 
         // Save graph information if requested
-        if (crate::Config->getoption('output_format') == 'dot') {
-          crate::Config->set_graph('related', $ck, $relkey, $citekey);
+        if (crate::Config->getoption("output_format") == "dot") {
+          crate::Config->set_graph("related", $ck, $relkey, $citekey);
         }
       }
       else {
@@ -78,34 +76,34 @@ fn relclone(self) {
           debug!("Created new related clone for '{}' with clone key '{}'", relkey, clonekey);
 
         // Set related clone options
-        if (let $relopts = $self->get_field('relatedoptions')) {
+        if (let $relopts = $self->get_field("relatedoptions")) {
           // Check if this clone was also directly cited. If so, set skipbib/skipbiblist
           // if they are unset as otherwise this entry would appear twice in bibliographies
           // but with different keys.
           if ($section->has_citekey($relkey)) {
-            $relopts = merge_entry_options($relopts, ['skipbib', 'skipbiblist']);
+            $relopts = merge_entry_options($relopts, ["skipbib", "skipbiblist"]);
           }
 
           process_entry_options($clonekey, $relopts, $secnum);
-          $relclone->set_datafield('options', $relopts);
+          $relclone->set_datafield("options", $relopts);
         }
         else {
           // related clone needs its own options plus all the dataonly opts, any conflicts and
           // explicit options win
 
-          let $relopts = merge_entry_options(['skipbib', 'skiplab','skipbiblist','uniquename=false','uniquelist=false'], $relentry->get_field('options'));
+          let $relopts = merge_entry_options(["skipbib", "skiplab","skipbiblist","uniquename=false","uniquelist=false"], $relentry->get_field("options"));
 
-          // Preserve options already in the clone but add 'dataonly' options
+          // Preserve options already in the clone but add "dataonly" options
           process_entry_options($clonekey, $relopts, $secnum);
-          $relclone->set_datafield('options', $relopts);
+          $relclone->set_datafield("options", $relopts);
         }
 
         $section->bibentries->add_entry($clonekey, $relclone);
         $section->keytorelclone($relkey, $clonekey);
 
         // Save graph information if requested
-        if (crate::Config->getoption('output_format') == 'dot') {
-          crate::Config->set_graph('related', $clonekey, $relkey, $citekey);
+        if (crate::Config->getoption("output_format") == "dot") {
+          crate::Config->set_graph("related", $clonekey, $relkey, $citekey);
         }
 
         // recurse so we can do cascading related entries
@@ -117,7 +115,7 @@ fn relclone(self) {
     // We have to add the citekeys as we need these clones in the .bbl
     // but the dataonly will cause biblatex not to print them in the bib
     $section->add_citekeys(@clonekeys);
-    $self->set_datafield('related', [ @clonekeys ]);
+    $self->set_datafield("related", [ @clonekeys ]);
   }
 }
 
@@ -140,10 +138,10 @@ fn clone(self, $newkey) {
   // clone derived date fields
   foreach let $df ($dmh->{datefields}->@*) {
     $df =~ s/date$//;
-    foreach let $dsf ('dateunspecified', 'datesplit', 'datejulian',
-                     'enddatejulian', 'dateapproximate', 'enddateapproximate',
-                     'dateuncertain', 'enddateuncertain', 'yeardivision', 'yeardivision',
-                     'era', 'endera') {
+    foreach let $dsf ("dateunspecified", "datesplit", "datejulian",
+                     "enddatejulian", "dateapproximate", "enddateapproximate",
+                     "dateuncertain", "enddateuncertain", "yeardivision", "yeardivision",
+                     "era", "endera") {
       if (let $ds = $self->{derivedfields}{"$df$dsf"}) {
         $new->{derivedfields}{"$df$dsf"} = $ds;
       }
@@ -151,7 +149,7 @@ fn clone(self, $newkey) {
   }
 
   // Clone annotations
-  crate::Annotation->copy_annotations($self->get_field('citekey'), $newkey);
+  crate::Annotation->copy_annotations($self->get_field("citekey"), $newkey);
 
   // Need to add entrytype and datatype
   $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
@@ -163,7 +161,7 @@ fn clone(self, $newkey) {
   }
   // Record the key of the source of the clone in the clone. Useful for loop detection etc.
   // in biblatex
-  $new->{derivedfields}{clonesourcekey} = $self->get_field('citekey');
+  $new->{derivedfields}{clonesourcekey} = $self->get_field("citekey");
   return $new;
 }
 
@@ -178,9 +176,9 @@ fn notnull(self) {
 /// Record reference and target positions so that the XDATA marker can be removed as otherwise
 /// it would break further parsing
 fn add_xdata_ref(self, $reffield, $value, $reffieldposition) {
-  if ($reffield == 'xdata') { // whole XDATA fields are a simple case
+  if ($reffield == "xdata") { // whole XDATA fields are a simple case
     push $self->{xdatarefs}->@*, {// field pointing to XDATA
-                                  reffield => 'xdata',
+                                  reffield => "xdata",
                                   refposition => 0,
                                   xdataentries => $value,
                                   xdatafield => undef,
@@ -188,13 +186,13 @@ fn add_xdata_ref(self, $reffield, $value, $reffieldposition) {
     return 1;
   }
   else { // Granular XDATA reference
-    let $xnamesep = crate::Config->getoption('xnamesep');
-    let $xdatamarker = crate::Config->getoption('xdatamarker');
+    let $xnamesep = crate::Config->getoption("xnamesep");
+    let $xdatamarker = crate::Config->getoption("xdatamarker");
     if (let ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
-      let $xdatasep = crate::Config->getoption('xdatasep');
+      let $xdatasep = crate::Config->getoption("xdatasep");
       let ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
       if !($xf) { // There must be a field in a granular XDATA ref
-        let $entry_key = $self->get_field('citekey');
+        let $entry_key = $self->get_field("citekey");
         let $secnum = $crate::MASTER->get_current_section;
         biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
         return 0;
@@ -367,7 +365,7 @@ fn field_exists(self, $key) {
 /// Check whether any parts of a date field exist when passed a datepart field name
 fn date_fields_exist(self, $field) {
   let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
-  foreach let $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'yeardivision', 'timezone') {
+  foreach let $dp ("year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone") {
     if (exists($self->{datafields}{"$t$dp"}) || exists($self->{datafields}{"${t}end$dp"})) {
       return 1;
     }
@@ -378,7 +376,7 @@ fn date_fields_exist(self, $field) {
 /// Delete all parts of a date field when passed any datepart field name
 fn delete_date_fields(self, $field) {
   let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
-  foreach let $dp ('year', 'month', 'day', 'hour', 'minute', 'second', 'yeardivision', 'timezone') {
+  foreach let $dp ("year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone") {
     delete($self->{datafields}{"$t$dp"});
     delete($self->{datafields}{"${t}end$dp"});
   }
@@ -462,7 +460,7 @@ fn set_inherit_from(self, $parent) {
     // This can't be suppressed at .bbl writing as it is impossible to know there
     // whether the field came from the parent or first child because inheritance
     // is a low-level operation on datafields
-    if fc($field) == fc('annotation') {
+    if fc($field) == fc("annotation") {
       continue;
     }
 
@@ -489,13 +487,13 @@ fn set_inherit_from(self, $parent) {
 fn resolve_xdata(self, $xdata) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
-  let $entry_key = $self->get_field('citekey');
+  let $entry_key = $self->get_field("citekey");
   let $dm = crate::Config->get_dm;
 
   // $xdata =
   // [
   //  { // xdata info for an actual XDATA field (XDATA = {key, key})
-  //    reffield      => 'xdata',
+  //    reffield      => "xdata",
   //    refposition   => 0,
   //    xdataentries  => // array ref of XDATA entry keys
   //    xdatafield    => undef,
@@ -525,16 +523,16 @@ fn resolve_xdata(self, $xdata) {
         continue;
       }
       else {
-        if !($xdataentry->get_field('entrytype') == 'xdata') {
+        if !($xdataentry->get_field("entrytype") == "xdata") {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
           $xdatum->{resolved} = 0;
           continue;
         }
 
         // record the XDATA resolve between these entries to prevent loops
-        crate::Config->set_inheritance('xdata', $xdref, $entry_key);
+        crate::Config->set_inheritance("xdata", $xdref, $entry_key);
         // Detect XDATA loops
-        if !(crate::Config->is_inheritance_path('xdata', $entry_key, $xdref)) {
+        if !(crate::Config->is_inheritance_path("xdata", $entry_key, $xdref)) {
           if (let $recurse_xdata = $xdataentry->get_xdata_refs) { // recurse
             $xdataentry->resolve_xdata($recurse_xdata);
           }
@@ -542,14 +540,14 @@ fn resolve_xdata(self, $xdata) {
           // Whole entry XDATA reference so inherit all fields
           if (!defined($xdatum->{xdatafield})) {
             foreach let $field ($xdataentry->datafields()) { // set fields
-              if $field == 'ids' { // Never inherit aliases
+              if $field == "ids" { // Never inherit aliases
                 continue;
               }
               $self->set_datafield($field, $xdataentry->get_field($field));
 
               // Record graphing information if required
-              if (crate::Config->getoption('output_format') == 'dot') {
-                crate::Config->set_graph('xdata', $xdataentry->get_field('citekey'), $entry_key, $field, $field);
+              if (crate::Config->getoption("output_format") == "dot") {
+                crate::Config->set_graph("xdata", $xdataentry->get_field("citekey"), $entry_key, $field, $field);
               }
                 debug!("Setting field '{}' in entry '{}' via XDATA", field, entry_key);
             }
@@ -576,7 +574,7 @@ fn resolve_xdata(self, $xdata) {
             }
 
             // Name lists
-            if ($dm->field_is_type('list', 'name', $reffield)) {
+            if ($dm->field_is_type("list", "name", $reffield)) {
               if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
                 let $bibentries = $section->bibentries;
                 let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
@@ -596,7 +594,7 @@ fn resolve_xdata(self, $xdata) {
               }
             }
             // Non-name lists
-            else if ($dm->field_is_fieldtype('list', $reffield)) {
+            else if ($dm->field_is_fieldtype("list", $reffield)) {
               if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
                 let $bibentries = $section->bibentries;
                 let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
@@ -644,16 +642,16 @@ fn inherit_from(self, $parent) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
 
-  let $target_key = $self->get_field('citekey'); // target/child key
-  let $source_key = $parent->get_field('citekey'); // source/parent key
+  let $target_key = $self->get_field("citekey"); // target/child key
+  let $source_key = $parent->get_field("citekey"); // source/parent key
 
   // record the inheritance between these entries to prevent loops and repeats.
-  crate::Config->set_inheritance('crossref', $source_key, $target_key);
+  crate::Config->set_inheritance("crossref", $source_key, $target_key);
 
   // Detect crossref loops
-  if !(crate::Config->is_inheritance_path('crossref', $target_key, $source_key)) {
+  if !(crate::Config->is_inheritance_path("crossref", $target_key, $source_key)) {
     // cascading crossrefs
-    if (let $ppkey = $parent->get_field('crossref')) {
+    if (let $ppkey = $parent->get_field("crossref")) {
       $parent->inherit_from($section->bibentry($ppkey));
     }
   }
@@ -661,9 +659,9 @@ fn inherit_from(self, $parent) {
     biber_error("Circular inheritance between '$source_key'<->'$target_key'");
   }
 
-  let $type        = $self->get_field('entrytype');
-  let $parenttype  = $parent->get_field('entrytype');
-  let $inheritance = crate::Config->getblxoption(undef, 'inheritance');
+  let $type        = $self->get_field("entrytype");
+  let $parenttype  = $parent->get_field("entrytype");
+  let $inheritance = crate::Config->getblxoption(undef, "inheritance");
   let %processed;
   // get defaults
   let $defaults = $inheritance->{defaults};
@@ -696,7 +694,7 @@ fn inherit_from(self, $parent) {
           ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
         foreach let $field ($inherit->{field}->@*) {
           // Skip for fields in the per-entry noinerit datafield set
-          if (let $niset = crate::Config->getblxoption($secnum, 'noinherit', undef, $target_key) &&
+          if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key) &&
              exists($field->{target})) {
             if (first {$field->{target} == $_} $DATAFIELD_SETS{$niset}->@*) {
               continue;
@@ -714,7 +712,7 @@ fn inherit_from(self, $parent) {
           }
           // Set the field if it doesn't exist or override is requested
           else if (!$self->field_exists($field->{target}) ||
-                 $field_override_target == 'true') {
+                 $field_override_target == "true") {
               debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, $field->{source}, $field->{target}, source_key);
 
             $self->set_datafield($field->{target}, $parent->get_field($field->{source}));
@@ -724,8 +722,8 @@ fn inherit_from(self, $parent) {
             crate::Config->add_uniq_ignore($target_key, $field->{target}, $ignore);
 
             // Record graphing information if required
-            if (crate::Config->getoption('output_format') == 'dot') {
-              crate::Config->set_graph('crossref', $source_key, $target_key, $field->{source}, $field->{target});
+            if (crate::Config->getoption("output_format") == "dot") {
+              crate::Config->set_graph("crossref", $source_key, $target_key, $field->{source}, $field->{target});
             }
           }
         }
@@ -734,7 +732,7 @@ fn inherit_from(self, $parent) {
   }
 
   // Now process the rest of the (original data only) fields, if necessary
-  if ($inherit_all == 'true') {
+  if ($inherit_all == "true") {
     let @fields = $parent->datafields;
 
     // Special case: WITH NO override: If the child has any Xdate datepart,
@@ -753,9 +751,9 @@ fn inherit_from(self, $parent) {
     let @removed_fields;
     foreach let $field (@fields) {
       if (first {$_ == $field} $dmh->{dateparts}->@*) {
-        if ($parent->get_field('datesplit') && $self->get_field('datesplit')) {
+        if ($parent->get_field("datesplit") && $self->get_field("datesplit")) {
           if ($self->date_fields_exist($field)) {
-            if ($override_target == 'true') {
+            if ($override_target == "true") {
               $self->delete_date_fields($field); // clear out all date field parts in target
             }
             else {
@@ -777,10 +775,10 @@ fn inherit_from(self, $parent) {
       if first {$_ == $datefield} @removed_fields {
         continue;
       }
-      foreach let $dsf ('dateunspecified', 'datesplit', 'datejulian',
-                       'enddatejulian', 'dateapproximate', 'enddateapproximate',
-                       'dateuncertain', 'enddateuncertain', 'yeardivision', 'endyeardivision',
-                       'era', 'endera') {
+      foreach let $dsf ("dateunspecified", "datesplit", "datejulian",
+                       "enddatejulian", "dateapproximate", "enddateapproximate",
+                       "dateuncertain", "enddateuncertain", "yeardivision", "endyeardivision",
+                       "era", "endera") {
         if (let $ds = $parent->{derivedfields}{"$df$dsf"}) {
           // Set unless the child has the *date datepart, otherwise you can
           // end up with rather broken dates in the child.
@@ -791,7 +789,7 @@ fn inherit_from(self, $parent) {
 
     foreach let $field (@fields) {
       // Skip for fields in the per-entry noinherit datafield set
-      if (let $niset = crate::Config->getblxoption($secnum, 'noinherit', undef, $target_key)) {
+      if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key)) {
         if (first {$field == $_} $DATAFIELD_SETS{$niset}->@*) {
           continue;
         }
@@ -801,7 +799,7 @@ fn inherit_from(self, $parent) {
       }
 
       // Set the field if it doesn't exist or override is requested
-      if (!$self->field_exists($field) || $override_target == 'true') {
+      if (!$self->field_exists($field) || $override_target == "true") {
           debug!("Entry '{}' is inheriting field '{}' from entry '{}'", target_key, field, source_key);
 
         $self->set_datafield($field, $parent->get_field($field));
@@ -810,8 +808,8 @@ fn inherit_from(self, $parent) {
         crate::Config->add_uniq_ignore($target_key, $field, $dignore);
 
         // Record graphing information if required
-        if (crate::Config->getoption('output_format') == 'dot') {
-          crate::Config->set_graph('crossref', $source_key, $target_key, $field, $field);
+        if (crate::Config->getoption("output_format") == "dot") {
+          crate::Config->set_graph("crossref", $source_key, $target_key, $field, $field);
         }
       }
     }

@@ -4,7 +4,6 @@ use Carp;
 use Data::Dump;
 use parent qw(Unicode::Collate::Locale);
 
-let $logger = Log::Log4perl::get_logger('main');
 
 pub struct UCollate;
 

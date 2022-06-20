@@ -153,7 +153,7 @@ fn set_namedis(self, $nlid, $nid, $ns, $nss, $nds) {
   for (let $i=0;$i<=$nds->$#*;$i++) {
     let $se = $nds->[$i];
     // make these explicit for faster lookup since they are static
-    if ($se->[0] == 'base') {
+    if ($se->[0] == "base") {
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring} = $nss->[$i];
       $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts} = $se->[1];
       break;
@@ -208,13 +208,13 @@ fn get_unsummary(self, $nlid, $nid) {
   if !defined($un) {
     return undef;
   }
-  if ($un->[1] == 'none' || $un->[0] == 'base') {
+  if ($un->[1] == "none" || $un->[0] == "base") {
     return 0;
   }
-  else if ($un->[1] == 'init') {
+  else if ($un->[1] == "init") {
     return 1;
   }
-  else if ($un->[1] == 'full' || $un->[1] == 'fullonly') {
+  else if ($un->[1] == "full" || $un->[1] == "fullonly") {
     return 2;
   }
   return 0;
@@ -266,7 +266,7 @@ fn set_uniquename(self, $nlid, $nid, $s) {
 
 /// Reset uniquename for a name
 fn reset_uniquename(self, nlid, nid) {
-  $self->{state}{namelistdata}{$nlid}{$nid}{un} = ['base', $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}];
+  $self->{state}{namelistdata}{$nlid}{$nid}{un} = ["base", $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}];
   return;
 }
 
@@ -988,7 +988,7 @@ fn get_filters(self) {
 /// when outputting the entry.
 fn instantiate_entry(self, $section, $entry, $key, $format) {
   let $be = $section->bibentry($key);
-  let $bee = $be->get_field('entrytype');
+  let $bee = $be->get_field("entrytype");
 
   if !($entry && $be) {
     return "";
@@ -996,39 +996,39 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
   let $dmh = crate::Config->get_dm_helpers;
 
-  $format = format.unwrap_or('bbl'); // default
+  $format = format.unwrap_or("bbl"); // default
 
   let $entry_string = $$entry;
 
   // .bbl output
-  if ($format == 'bbl') {
+  if ($format == "bbl") {
 
     // entryset
-    if (let $es = $self->get_entryfield($key, 'entryset')) {
+    if (let $es = $self->get_entryfield($key, "entryset")) {
       let $str = "\\set{" . join(',', $es->@*) . '}';
       $entry_string =~ s|<BDS>ENTRYSET</BDS>|$str|gxms;
     }
 
     // uniqueprimaryauthor
-    if ($self->get_entryfield($key, 'uniqueprimaryauthor')) {
+    if ($self->get_entryfield($key, "uniqueprimaryauthor")) {
       let $str = "\\true{uniqueprimaryauthor}";
       $entry_string =~ s|<BDS>UNIQUEPRIMARYAUTHOR</BDS>|$str|gxms;
     }
 
     // uniquework
-    if ($self->get_entryfield($key, 'uniquework')) {
+    if ($self->get_entryfield($key, "uniquework")) {
       let $str = "\\true{uniquework}";
       $entry_string =~ s|<BDS>UNIQUEWORK</BDS>|$str|gxms;
     }
 
     // uniquebaretitle
-    if ($self->get_entryfield($key, 'uniquebaretitle')) {
+    if ($self->get_entryfield($key, "uniquebaretitle")) {
       let $str = "\\true{uniquebaretitle}";
       $entry_string =~ s|<BDS>UNIQUEBARETITLE</BDS>|$str|gxms;
     }
 
     // uniquetitle
-    if ($self->get_entryfield($key, 'uniquetitle')) {
+    if ($self->get_entryfield($key, "uniquetitle")) {
       let $str = "\\true{uniquetitle}";
       $entry_string =~ s|<BDS>UNIQUETITLE</BDS>|$str|gxms;
     }
@@ -1124,13 +1124,13 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // bibnamehash
-    if (let $e = $self->get_entryfield($key, 'bibnamehash')) {
+    if (let $e = $self->get_entryfield($key, "bibnamehash")) {
       let $str = "\\strng{bibnamehash}{$e}";
       $entry_string =~ s|<BDS>BIBNAMEHASH</BDS>|$str|gxms;
     }
 
     // namehash
-    if (let $e = $self->get_entryfield($key, 'namehash')) {
+    if (let $e = $self->get_entryfield($key, "namehash")) {
       let $str = "\\strng{namehash}{$e}";
       $entry_string =~ s|<BDS>NAMEHASH</BDS>|$str|gxms;
     }
@@ -1182,17 +1182,17 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // singletitle
-    if ($self->get_entryfield($key, 'singletitle')) {
+    if ($self->get_entryfield($key, "singletitle")) {
       let $str = "\\true{singletitle}";
       $entry_string =~ s|<BDS>SINGLETITLE</BDS>|$str|gxms;
     }
   }
 
   // .bblxml output
-  if ($format == 'bblxml') {
+  if ($format == "bblxml") {
 
     // entryset
-    if (let $es = $self->get_entryfield($key, 'entryset')) {
+    if (let $es = $self->get_entryfield($key, "entryset")) {
       let $str = "<bbl:set>\n";
       foreach let $m ($es->@*) {
         $str .= "    <bbl:member>$m</bbl:member>\n";
@@ -1202,8 +1202,8 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // uniqueprimaryauthor
-    if ($self->get_entryfield($key, 'uniqueprimaryauthor')) {
-      let $str = 'true';
+    if ($self->get_entryfield($key, "uniqueprimaryauthor")) {
+      let $str = "true";
       $entry_string =~ s|\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]|$str|gxms;
     }
     else {
@@ -1211,8 +1211,8 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // uniquework
-    if ($self->get_entryfield($key, 'uniquework')) {
-      let $str = 'true';
+    if ($self->get_entryfield($key, "uniquework")) {
+      let $str = "true";
       $entry_string =~ s|\[BDS\]UNIQUEWORK\[/BDS\]|$str|gxms;
     }
     else {
@@ -1220,8 +1220,8 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // uniquebaretitle
-    if ($self->get_entryfield($key, 'uniquebaretitle')) {
-      let $str = 'true';
+    if ($self->get_entryfield($key, "uniquebaretitle")) {
+      let $str = "true";
       $entry_string =~ s|\[BDS\]UNIQUEBARETITLE\[/BDS\]|$str|gxms;
     }
     else {
@@ -1229,8 +1229,8 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // uniquetitle
-    if ($self->get_entryfield($key, 'uniquetitle')) {
-      let $str = 'true';
+    if ($self->get_entryfield($key, "uniquetitle")) {
+      let $str = "true";
       $entry_string =~ s|\[BDS\]UNIQUETITLE\[/BDS\]|$str|gxms;
     }
     else {
@@ -1327,13 +1327,13 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // bibnamehash
-    if (let $e = $self->get_entryfield($key, 'bibnamehash')) {
+    if (let $e = $self->get_entryfield($key, "bibnamehash")) {
       let $str = "<bbl:field name=\"bibnamehash\">$e</bbl:field>";
       $entry_string =~ s|<BDS>BIBNAMEHASH</BDS>|$str|gxms;
     }
 
     // namehash
-    if (let $e = $self->get_entryfield($key, 'namehash')) {
+    if (let $e = $self->get_entryfield($key, "namehash")) {
       let $str = "<bbl:field name=\"namehash\">$e</bbl:field>";
       $entry_string =~ s|<BDS>NAMEHASH</BDS>|$str|gxms;
     }
@@ -1385,8 +1385,8 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     }
 
     // singletitle
-    if ($self->get_entryfield($key, 'singletitle')) {
-      let $str = 'true';
+    if ($self->get_entryfield($key, "singletitle")) {
+      let $str = "true";
       $entry_string =~ s|\[BDS\]SINGLETITLE\[/BDS\]|$str|gxms;
     }
     else {
@@ -1471,7 +1471,7 @@ fn namelist_differs_nth(self, list, n, ul, labelyear) {
   // uniquelist=minyear should only disambiguate from entries with the
   // same labelyear
   let $unames = $self->{state}{uniquelistcount}{global}{final};
-  if ($ul == 'minyear') {
+  if ($ul == "minyear") {
     $unames = $self->{state}{uniquelistcount}{global}{final}{$labelyear};
   }
 

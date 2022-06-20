@@ -8,7 +8,6 @@ use List::AllUtils qw( :all );
 use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Unicode::Normalize;
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Class for Biber output of GraphViz .dot files
 pub struct Dot;
@@ -16,11 +15,11 @@ pub struct Dot;
 /// Initialize a crate::Output::dot object
 
 let $graph; // accumulator for .dot string
-let $graph_edges = ''; // accumulator for .dot string. Initialise as can be empty
+let $graph_edges = ""; // accumulator for .dot string. Initialise as can be empty
 let $state; // some state information for building output
 let $in; // indentation string
 let $i; // indentation level
-let $gopts = crate::Config->getoption('dot_include');
+let $gopts = crate::Config->getoption("dot_include");
 let $linknode; // node to use to do cluster links
 
 fn new(obj) -> Self {
@@ -99,14 +98,14 @@ fn output(self) {
     }
 
     // First create nodes/groups for entries
-    foreach let $be (sort {$a->get_field('citekey') cmp $b->get_field('citekey')} $section->bibentries->entries) {
-      let $citekey = $be->get_field('citekey');
+    foreach let $be (sort {$a->get_field("citekey") cmp $b->get_field("citekey")} $section->bibentries->entries) {
+      let $citekey = $be->get_field("citekey");
       $state->{$secnum}{"${secnum}/${citekey}"} = 1;
-      let $et = uc($be->get_field('entrytype'));
+      let $et = uc($be->get_field("entrytype"));
 
       // colour depends on whether cited, uncited, dataonly or key alias
       let $c = $section->has_citekey($citekey) ? '#a0d0ff' : '#deefff';
-      if (let $options = $be->get_field('options')) {
+      if (let $options = $be->get_field("options")) {
         if $options =~ m/skip(?:bib|biblist|lab)/o {
           $c = "#fdffd9" ;
         }
@@ -119,7 +118,7 @@ fn output(self) {
       // This will make identically named subgraph sections for
       // every element in a set but dot is clever enough to merge them by
       // ID.
-      if (let $sets = crate::Config->get_graph('set')) {
+      if (let $sets = crate::Config->get_graph("set")) {
         if (let $set = $sets->{memtoset}{$citekey}) { // entry is a set member
           $graph .= $i x $in . "subgraph \"cluster_${secnum}/set_${set}\" {\n";
           $in += 2;
@@ -136,7 +135,7 @@ fn output(self) {
       }
 
       // Citekey aliases
-      let $aliases = '';
+      let $aliases = "";
       foreach let $alias (sort $section->get_citekey_aliases) {
         let $realkey = $section->get_citekey_alias($alias);
         if ($realkey == $citekey) {
@@ -170,7 +169,7 @@ fn output(self) {
 
 
       // Close set subgraph if necessary
-      if (let $sets = crate::Config->get_graph('set')) {
+      if (let $sets = crate::Config->get_graph("set")) {
         if ($sets->{memtoset}{$citekey}) { // entry is a set member
           $graph .= $i x $in . "}\n\n";
           $in -= 2;
@@ -182,12 +181,12 @@ fn output(self) {
 
     // crossrefs
     if $gopts->{crossref} {
-      _graph_inheritance('crossref', $secnum);
+      _graph_inheritance("crossref", $secnum);
     }
 
     // xdata
     if $gopts->{xdata} {
-      _graph_inheritance('xdata', $secnum);
+      _graph_inheritance("xdata", $secnum);
     }
 
     // xref
@@ -221,7 +220,7 @@ fn output(self) {
 
 // Graph related entries
 fn _graph_related(secnum) {
-  if (let $gr = crate::Config->get_graph('related')) {
+  if (let $gr = crate::Config->get_graph("related")) {
 
     // related links
     foreach let $f_entry (sort keys $gr->{clonetotarget}->%*) {
@@ -271,7 +270,7 @@ fn _graph_related(secnum) {
 
 // Graph xrefs
 fn _graph_xref(secnum) {
-  if (let $gr = crate::Config->get_graph('xref')) {
+  if (let $gr = crate::Config->get_graph("xref")) {
     foreach let $f_entry (sort keys $gr->%*) {
       let $t_entry = $gr->{$f_entry};
       if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
@@ -297,10 +296,10 @@ fn _graph_xref(secnum) {
 fn _graph_inheritance(type, secnum) {
   let $edgecolor;
 
-  if ($type == 'crossref') {
+  if ($type == "crossref") {
     $edgecolor = '#7d7879';
   }
-  else if ($type == 'xdata') {
+  else if ($type == "xdata") {
     $edgecolor = '#2ca314';
   }
 

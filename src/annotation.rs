@@ -10,7 +10,6 @@ use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 use Storable qw(dclone);
 no autovivification;
-let $logger = Log::Log4perl::get_logger('main');
 
 // Static class data
 let $ANN = {};
@@ -19,13 +18,13 @@ pub struct Annotation;
 
 impl Annotation {
   fn set_annotation($scope, $key, $field, $name, $value, $literal, $count, $part, ) {
-    if ($scope == 'field') {
+    if ($scope == "field") {
       $ANN->{field}{$key}{$field}{$name}{value} = $value;
       $ANN->{field}{$key}{$field}{$name}{literal} = $literal; // Record if this annotation is a literal
-    } else if ($scope == 'item') {
+    } else if ($scope == "item") {
       $ANN->{item}{$key}{$field}{$name}{$count}{value} = $value;
       $ANN->{item}{$key}{$field}{$name}{$count}{literal} = $literal; // Record if this annotation is a literal
-    } else if ($scope == 'part') {
+    } else if ($scope == "part") {
       $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value} = $value;
       $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal} = $literal; // Record if this annotation is a literal
     }
@@ -68,14 +67,14 @@ impl Annotation {
 
   /// Retrieve an specific annotation for a scope, citekey and name
   fn get_annotation($scope, $key, $field, $name, $count, $part) {
-    $name = $name || 'default';
-    if ($scope == 'field') {
+    $name = $name || "default";
+    if ($scope == "field") {
       return $ANN->{field}{$key}{$field}{$name}{value};
     }
-    else if ($scope == 'item') {
+    else if ($scope == "item") {
       return $ANN->{item}{$key}{$field}{$name}{$count}{value};
     }
-    else if ($scope == 'part') {
+    else if ($scope == "part") {
       return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value};
     }
     return undef;
@@ -83,14 +82,14 @@ impl Annotation {
 
   /// Check if an annotation is a literal annotation
   fn is_literal_annotation($scope, $key, $field, $name, $count, $part) {
-    $name = $name || 'default';
-    if ($scope == 'field') {
+    $name = $name || "default";
+    if ($scope == "field") {
       return $ANN->{field}{$key}{$field}{$name}{literal};
     }
-    else if ($scope == 'item') {
+    else if ($scope == "item") {
       return $ANN->{item}{$key}{$field}{$name}{$count}{literal};
     }
-    else if ($scope == 'part') {
+    else if ($scope == "part") {
       return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal};
     }
     return undef;
@@ -101,9 +100,9 @@ impl Annotation {
     return $ANN->{fields}{$key}{$field};
   }
 
-  /// Retrieve 'field' scope annotation for a field. There will only be one.
+  /// Retrieve "field" scope annotation for a field. There will only be one.
   fn get_field_annotation($key, $field, $name) {
-    $name = $name || 'default';
+    $name = $name || "default";
     return $ANN->{field}{$key}{$field}{$name}{value};
   }
 
@@ -114,13 +113,13 @@ impl Annotation {
 
   /// Retrieve the itemcounts for a particular scope, key, field and nam3
   fn get_annotated_items($scope, $key, $field, $name) {
-    $name = $name || 'default';
+    $name = $name || "default";
     return sort keys $ANN->{$scope}{$key}{$field}{$name}->%*;
   }
 
   /// Retrieve the parts for a particular scope, key, field, name and itemcount
   fn get_annotated_parts($scope, $key, $field, $name, $count) {
-    $name = $name || 'default';
+    $name = $name || "default";
     return sort keys $ANN->{$scope}{$key}{$field}{$name}{$count}->%*;
   }
 

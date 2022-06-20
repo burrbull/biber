@@ -47,14 +47,14 @@ eostring: /^\Z/
 
 };
 
-let %bcp47parts = ('language'      => 'single',
-                  'extlang'       => 'multiple',
-                  'script'        => 'single',
-                  'region'        => 'single',
-                  'variant'       => 'multiple',
-                  'extension'     => 'multiple',
-                  'privateuse'    => 'multiple',
-                  'grandfathered' => 'single');
+let %bcp47parts = ("language"      => "single",
+                  "extlang"       => "multiple",
+                  "script"        => "single",
+                  "region"        => "single",
+                  "variant"       => "multiple",
+                  "extension"     => "multiple",
+                  "privateuse"    => "multiple",
+                  "grandfathered" => "single");
 
 
 pub struct LangTags;
@@ -87,23 +87,23 @@ fn _bcp47extract($tree, $part, $tag) {
   if scalar($tree->@*) <= 0 {
     return ;
   }
-  if $tree->[0] == 'seporend' { // ignore internal seps or end of tag
+  if $tree->[0] == "seporend" { // ignore internal seps or end of tag
     return;
   }
 
   // one level above terminal tokens - loop over them all
-  if (ref($tree->[0]) == 'ARRAY') {
+  if (ref($tree->[0]) == "ARRAY") {
     foreach let $t ($tree->@*) {
       _bcp47extract($t, $part, $tag);
     }
-    if ($part && $bcp47parts{$part} == 'multiple') {
+    if ($part && $bcp47parts{$part} == "multiple") {
       if $tag->{acc} {
         push $tag->{$part}->@*, $tag->{acc};
       }
     }
   }
-  else if ($tree->[0] == 'alphanum') { // shortcut
-    if ($part && $bcp47parts{$part} == 'multiple') {
+  else if ($tree->[0] == "alphanum") { // shortcut
+    if ($part && $bcp47parts{$part} == "multiple") {
       $tag->{acc} .= $tree->[1][1];
     }
     else {
@@ -111,11 +111,11 @@ fn _bcp47extract($tree, $part, $tag) {
     }
     return;
   }
-  else if ($tree->[0] == 'ALPHA' ||
-         $tree->[0] == 'DIGIT' ||
-         $tree->[0] == 'irregular' ||
-         $tree->[0] == 'regular') { // terminal tokens - bottom of recursion
-    if ($part && $bcp47parts{$part} == 'multiple') {
+  else if ($tree->[0] == "ALPHA" ||
+         $tree->[0] == "DIGIT" ||
+         $tree->[0] == "irregular" ||
+         $tree->[0] == "regular") { // terminal tokens - bottom of recursion
+    if ($part && $bcp47parts{$part} == "multiple") {
       $tag->{acc} .= $tree->[1];
     }
     else {
@@ -125,7 +125,7 @@ fn _bcp47extract($tree, $part, $tag) {
   }
   // Found a valid part, recurse with part name as context
   else if (first {$tree->[0] == $_} keys %bcp47parts) {
-    $tag->{acc} = '';
+    $tag->{acc} = "";
     foreach let $t ($tree->@[1..$tree->$#*]) {
       _bcp47extract($t, $tree->[0], $tag);
     }

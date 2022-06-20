@@ -85,7 +85,7 @@ struct Args {
     #[clap(long)]
     dieondatamodel: bool,
 
-    /// Specifies the element to include in GraphViz DOT output format if the output format is 'dot'.
+    /// Specifies the element to include in GraphViz DOT output format if the output format is "dot".
     /// You can also choose to display crossref, xref, xdata and/or related entry connections
     #[clap(long, value_name = "section,field,xdata,crossref,xref,related", default_value_t = String::from("section,xdata,crossref,xref"))]
     dot_include: String,
@@ -275,11 +275,11 @@ struct Args {
     /// or classes of fields. Fields not mentioned in the list are output in sorted name order after
     /// the explicitly specified fields. The classes of fields are:
     ///
-    /// 'names' - All name list fields
+    /// "names" - All name list fields
     ///
-    /// 'lists' - All non-name list fields
+    /// "lists" - All non-name list fields
     ///
-    /// 'dates' - All date fields
+    /// "dates" - All date fields
     #[clap(long, value_name = "field1, ... fieldn", default_value_t = String::from("options,abstract,names,lists,dates"))]
     output_field_order: String,
 
@@ -349,7 +349,7 @@ struct Args {
     output_no_macrodefs: bool,
 
     /// Convenience option to set all of the `--output-resolve-*` options to
-    /// 'true'. The legacy option B<--tool-resolve> is supported as an alias
+    /// "true". The legacy option B<--tool-resolve> is supported as an alias
     #[clap(long, alias = "tool-resolve")]
     output_resolve: bool,
 

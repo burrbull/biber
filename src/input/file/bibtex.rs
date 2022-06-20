@@ -29,7 +29,6 @@ use Unicode::GCString;
 use Unicode::UCD qw(num);
 use XML::LibXML::Simple;
 
-let $logger = Log::Log4perl::get_logger('main');
 
 state $cache; // state variable so it's persistent across calls to extract_entries()
 use vars qw($cache);
@@ -43,34 +42,34 @@ fn init_cache {
 // Determine handlers from data model
 let $dm = crate::Config->get_dm;
 let $handlers = {
-                'custom' => {'annotation' => \&_annotation},
-                'field' => {
-                            'default'  => {
-                                           'code'     => \&_literal,
-                                           'date'     => \&_datetime,
-                                           'datepart' => \&_literal,
-                                           'entrykey' => \&_literal,
-                                           'integer'  => \&_literal,
-                                           'key'      => \&_literal,
-                                           'literal'  => \&_literal,
-                                           'range'    => \&_range,
-                                           'verbatim' => \&_verbatim,
-                                           'uri'      => \&_uri
+                "custom" => {"annotation" => \&_annotation},
+                "field" => {
+                            "default"  => {
+                                           "code"     => \&_literal,
+                                           "date"     => \&_datetime,
+                                           "datepart" => \&_literal,
+                                           "entrykey" => \&_literal,
+                                           "integer"  => \&_literal,
+                                           "key"      => \&_literal,
+                                           "literal"  => \&_literal,
+                                           "range"    => \&_range,
+                                           "verbatim" => \&_verbatim,
+                                           "uri"      => \&_uri
                                           },
-                            'xsv'      => {
-                                           'entrykey' => \&_xsv,
-                                           'literal'  => \&_xsv,
-                                           'keyword'  => \&_xsv,
-                                           'option'   => \&_xsv,
+                            "xsv"      => {
+                                           "entrykey" => \&_xsv,
+                                           "literal"  => \&_xsv,
+                                           "keyword"  => \&_xsv,
+                                           "option"   => \&_xsv,
                                           }
                            },
-                'list' => {
-                           'default'   => {
-                                           'key'      => \&_list,
-                                           'literal'  => \&_list,
-                                           'name'     => \&_name,
-                                           'verbatim' => \&_list,
-                                           'uri'      => \&_urilist
+                "list" => {
+                           "default"   => {
+                                           "key"      => \&_list,
+                                           "literal"  => \&_list,
+                                           "name"     => \&_name,
+                                           "verbatim" => \&_list,
+                                           "uri"      => \&_urilist
                                           }
                           }
 };
@@ -111,18 +110,18 @@ fn extract_entries(filename, encoding, keys) {
   // Get a reference to the correct sourcemap sections, if they exist
   let $smaps = [];
   // Maps are applied in order USER->STYLE->DRIVER
-  if (defined(crate::Config->getoption('sourcemap'))) {
+  if (defined(crate::Config->getoption("sourcemap"))) {
     // User maps, allow multiple \DeclareSourcemap
-    if (let @m = grep {$_->{datatype} == 'bibtex' && $_->{level} == 'user' } crate::Config->getoption('sourcemap')->@* ) {
+    if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "user" } crate::Config->getoption("sourcemap")->@* ) {
       push $smaps->@*, @m;
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
-    if (let @m = grep {$_->{datatype} == 'bibtex' && $_->{level} == 'style' } crate::Config->getoption('sourcemap')->@* ) {
+    if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "style" } crate::Config->getoption("sourcemap")->@* ) {
       push $smaps->@*, @m;
     }
     // Driver default maps
-    if (let $m = first {$_->{datatype} == 'bibtex' && $_->{level} == 'driver'} crate::Config->getoption('sourcemap')->@* ) {
+    if (let $m = first {$_->{datatype} == "bibtex" && $_->{level} == "driver"} crate::Config->getoption("sourcemap")->@* ) {
       push $smaps->@*, $m;
     }
   }
@@ -139,7 +138,7 @@ fn extract_entries(filename, encoding, keys) {
   let $tberr;
   let $tberr_name;
   if !($logger->is_debug() || $logger->is_trace()) {
-    $tberr = File::Temp->new(TEMPLATE => 'biber_Text_BibTeX_STDERR_XXXXX',
+    $tberr = File::Temp->new(TEMPLATE => "biber_Text_BibTeX_STDERR_XXXXX",
                              DIR      => $crate::MASTER->biber_tempdir);
     $tberr_name = $tberr->filename;
     open OLDERR, '>&', \*STDERR;
@@ -295,7 +294,7 @@ fn extract_entries(filename, encoding, keys) {
   }
 
   // Save comments if in tool mode
-  if (crate::Config->getoption('tool')) {
+  if (crate::Config->getoption("tool")) {
     if ($cache->{comments}{$filename}) {
       $crate::MASTER->{comments} = $cache->{comments}{$filename};
     }
@@ -372,7 +371,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
         let @imatches; // For persisting parenthetical matches over several steps
 
         // Set up any mapping foreach loop
-        let @maploop = ('');
+        let @maploop = ("");
         if (let $foreach = $map->{map_foreach}) {
           if (let $dslist = $DATAFIELD_SETS{$foreach}) { // datafield set list
             @maploop = $dslist->@*;
@@ -411,7 +410,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 continue;
               }
                 debug!("Source mapping (type={}, key={}): Creating new entry with key '{}'", level, key, newkey);
-              let $newentry = Text::BibTeX::Entry->new({binmode => "UTF-8", normalization => 'NFD'});
+              let $newentry = Text::BibTeX::Entry->new({binmode => "UTF-8", normalization => "NFD"});
               $newentry->set_metatype(BTE_REGULAR);
               $newentry->set_key(encode("UTF-8", NFC($newkey)));
               $newentry->set_type(encode("UTF-8", NFC($newentrytype)));
@@ -613,7 +612,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // key is a pseudo-field. It's guaranteed to exist so
               // just check if that's what's being asked for
-              if !($fieldsource == 'entrykey' ||
+              if !($fieldsource == "entrykey" ||
                       $etarget->exists($fieldsource)) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
@@ -633,7 +632,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               $last_field = $fieldsource;
               // $fieldsource is already casefolded, which is correct as it does not come
               // from Text::BibTeX's list of fields
-              $last_fieldval = $fieldsource == 'entrykey' ? $etarget->key : $etarget->get(encode("UTF-8", NFC($fieldsource)));
+              $last_fieldval = $fieldsource == "entrykey" ? $etarget->key : $etarget->get(encode("UTF-8", NFC($fieldsource)));
 
               let $negmatch = 0;
               let $nm;
@@ -679,7 +678,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 if (defined($step->{map_replace})) { // replace can be null
 
                   // Can't modify entrykey
-                  if ($fieldsource == 'entrykey') {
+                  if ($fieldsource == "entrykey") {
                       debug!("Source mapping (type={}, key={}): Field '{}' is 'entrykey' - cannot remap the value of this field, skipping ...", level, etargetkey, fieldsource);
                       continue;
                   }
@@ -715,7 +714,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               if (let $target = maploopreplace($step->{map_field_target}, $maploop)) {
                 $target = fc($target);
                 // Can't remap entry key pseudo-field
-                if ($fieldsource == 'entrykey') {
+                if ($fieldsource == "entrykey") {
                     debug!("Source mapping (type={}, key={}): Field '{}' is 'entrykey'- cannot map this to a new field as you must have an entrykey, skipping ...", level, etargetkey, fieldsource);
                     continue;
                 }
@@ -761,13 +760,13 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   }
                 }
 
-                let $orig = '';
+                let $orig = "";
                 // If append or appendstrict is set, keep the original value
                 // and append the new.
                 if ($step->{map_append} || $step->{map_appendstrict}) {
                   // $field is already casefolded, which is correct as it does not come
                   // from Text::BibTeX's list of fields
-                  $orig = $etarget->get(encode("UTF-8", NFC($field))) || '';
+                  $orig = $etarget->get(encode("UTF-8", NFC($field))) || "";
                 }
 
                 if ($step->{map_origentrytype}) {
@@ -835,11 +834,11 @@ fn _create_entry(k, e) {
 
   let $bibentry = crate::Entry->new();
 
-  $bibentry->set_field('citekey', $k);
+  $bibentry->set_field("citekey", $k);
     debug!("Creating biber Entry object with key '{}'", k);
 
   // Save pre-mapping data. Might be useful somewhere
-  $bibentry->set_field('rawdata', $e->print_s);
+  $bibentry->set_field("rawdata", $e->print_s);
 
   let $entrytype = $e->type;
 
@@ -850,9 +849,9 @@ fn _create_entry(k, e) {
 
     // We have to process local options as early as possible in order
     // to make them available for things that need them like parsename()
-    if ($fc == 'options') {
+    if ($fc == "options") {
       let $value = $e->get(encode("UTF-8", NFC($f)));
-      let $Srx = crate::Config->getoption('xsvsep');
+      let $Srx = crate::Config->getoption("xsvsep");
       let $S = qr/$Srx/;
       process_entry_options($k, [ split(/$S/, $value) ], $secnum);
     }
@@ -860,11 +859,11 @@ fn _create_entry(k, e) {
     // Now run any defined handler
     if ($dm->is_field($fc)) {
       // Check the Text::BibTeX field in case we have e.g. date = {}
-      if ($e->get(encode("UTF-8", NFC($f))) != '') {
+      if ($e->get(encode("UTF-8", NFC($f))) != "") {
         let $handler = _get_handler($fc);
         let $v = $handler->($bibentry, $e, $f, $k);
         if (defined($v)) {
-          if ($v == 'BIBER_SKIP_ENTRY') {// field data is bad enough to cause entry to be skipped
+          if ($v == "BIBER_SKIP_ENTRY") {// field data is bad enough to cause entry to be skipped
             return 0;
           }
           else {
@@ -873,13 +872,13 @@ fn _create_entry(k, e) {
         }
       }
     }
-    else if (crate::Config->getoption('validate_datamodel')) {
+    else if (crate::Config->getoption("validate_datamodel")) {
       biber_warn("Datamodel: Entry '$k' ($ds): Field '$f' invalid in data model - ignoring", $bibentry);
     }
   }
 
-  $bibentry->set_field('entrytype', fc($entrytype));
-  $bibentry->set_field('datatype', 'bibtex');
+  $bibentry->set_field("entrytype", fc($entrytype));
+  $bibentry->set_field("datatype", "bibtex");
     debug!("Adding entry with key '{}' to entry list", k);
   $section->bibentries->add_entry($k, $bibentry);
   return 1;
@@ -892,10 +891,10 @@ fn _create_entry(k, e) {
 fn _annotation(bibentry, entry, field, key) {
   let $fc = fc($field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
-  let $ann = quotemeta(crate::Config->getoption('annotation_marker'));
-  let $nam = quotemeta(crate::Config->getoption('named_annotation_marker'));
+  let $ann = quotemeta(crate::Config->getoption("annotation_marker"));
+  let $nam = quotemeta(crate::Config->getoption("named_annotation_marker"));
   // Get annotation name, "default" if none
-  let $name = 'default';
+  let $name = "default";
   if ($fc =~ s/^(.+$ann)$nam(.+)$/$1/) {
     $name = $2;
   }
@@ -910,13 +909,13 @@ fn _annotation(bibentry, entry, field, key) {
       $annotations = $1;
     }
     if ($part) {
-      crate::Annotation->set_annotation('part', $key, $fc, $name, $annotations, $literal, $count, $part);
+      crate::Annotation->set_annotation("part", $key, $fc, $name, $annotations, $literal, $count, $part);
     }
     else if ($count) {
-      crate::Annotation->set_annotation('item', $key, $fc, $name, $annotations, $literal, $count);
+      crate::Annotation->set_annotation("item", $key, $fc, $name, $annotations, $literal, $count);
     }
     else {
-      crate::Annotation->set_annotation('field', $key, $fc, $name, $annotations, $literal);
+      crate::Annotation->set_annotation("field", $key, $fc, $name, $annotations, $literal);
     }
   }
   return;
@@ -935,16 +934,16 @@ fn _literal(bibentry, entry, field, key) {
   // If we have already split some date fields into literal fields
   // like date -> year/month/day, don't overwrite them with explicit
   // year/month
-  if ($fc == 'year') {
-    if $bibentry->get_datafield('year') {
+  if ($fc == "year") {
+    if $bibentry->get_datafield("year") {
       return;
     }
     if ($value && !looks_like_number(num($value))) {
       biber_warn("legacy year field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
-  if ($fc == 'month') {
-    if $bibentry->get_datafield('month') {
+  if ($fc == "month") {
+    if $bibentry->get_datafield("month") {
       return;
     }
     if ($value && !looks_like_number(num($value))) {
@@ -953,7 +952,7 @@ fn _literal(bibentry, entry, field, key) {
   }
 
   // Deal with ISBN options
-  if ($fc == 'isbn') {
+  if ($fc == "isbn") {
     require Business::ISBN;
     let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
     $dir =~ s/\/$//;            // splitpath sometimes leaves a trailing '/'
@@ -971,29 +970,29 @@ fn _literal(bibentry, entry, field, key) {
     }
 
     // Force to a specified format
-    if (crate::Config->getoption('isbn13')) {
+    if (crate::Config->getoption("isbn13")) {
       $isbn = $isbn->as_isbn13;
       $value = $isbn->isbn;
     }
-    else if (crate::Config->getoption('isbn10')) {
+    else if (crate::Config->getoption("isbn10")) {
       $isbn = $isbn->as_isbn10;
       $value = $isbn->isbn;
     }
 
     // Normalise if requested
-    if (crate::Config->getoption('isbn_normalise')) {
+    if (crate::Config->getoption("isbn_normalise")) {
       $value = $isbn->as_string;
     }
   }
 
   // Try to sanitise months to biblatex requirements
-  if ($fc == 'month') {
+  if ($fc == "month") {
     return _hack_month($value);
   }
   // Rationalise any bcp47 style langids into babel/polyglossia names
   // biblatex will convert these back again when loading .lbx files
   // We need this until babel/polyglossia support proper bcp47 language/locales
-  else if ($fc == 'langid' && let $map = $LOCALE_MAP_R{$value}) {
+  else if ($fc == "langid" && let $map = $LOCALE_MAP_R{$value}) {
     return $map;
   }
   else {
@@ -1013,7 +1012,7 @@ fn _uri(bibentry, entry, field) {
 
 // xSV field form
 fn _xsv(bibentry, entry, field) {
-  let $Srx = crate::Config->getoption('xsvsep');
+  let $Srx = crate::Config->getoption("xsvsep");
   let $S = qr/$Srx/;
   let $value = [ split(/$S/, $entry->get(encode("UTF-8", NFC($field)))) ];
 
@@ -1036,9 +1035,9 @@ fn _verbatim(bibentry, entry, field) {
 // Range fields
 // m-n -> [m, n]
 // m   -> [m, undef]
-// m-  -> [m, '']
-// -n  -> ['', n]
-// -   -> ['', undef]
+// m-  -> [m, ""]
+// -n  -> ["", n]
+// -   -> ["", undef]
 
 fn _range(bibentry, entry, field, key) {
   let $values_ref;
@@ -1072,7 +1071,7 @@ fn _range(bibentry, entry, field, key) {
       $end =~ s/\A\{([^\}]+)\}\z/$1/;
     }
     if ($start) {
-      push $values_ref->@*, [$start || '', $end];
+      push $values_ref->@*, [$start || "", $end];
     }
     else {
       biber_warn("Range field '$field' in entry '$key' is malformed, falling back to literal", $bibentry);
@@ -1088,17 +1087,17 @@ fn _name(bibentry, entry, field, key) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let $value = $entry->get(encode("UTF-8", NFC($field)));
-  let $xnamesep = crate::Config->getoption('xnamesep');
-  let $bee = $bibentry->get_field('entrytype');
+  let $xnamesep = crate::Config->getoption("xnamesep");
+  let $bee = $bibentry->get_field("entrytype");
 
-  let $names = crate::Entry::Names->new('type' => $fc);
+  let $names = crate::Entry::Names->new("type" => $fc);
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
-                                     crate::Config->getoption('namesep'),
+                                     crate::Config->getoption("namesep"),
                                      undef,
                                      undef,
                                      undef,
-                                     {binmode => "UTF-8", normalization => 'NFD'});
+                                     {binmode => "UTF-8", normalization => "NFD"});
 
   for (let $i = 0; $i <= $#tmp; $i++) {
     let $name = $tmp[$i];
@@ -1118,7 +1117,7 @@ fn _name(bibentry, entry, field, key) {
         let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
         foreach let $o ($oo->@*) {
-          let $method = 'set_' . $o->[0];
+          let $method = "set_" . $o->[0];
           $names->$method($o->[1]);
         }
         continue;
@@ -1129,15 +1128,15 @@ fn _name(bibentry, entry, field, key) {
     if !($name) {
       biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $bibentry);
       $section->del_citekey($key);
-      return 'BIBER_SKIP_ENTRY';
+      return "BIBER_SKIP_ENTRY";
     }
 
-    let $nps = join('|', $dm->get_constant_value('nameparts'));
+    let $nps = join('|', $dm->get_constant_value("nameparts"));
     let $no;
 
     // extended name format
-    let $xnamesep = crate::Config->getoption('xnamesep');
-    if ($name =~ m/(?:$nps)\s*$xnamesep/ && !crate::Config->getoption('noxname')) {
+    let $xnamesep = crate::Config->getoption("xnamesep");
+    if ($name =~ m/(?:$nps)\s*$xnamesep/ && !crate::Config->getoption("noxname")) {
       // Skip names that don't parse for some reason
       // uniquename defaults to 'false' just in case we are in tool mode otherwise
       // there are spurious uninitialised warnings
@@ -1154,14 +1153,14 @@ fn _name(bibentry, entry, field, key) {
         if ($#commas > 1) {
           biber_error("Name \"$name\" has too many commas, skipping entry '$key'", 1);
           $section->del_citekey($key);
-          return 'BIBER_SKIP_ENTRY';
+          return "BIBER_SKIP_ENTRY";
         }
 
         // Consecutive commas cause Text::BibTeX::Name to segfault
         if ($name =~ /,,/) {
           biber_error("Name \"$name\" is malformed (consecutive commas): skipping entry '$key'", 1);
           $section->del_citekey($key);
-          return 'BIBER_SKIP_ENTRY';
+          return "BIBER_SKIP_ENTRY";
         }
       }
 
@@ -1174,7 +1173,7 @@ fn _name(bibentry, entry, field, key) {
     }
 
     // Deal with implied "et al" in data source
-    if (lc($no->get_rawstring) == crate::Config->getoption('others_string')) {
+    if (lc($no->get_rawstring) == crate::Config->getoption("others_string")) {
       $names->set_morenames;
     }
     else {
@@ -1202,7 +1201,7 @@ fn _datetime(bibentry, entry, field, key) {
   // This does not differ for *enddate components as these are split into ranges
   // from non-ranges only
   if ($unspec) {
-    $bibentry->set_field($datetype . 'dateunspecified', $unspec);
+    $bibentry->set_field($datetype . "dateunspecified", $unspec);
   }
 
   if (defined($sdate)) { // Start date was successfully parsed
@@ -1212,79 +1211,79 @@ fn _datetime(bibentry, entry, field, key) {
 
       // Some warnings for overwriting YEAR and MONTH from DATE
       if ($sdate->year &&
-          ($datetype . 'year' == 'year') &&
-          $entry->get('year') &&
-          $sdate->year != $entry->get('year')) {
+          ($datetype . "year" == "year") &&
+          $entry->get("year") &&
+          $sdate->year != $entry->get("year")) {
         biber_warn("Overwriting field 'year' with year value from field 'date' for entry '$key'", $bibentry);
       }
-      if (!$CONFIG_DATE_PARSERS{start}->missing('month') &&
-          ($datetype . 'month' == 'month') &&
-          $entry->get('month') &&
-          $sdate->month != $entry->get('month')) {
+      if (!$CONFIG_DATE_PARSERS{start}->missing("month") &&
+          ($datetype . "month" == "month") &&
+          $entry->get("month") &&
+          $sdate->month != $entry->get("month")) {
         biber_warn("Overwriting field 'month' with month value from field 'date' for entry '$key'", $bibentry);
       }
 
       // Save julian
       if $CONFIG_DATE_PARSERS{start}->julian {
-        $bibentry->set_field($datetype . 'datejulian', 1);
+        $bibentry->set_field($datetype . "datejulian", 1);
       }
       if $CONFIG_DATE_PARSERS{end}->julian {
-        $bibentry->set_field($datetype . 'enddatejulian', 1);
+        $bibentry->set_field($datetype . "enddatejulian", 1);
       }
 
       // Save approximate information
       if $CONFIG_DATE_PARSERS{start}->approximate {
-        $bibentry->set_field($datetype . 'dateapproximate', 1);
+        $bibentry->set_field($datetype . "dateapproximate", 1);
       }
       if $CONFIG_DATE_PARSERS{end}->approximate {
-        $bibentry->set_field($datetype . 'enddateapproximate', 1);
+        $bibentry->set_field($datetype . "enddateapproximate", 1);
       }
 
       // Save uncertain date information
       if $CONFIG_DATE_PARSERS{start}->uncertain {
-        $bibentry->set_field($datetype . 'dateuncertain', 1);
+        $bibentry->set_field($datetype . "dateuncertain", 1);
       }
       if $CONFIG_DATE_PARSERS{end}->uncertain {
-        $bibentry->set_field($datetype . 'enddateuncertain', 1);
+        $bibentry->set_field($datetype . "enddateuncertain", 1);
       }
 
       // Save start yeardivision date information
       if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-        $bibentry->set_field($datetype . 'yeardivision', $yeardivision);
+        $bibentry->set_field($datetype . "yeardivision", $yeardivision);
       }
 
-      if !($CONFIG_DATE_PARSERS{start}->missing('year')) {
-        $bibentry->set_datafield($datetype . 'year',
+      if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
+        $bibentry->set_datafield($datetype . "year",
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->year));
         // Save era date information
-        $bibentry->set_field($datetype . 'era', lc($sdate->secular_era));
+        $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
       }
 
-      if !($CONFIG_DATE_PARSERS{start}->missing('month')) {
-        $bibentry->set_datafield($datetype . 'month',
+      if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
+        $bibentry->set_datafield($datetype . "month",
                                $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->month));
       }
 
-      if !($CONFIG_DATE_PARSERS{start}->missing('day')) {
-        $bibentry->set_datafield($datetype . 'day',
+      if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
+        $bibentry->set_datafield($datetype . "day",
                                $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->day));
       }
 
       // time
-      if !($CONFIG_DATE_PARSERS{start}->missing('time')) {
-        $bibentry->set_datafield($datetype . 'hour',
+      if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
+        $bibentry->set_datafield($datetype . "hour",
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->hour));
-        $bibentry->set_datafield($datetype . 'minute',
+        $bibentry->set_datafield($datetype . "minute",
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->minute));
-        $bibentry->set_datafield($datetype . 'second',
+        $bibentry->set_datafield($datetype . "second",
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->second));
         if !($sdate->time_zone->is_floating) { // ignore floating timezones
-          $bibentry->set_datafield($datetype . 'timezone', tzformat($sdate->time_zone->name));
+          $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
         }
       }
     }
     else { // open ended range - startdate is defined but empty
-      $bibentry->set_datafield($datetype . 'year', '');
+      $bibentry->set_datafield($datetype . "year", "");
     }
 
     // End date can be missing
@@ -1294,44 +1293,44 @@ fn _datetime(bibentry, entry, field, key) {
           // Did this entry get its datepart fields from splitting an EDTF date field?
           $bibentry->set_field("${datetype}datesplit", 1);
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('year')) {
-            $bibentry->set_datafield($datetype . 'endyear',
+          if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
+            $bibentry->set_datafield($datetype . "endyear",
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->year));
             // Save era date information
-            $bibentry->set_field($datetype . 'endera', lc($edate->secular_era));
+            $bibentry->set_field($datetype . "endera", lc($edate->secular_era));
           }
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('month')) {
-            $bibentry->set_datafield($datetype . 'endmonth',
+          if !($CONFIG_DATE_PARSERS{end}->missing("month")) {
+            $bibentry->set_datafield($datetype . "endmonth",
                                    $CONFIG_DATE_PARSERS{end}->resolvescript($edate->month));
           }
 
-          if !($CONFIG_DATE_PARSERS{end}->missing('day')) {
-            $bibentry->set_datafield($datetype . 'endday',
+          if !($CONFIG_DATE_PARSERS{end}->missing("day")) {
+            $bibentry->set_datafield($datetype . "endday",
                                    $CONFIG_DATE_PARSERS{end}->resolvescript($edate->day));
           }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
-            $bibentry->set_field($datetype . 'endyeardivision', $yeardivision);
-            $bibentry->set_field($datetype . 'endseaason', $yeardivision); // legacy
+            $bibentry->set_field($datetype . "endyeardivision", $yeardivision);
+            $bibentry->set_field($datetype . "endseaason", $yeardivision); // legacy
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
-          if !($CONFIG_DATE_PARSERS{end}->missing('time')) {
-            $bibentry->set_datafield($datetype . 'endhour',
+          if !($CONFIG_DATE_PARSERS{end}->missing("time")) {
+            $bibentry->set_datafield($datetype . "endhour",
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->hour));
-            $bibentry->set_datafield($datetype . 'endminute',
+            $bibentry->set_datafield($datetype . "endminute",
                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->minute));
-            $bibentry->set_datafield($datetype . 'endsecond',
+            $bibentry->set_datafield($datetype . "endsecond",
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->second));
             if !($edate->time_zone->is_floating) { // ignore floating timezones
-              $bibentry->set_datafield($datetype . 'endtimezone', tzformat($edate->time_zone->name));
+              $bibentry->set_datafield($datetype . "endtimezone", tzformat($edate->time_zone->name));
             }
           }
         }
         else { // open ended range - enddate is defined but empty
-          $bibentry->set_datafield($datetype . 'endyear', '');
+          $bibentry->set_datafield($datetype . "endyear", "");
         }
       }
       else {
@@ -1350,11 +1349,11 @@ fn _list(bibentry, entry, field) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
-                                     crate::Config->getoption('listsep'),
+                                     crate::Config->getoption("listsep"),
                                      undef,
                                      undef,
                                      undef,
-                                     {binmode => "UTF-8", normalization => 'NFD'});
+                                     {binmode => "UTF-8", normalization => "NFD"});
   @tmp = map { (remove_outer($_))[1] } @tmp;
   let @result;
 
@@ -1376,11 +1375,11 @@ fn _urilist(bibentry, entry, field) {
 
   // Unicode NFC boundary (passing to external library)
   let @tmp = Text::BibTeX::split_list(NFC($value),
-                                     crate::Config->getoption('listsep'),
+                                     crate::Config->getoption("listsep"),
                                      undef,
                                      undef,
                                      undef,
-                                     {binmode => "UTF-8", normalization => 'NFD'});
+                                     {binmode => "UTF-8", normalization => "NFD"});
   let result = Vec::new();
 
   for (i, e) in tmp.iter().enumerate() {
@@ -1407,7 +1406,7 @@ fn cache_data(filename, encoding) {
   let $pfilename = preprocess_file($filename, $encoding);
 
   let $bib = Text::BibTeX::File->new();
-  $bib->open($pfilename, {binmode => "UTF-8", normalization => 'NFD'}) || biber_error("Cannot create Text::BibTeX::File object from $pfilename: $!");
+  $bib->open($pfilename, {binmode => "UTF-8", normalization => "NFD"}) || biber_error("Cannot create Text::BibTeX::File object from $pfilename: $!");
 
   // Log that we found a data file
   info!("Found BibTeX data source '{}'", filename);
@@ -1420,8 +1419,8 @@ fn cache_data(filename, encoding) {
 
     // Save comments for output in tool mode unless comment stripping is requested
     if ( $entry->metatype == BTE_COMMENT ) {
-      if (crate::Config->getoption('tool') &&
-          !crate::Config->getoption('strip_comments') ) {
+      if (crate::Config->getoption("tool") &&
+          !crate::Config->getoption("strip_comments") ) {
         push $cache->{comments}{$filename}->@*, process_comment($entry->value);
       }
       continue;
@@ -1460,8 +1459,8 @@ fn cache_data(filename, encoding) {
     // We can't do this with a driver dispatch for the IDS field as this needs
     // an entry object creating first and the whole point of aliases is that
     // there is no entry object
-    if (let $ids = $entry->get('ids')) {
-      let $Srx = crate::Config->getoption('xsvsep');
+    if (let $ids = $entry->get("ids")) {
+      let $Srx = crate::Config->getoption("xsvsep");
       let $S = qr/$Srx/;
       foreach let $id (split(/$S/, $ids)) {
 
@@ -1499,7 +1498,7 @@ fn cache_data(filename, encoding) {
 
     // If we've already seen this key in a datasource, ignore it and warn unless user wants
     // duplicates
-    if ($section->has_everykey($key) && !crate::Config->getoption('noskipduplicates')) {
+    if ($section->has_everykey($key) && !crate::Config->getoption("noskipduplicates")) {
       biber_warn("Duplicate entry key: '$key' in file '$filename', skipping ...");
       continue;
     }
@@ -1550,7 +1549,7 @@ fn preprocess_file(filename, benc) {
   // We read the file in the bib encoding and then output to UTF-8, even if it was already UTF-8,
   // just in case there was a BOM so we can delete it as it makes T::B complain
   // Might fail due to encountering characters invalid in the encoding so trap and die gracefully
-  if ($benc == 'ascii') {
+  if ($benc == "ascii") {
     info!("Reading ascii input as UTF-8");
     $benc = "UTF-8";
   }
@@ -1586,7 +1585,7 @@ fn parse_decode(ufilename) {
   let $lbuf;
 
   let $bib = Text::BibTeX::File->new();
-  $bib->open($ufilename, {binmode => "UTF-8", normalization => 'NFD'}) || biber_error("Cannot create Text::BibTeX::File object from $ufilename: $!");
+  $bib->open($ufilename, {binmode => "UTF-8", normalization => "NFD"}) || biber_error("Cannot create Text::BibTeX::File object from $ufilename: $!");
 
   info!("LaTeX decoding ...");
 
@@ -1627,7 +1626,7 @@ fn parse_decode(ufilename) {
   }
 
   // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
-  if !(crate::Config->getoption('nostdmacros')) {
+  if !(crate::Config->getoption("nostdmacros")) {
     foreach let $mon (keys %MONTHS) {
       Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
     }
@@ -1641,19 +1640,19 @@ fn parse_decode(ufilename) {
 /// Given a name string, this function returns a crate::Entry::Name object
 /// with all parts of the name resolved according to the BibTeX conventions.
 ///
-/// `parsename('John Doe', 'author', 'key')`
+/// `parsename('John Doe', "author", "key")`
 /// returns an object which internally looks a bit like this:
 ///
 /// ```
-/// { given          => {string => 'John', initial => ['J']},
-///   family         => {string => 'Doe', initial => ['D']},
+/// { given          => {string => "John", initial => ['J']},
+///   family         => {string => "Doe", initial => ['D']},
 ///   prefix         => {string => undef, initial => undef},
 ///   suffix         => {string => undef, initial => undef},
 ///   id             => 32RS0Wuj0P,
-///   strip          => {'given'  => 0,
-///                      'family' => 0,
-///                      'prefix' => 0,
-///                      'suffix' => 0}
+///   strip          => {"given"  => 0,
+///                      "family" => 0,
+///                      "prefix" => 0,
+///                      "suffix" => 0}
 ///   }
 /// ```
 fn parsename(section, namestr, fieldname) {
@@ -1666,12 +1665,12 @@ fn parsename(section, namestr, fieldname) {
   // If requested, try to correct broken initials with no space between them.
   // This can slightly mess up some other names like {{U.K. Government}} etc.
   // btparse can't do this so we do it before name parsing
-  if crate::Config->getoption('fixinits') {
+  if crate::Config->getoption("fixinits") {
     $namestr =~ s/(\w)\.(\w)/$1. $2/g;
   }
 
   let %namec;
-  let $name = Text::BibTeX::Name->new({binmode => "UTF-8", normalization => 'NFD'}, NFC($namestr));
+  let $name = Text::BibTeX::Name->new({binmode => "UTF-8", normalization => "NFD"}, NFC($namestr));
 
   // Formats so we can get BibTeX compatible nbsp inserted
   let $l_f = Text::BibTeX::NameFormat->new('l', 0);
@@ -1693,7 +1692,7 @@ fn parsename(section, namestr, fieldname) {
   // chars and diacritics in general
 
   // basic bibtex names have a fixed data model
-  foreach let $np ('prefix', 'family', 'given', 'suffix') {
+  foreach let $np ("prefix", "family", "given", "suffix") {
     if ($namec{$np}) {
       ($namec{"${np}-strippedflag"}, $namec{"${np}-stripped"}) = remove_outer($namec{$np});
 
@@ -1713,14 +1712,14 @@ fn parsename(section, namestr, fieldname) {
 
   let %nameparts;
   let $strip;
-  foreach let $np ('prefix', 'family', 'given', 'suffix') {
+  foreach let $np ("prefix", "family", "given", "suffix") {
     $nameparts{$np} = {string  => $namec{"${np}-stripped"}.unwrap_or(undef),
                        initial => $namec{$np} ? $namec{"${np}-i"} : undef};
     $strip->{$np} = $namec{"${np}-strippedflag"};
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string})) if $nameparts{$np}{string};
-    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
+    $section->set_np_length("${np}-i", length(join("", $nameparts{$np}{initial}->@*))) if $nameparts{$np}{initial};
   }
 
   // The "strip" entry tells us which of the name parts had outer braces
@@ -1739,8 +1738,8 @@ fn parsename(section, namestr, fieldname) {
 /// returns an object which internally looks a bit like this:
 ///
 /// ```
-/// { given          => {string => 'John', initial => ['J']},
-///   family         => {string => 'Doe', initial => ['D']},
+/// { given          => {string => "John", initial => ['J']},
+///   family         => {string => "Doe", initial => ['D']},
 ///   prefix         => {string => undef, initial => undef},
 ///   suffix         => {string => undef, initial => undef},
 ///   id             => 32RS0Wuj0P,
@@ -1748,8 +1747,8 @@ fn parsename(section, namestr, fieldname) {
 /// }
 /// ```
 fn parsename_x(section, namestr, fieldname, key) {
-  let $xnamesep = crate::Config->getoption('xnamesep');
-  let %nps = map {$_ => 1} $dm->get_constant_value('nameparts');
+  let $xnamesep = crate::Config->getoption("xnamesep");
+  let %nps = map {$_ => 1} $dm->get_constant_value("nameparts");
 
   let %namec;
   let %pernameopts;
@@ -1814,7 +1813,7 @@ fn parsename_x(section, namestr, fieldname, key) {
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};
-    $section->set_np_length("${np}-i", length(join('', $nameparts{$np}{initial}->@*)))  if $nameparts{$np}{initial};
+    $section->set_np_length("${np}-i", length(join("", $nameparts{$np}{initial}->@*)))  if $nameparts{$np}{initial};
   }
 
   // The "strip" entry tells us which of the name parts had outer braces
@@ -1829,18 +1828,18 @@ fn parsename_x(section, namestr, fieldname, key) {
 // Routine to try to hack month into the right biblatex format
 // Especially since we support remote .bibs which we potentially have no control over
 let %months = (
-              'jan' => '1',
-              'feb' => '2',
-              'mar' => '3',
-              'apr' => '4',
-              'may' => '5',
-              'jun' => '6',
-              'jul' => '7',
-              'aug' => '8',
-              'sep' => '9',
-              'oct' => '10',
-              'nov' => '11',
-              'dec' => '12'
+              "jan" => "1",
+              "feb" => "2",
+              "mar" => "3",
+              "apr" => "4",
+              "may" => "5",
+              "jun" => "6",
+              "jul" => "7",
+              "aug" => "8",
+              "sep" => "9",
+              "oct" => "10",
+              "nov" => "11',
+              "dec" => "12"
              );
 
 fn _hack_month(in_month) {
@@ -1859,7 +1858,7 @@ fn _get_handler(field) {
     return $handlers->{custom}{annotation};
   }
   else {
-    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_fieldformat($field) || 'default'}{$dm->get_datatype($field)};
+    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_fieldformat($field) || "default"}{$dm->get_datatype($field)};
   }
 }
 
@@ -1878,7 +1877,7 @@ fn _split_initials(npv) {
     else if ($c == '}') {
       $ci = 0;
       push @npv, $acc;
-      $acc = '';
+      $acc = "";
     }
     else {
       if ($ci) {

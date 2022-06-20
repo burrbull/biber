@@ -8,7 +8,6 @@ use Data::Dump;
 use Data::Uniqid qw (suniqid);
 use crate::Config;
 use Log::Log4perl qw( :no_extra_logdie_message );
-let $logger = Log::Log4perl::get_logger('main');
 
 // Names of simple package accessor attributes for those not created automatically
 // by the option scope in the .bcf
@@ -122,7 +121,7 @@ fn last_name(self) {
 
 /// Get any xdata reference information for a namelist
 fn get_xdata(self) {
-  return $self->{xdata} || '';
+  return $self->{xdata} || "";
 }
 
 /// Dump a crate::Entry::Names object for debugging purposes

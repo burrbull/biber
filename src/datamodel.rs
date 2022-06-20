@@ -12,8 +12,6 @@ use Log::Log4perl qw( :no_extra_logdie_message );
 use Scalar::Util qw (blessed looks_like_number);
 use Unicode::UCD qw(num);
 
-let $logger = Log::Log4perl::get_logger('main');
-
 pub struct DataModel;
 
 /// Initialize a crate::DataModel object
@@ -30,7 +28,7 @@ fn new(dms) -> Self {
   let $dm = $dms->[0];
 
   // If requested, throw away default data model and use user-defined
-  if (crate::Config->getoption('no_default_datamodel')) {
+  if (crate::Config->getoption("no_default_datamodel")) {
     $dm = $dms->[1];
   }
   else { // we want to add/modify the default datamodel using the user-supplied subset
@@ -108,7 +106,7 @@ fn new(dms) -> Self {
 
   // Early check for fatal datamodel errors
   // Make sure dates are named *date. A lot of code relies on this.
-  foreach let $date (grep {$_->{datatype} == 'date'} $dm->{fields}{field}->@*) {
+  foreach let $date (grep {$_->{datatype} == "date"} $dm->{fields}{field}->@*) {
     if !($date->{content} =~ m/date$/) {
       biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
     }
@@ -137,16 +135,16 @@ fn new(dms) -> Self {
       delete $self->{fieldsbyname}{$f->{content}};
     }
 
-    $self->{fieldsbyname}{$f->{content}} = {'fieldtype'   => $f->{fieldtype},
-                                            'datatype'    => $f->{datatype},
-                                            'format'      => $f->{format} || 'default'};
+    $self->{fieldsbyname}{$f->{content}} = {"fieldtype"   => $f->{fieldtype},
+                                            "datatype"    => $f->{datatype},
+                                            "format"      => $f->{format} || "default"};
     if ($f->{format}) {
       push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{$f->{format}}->@*, $f->{content};
     }
     push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{'*'}->@*, $f->{content};
     push $self->{fieldsbyfieldtype}{$f->{fieldtype}}->@*, $f->{content};
     push $self->{fieldsbydatatype}{$f->{datatype}}->@*, $f->{content};
-    push $self->{fieldsbyformat}{$f->{format} || 'default'}->@*, $f->{content};
+    push $self->{fieldsbyformat}{$f->{format} || "default"}->@*, $f->{content};
 
     // check null_ok
     if ($f->{nullok}) {
@@ -188,7 +186,7 @@ fn new(dms) -> Self {
       if (!exists($cd->{entrytype}) ||
           grep {$_->{content} == $es} $cd->{entrytype}->@*) {
         foreach let $c ($cd->{constraint}->@*) {
-          if ($c->{type} == 'mandatory') {
+          if ($c->{type} == "mandatory") {
             // field
             foreach let $f ($c->{field}->@*) {
               push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $f->{content};
@@ -200,7 +198,7 @@ fn new(dms) -> Self {
               foreach let $f ($fxor->{field}->@*) {
                 push $xorset->@*, $f->{content};
               }
-              unshift $xorset->@*, 'XOR';
+              unshift $xorset->@*, "XOR";
               push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $xorset;
             }
             // or set of fields
@@ -210,7 +208,7 @@ fn new(dms) -> Self {
               foreach let $f ($for->{field}->@*) {
                 push $orset->@*, $f->{content};
               }
-              unshift $orset->@*, 'OR';
+              unshift $orset->@*, "OR";
               push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $orset;
             }
           }
@@ -220,7 +218,7 @@ fn new(dms) -> Self {
           //   CONSEQUENT_QUANTIFIER
           //   [ CONSEQUENT LIST ]
           // ]
-          else if ($c->{type} == 'conditional') {
+          else if ($c->{type} == "conditional") {
             let $cond;
             $cond->[0] = $c->{antecedent}{quant};
             $cond->[1] = [ map { $_->{content} } $c->{antecedent}{field}->@* ];
@@ -229,7 +227,7 @@ fn new(dms) -> Self {
             push $self->{entrytypesbyname}{$es}{constraints}{conditional}->@*, $cond;
           }
           // data constraints
-          else if ($c->{type} == 'data') {
+          else if ($c->{type} == "data") {
             let $data;
             $data->{fields} = [ map { $_->{content} } $c->{field}->@* ];
             $data->{datatype} = $c->{datatype};
@@ -248,76 +246,76 @@ fn new(dms) -> Self {
   // Mostly only used for .bbl output since that's the most commonly used one and so
   // we care about performance there. Other output formats are not often used and so a few
   // seconds difference is irrelevant.
-  $self->{helpers} = {namelistsall => [sort $self->get_fields_of_type('list', 'name')->@*],
+  $self->{helpers} = {namelistsall => [sort $self->get_fields_of_type("list", "name")->@*],
                       namelists => [sort grep
                                     {not $self->field_is_skipout($_)}
-                                    $self->get_fields_of_type('list', 'name')->@*],
+                                    $self->get_fields_of_type("list", "name")->@*],
                       lists     => [sort grep
                                     {
-                                      !$self->field_is_datatype('name', $_) &&
+                                      !$self->field_is_datatype("name", $_) &&
                                         !$self->field_is_skipout($_) &&
-                                          !$self->field_is_datatype('verbatim', $_) &&
-                                            !$self->field_is_datatype('uri', $_)
+                                          !$self->field_is_datatype("verbatim", $_) &&
+                                            !$self->field_is_datatype("uri", $_)
                                     }
-                                    $self->get_fields_of_fieldtype('list')->@*],
+                                    $self->get_fields_of_fieldtype("list")->@*],
                       fields    => [sort grep
                                     {
                                       !$self->field_is_skipout($_) &&
-                                        !$self->get_fieldformat($_) == 'xsv'
+                                        !$self->get_fieldformat($_) == "xsv"
                                     }
-                                    $self->get_fields_of_type('field',
-                                                              ['entrykey',
-                                                               'key',
-                                                               'integer',
-                                                               'datepart',
-                                                               'literal',
-                                                               'code'])->@*],
-                      datefields   => [sort $self->get_fields_of_type('field', 'date')->@*],
-                      dateparts    => [sort $self->get_fields_of_type('field', 'datepart')->@*],
+                                    $self->get_fields_of_type("field",
+                                                              ["entrykey",
+                                                               "key",
+                                                               "integer",
+                                                               "datepart",
+                                                               "literal",
+                                                               "code"])->@*],
+                      datefields   => [sort $self->get_fields_of_type("field", "date")->@*],
+                      dateparts    => [sort $self->get_fields_of_type("field", "datepart")->@*],
                       xsv       => [sort grep
                                     {
                                       !$self->field_is_skipout($_)
                                     }
-                                    $self->get_fields_of_fieldformat('xsv')->@*],
+                                    $self->get_fields_of_fieldformat("xsv")->@*],
                       ranges    => [sort grep
                                     {
                                       !$self->field_is_skipout($_)
                                     }
-                                    $self->get_fields_of_datatype('range')->@*],
+                                    $self->get_fields_of_datatype("range")->@*],
                       uris      => [sort grep
                                     {
                                       !$self->field_is_skipout($_);
                                     }
-                                    $self->get_fields_of_type('field', 'uri')->@*],
+                                    $self->get_fields_of_type("field", "uri")->@*],
                       urils     => [sort grep
                                     {
                                       !$self->field_is_skipout($_);
                                     }
-                                    $self->get_fields_of_type('list', 'uri')->@*],
+                                    $self->get_fields_of_type("list", "uri")->@*],
                       verbs     => [sort grep
                                     {
                                       !$self->field_is_skipout($_);
                                     }
-                                    $self->get_fields_of_datatype(['verbatim', 'uri'])->@*],
+                                    $self->get_fields_of_datatype(["verbatim", "uri"])->@*],
                       vfields   => [sort grep
                                     {
                                       !$self->field_is_skipout($_);
                                     }
-                                    $self->get_fields_of_type('field', ['verbatim', 'uri'])->@*],
+                                    $self->get_fields_of_type("field", ["verbatim", "uri"])->@*],
                       vlists    => [sort grep
                                     {
                                       !$self->field_is_skipout($_);
                                     }
-                                    $self->get_fields_of_type('list', ['verbatim', 'uri'])->@*],
-                      integers  => [sort $self->get_fields_of_datatype(['datepart', 'integer'])->@*]
+                                    $self->get_fields_of_type("list", ["verbatim", "uri"])->@*],
+                      integers  => [sort $self->get_fields_of_datatype(["datepart", "integer"])->@*]
                      };
-  // Mapping of sorting fields to Sort::Key sort data types which are not 'str'
+  // Mapping of sorting fields to Sort::Key sort data types which are not "str"
   $self->{sortdataschema} = |f| {
-    if (first {$f == $_} ('citeorder', 'citecount', $self->{helpers}{integers}->@*)) {
-      return 'int';
+    if (first {$f == $_} ("citeorder", "citecount", $self->{helpers}{integers}->@*)) {
+      return "int";
     }
     else {
-      return 'str';
+      return "str";
     }
   };
 
@@ -342,10 +340,10 @@ fn get_constant_type(self, $name) {
 
 /// Returns a constant value
 fn get_constant_value(self, $name) {
-  if ($self->{constants}{$name}{type} == 'list') {
+  if ($self->{constants}{$name}{type} == "list") {
     return split(/\s*,\s*/, $self->{constants}{$name}{value});
   }
-  else if ($self->{constants}{$name}{type} == 'string') {
+  else if ($self->{constants}{$name}{type} == "string") {
     return $self->{constants}{$name}{value};
   }
 }
@@ -428,7 +426,7 @@ fn get_fields_of_fieldformat(self, $format) {
 fn get_fields_of_datatype(self, $datatype) {
   let @f;
   // datatype can be array ref of datatypes - makes some calls cleaner
-  if (ref($datatype) == 'ARRAY') {
+  if (ref($datatype) == "ARRAY") {
     foreach let $dt ($datatype->@*) {
       if (let $fs = $self->{fieldsbydatatype}{$dt}) {
         push @f, $fs->@*;
@@ -451,7 +449,7 @@ fn get_fields_of_type(self, $fieldtype, $datatype, $format) {
   $format = format.unwrap_or("*");
 
   // datatype can be array ref of datatypes - makes some calls cleaner
-  if (ref($datatype) == 'ARRAY') {
+  if (ref($datatype) == "ARRAY") {
     foreach let $dt ($datatype->@*) {
       if (let $fs = $self->{fieldsbytype}{$fieldtype}{$dt}{$format}) {
         push @f, $fs->@*;
@@ -495,9 +493,9 @@ fn get_fieldformat(self, $field) {
 
 /// Returns the fieldtype, datatype and format of a field
 fn get_dm_for_field(self, $field) {
-  return {'fieldtype' =>  $self->{fieldsbyname}{$field}{fieldtype},
-          'datatype'  => $self->{fieldsbyname}{$field}{datatype},
-          'format'    => $self->{fieldsbyname}{$field}{format}};
+  return {"fieldtype" =>  $self->{fieldsbyname}{$field}{fieldtype},
+          "datatype"  => $self->{fieldsbyname}{$field}{datatype},
+          "format"    => $self->{fieldsbyname}{$field}{format}};
 }
 
 /// Returns boolean depending on whether a field is a certain biblatex fieldtype
@@ -539,21 +537,21 @@ fn check_mandatory_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
-  let $et = $be->get_field('entrytype');
-  let $key = $be->get_field('citekey');
+  let $et = $be->get_field("entrytype");
+  let $key = $be->get_field("citekey");
   let $ds = $section->get_keytods($key);
 // ["title", ["OR", "url", "doi", "eprint"]]
   foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{mandatory}->@*) {
-    if (ref($c) == 'ARRAY') {
+    if (ref($c) == "ARRAY") {
       // Exactly one of a set is mandatory
-      if ($c->[0] == 'XOR') {
-        let @fs = $c->@[1..$#$c]; // Lose the first element which is the 'XOR'
+      if ($c->[0] == "XOR") {
+        let @fs = $c->@[1..$#$c]; // Lose the first element which is the "XOR"
         let $flag = 0;
         let $xorflag = 0;
         foreach let $of (@fs) {
           if ($be->field_exists($of) &&
               // ignore date field if it has been split into parts
-              !($of == 'date' && $be->get_field('datesplit'))) {
+              !($of == "date" && $be->get_field("datesplit"))) {
             if ($xorflag) {
               push @warnings, "Datamodel: Entry '$key' ($ds): Mandatory fields - only one of '" . join(', ', @fs) . "' must be defined - ignoring field '$of'";
               $be->del_field($of);
@@ -567,8 +565,8 @@ fn check_mandatory_constraints(self, be) {
         }
       }
       // One or more of a set is mandatory
-      else if ($c->[0] == 'OR') {
-        let @fs = $c->@[1..$#$c]; // Lose the first element which is the 'OR'
+      else if ($c->[0] == "OR") {
+        let @fs = $c->@[1..$#$c]; // Lose the first element which is the "OR"
         let $flag = 0;
         foreach let $of (@fs) {
           if ($be->field_exists($of)) {
@@ -597,8 +595,8 @@ fn check_conditional_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
-  let $et = $be->get_field('entrytype');
-  let $key = $be->get_field('citekey');
+  let $et = $be->get_field("entrytype");
+  let $key = $be->get_field("citekey");
   let $ds = $section->get_keytods($key);
 
   foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{conditional}->@*) {
@@ -608,17 +606,17 @@ fn check_conditional_constraints(self, be) {
     let $cfs = $c->[3];          // Consequent fields
     let @actual_afs = (grep {$be->field_exists($_)} $afs->@*); // antecedent fields in entry
     // check antecedent
-    if ($aq == 'all') {
+    if ($aq == "all") {
       if !($afs->$#* == $#actual_afs) { // ALL -> ? not satisfied
         continue;
       }
     }
-    else if ($aq == 'none') {
+    else if ($aq == "none") {
       if @actual_afs {      // NONE -> ? not satisfied
         continue;
       }
     }
-    else if ($aq == 'one') {
+    else if ($aq == "one") {
       if !(@actual_afs) {  // ONE -> ? not satisfied
         continue;
       }
@@ -626,14 +624,14 @@ fn check_conditional_constraints(self, be) {
 
     // check consequent
     let @actual_cfs = (grep {$be->field_exists($_)} $cfs->@*);
-    if ($cq == 'all') {
+    if ($cq == "all") {
       if !($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
             ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
       }
     }
-    else if ($cq == 'none') {
+    else if ($cq == "none") {
       if (@actual_cfs) {        // ? -> NONE not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', @actual_cfs) .
@@ -644,7 +642,7 @@ fn check_conditional_constraints(self, be) {
         }
       }
     }
-    else if ($cq == 'one') {
+    else if ($cq == "one") {
       if !(@actual_cfs) {    // ? -> ONE not satisfied
         push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
           join(', ', $cfs->@*) .
@@ -661,18 +659,18 @@ fn check_data_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
-  let $et = $be->get_field('entrytype');
-  let $key = $be->get_field('citekey');
+  let $et = $be->get_field("entrytype");
+  let $key = $be->get_field("citekey");
   let $ds = $section->get_keytods($key);
 
   foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
     // This is the datatype of the constraint, not the field!
-    if ($c->{datatype} == 'isbn') {
+    if ($c->{datatype} == "isbn") {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          if !($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == "list") {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -683,12 +681,12 @@ fn check_data_constraints(self, be) {
         }
       }
     }
-    else if ($c->{datatype} == 'issn') {
+    else if ($c->{datatype} == "issn") {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          if !($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == "list") {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -699,12 +697,12 @@ fn check_data_constraints(self, be) {
         }
       }
     }
-    else if ($c->{datatype} == 'ismn') {
+    else if ($c->{datatype} == "ismn") {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
 
           // Treat as a list field just in case someone has made it so in a custom datamodel
-          if !($self->get_fieldtype($f) == 'list') {
+          if !($self->get_fieldtype($f) == "list") {
             $fv = [$fv];
           }
           foreach ($fv->@*) {
@@ -715,8 +713,8 @@ fn check_data_constraints(self, be) {
         }
       }
     }
-    else if ($c->{datatype} == 'integer' ||
-           $c->{datatype} == 'datepart') {
+    else if ($c->{datatype} == "integer" ||
+           $c->{datatype} == "datepart") {
       foreach let $f ($c->{fields}->@*) {
         if (let $fv = $be->get_field($f)) {
           if (let $fmin = $c->{rangemin}) {
@@ -736,7 +734,7 @@ fn check_data_constraints(self, be) {
         }
       }
     }
-    else if ($c->{datatype} == 'pattern') {
+    else if ($c->{datatype} == "pattern") {
       let $patt;
       if !($patt = $c->{pattern}) {
         push @warnings, "Datamodel: Pattern constraint has no pattern!";
@@ -759,8 +757,8 @@ fn check_datatypes(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
   let $section = $crate::MASTER->sections->get_section($secnum);
   let @warnings;
-  let $et = $be->get_field('entrytype');
-  let $key = $be->get_field('citekey');
+  let $et = $be->get_field("entrytype");
+  let $key = $be->get_field("citekey");
   let $ds = $section->get_keytods($key);
 
   foreach let $f ($be->fields) {
@@ -774,14 +772,14 @@ fn check_datatypes(self, be) {
       continue;
     }
     let $dt = exists($DM_DATATYPES{$fdt}) ? $DM_DATATYPES{$fdt} : $DM_DATATYPES{default};
-    if (($fft == 'list' && $fdt != 'name') ||
-        $ffmt == 'xsv') {
+    if (($fft == "list" && $fdt != "name") ||
+        $ffmt == "xsv") {
       $dt = $DM_DATATYPES{list};
     }
 
     // Fields which are allowed to be null and are indeed null are fine
     // These can mess up further tests so weed them out now
-    if ($self->field_is_nullok($f) && $fv == '') {
+    if ($self->field_is_nullok($f) && $fv == "") {
       continue;
     }
 
@@ -806,7 +804,7 @@ fn generate_bltxml_schema(dm, outfile) {
   }
 
   // Set the .rng path to the output dir, if specified
-  if (let $outdir = crate::Config->getoption('output_directory')) {
+  if (let $outdir = crate::Config->getoption("output_directory")) {
     let (undef, undef, $file) = File::Spec->splitpath($outfile);
     $outfile = File::Spec->catfile($outdir, $file)
   }
@@ -815,51 +813,51 @@ fn generate_bltxml_schema(dm, outfile) {
 
   info!("Writing BibLaTeXML RNG schema '{}' for datamodel", outfile);
   require XML::Writer;
-  let $bltx_ns = 'http://biblatex-biber.sourceforge.net/biblatexml';
-  let $bltx = 'bltx';
-  let $default_ns = 'http://relaxng.org/ns/structure/1.0';
+  let $bltx_ns = "http://biblatex-biber.sourceforge.net/biblatexml";
+  let $bltx = "bltx";
+  let $default_ns = "http://relaxng.org/ns/structure/1.0";
   let $writer = new XML::Writer(NAMESPACES   => 1,
                                ENCODING     => "UTF-8",
                                DATA_MODE    => 1,
                                DATA_INDENT  => 2,
                                OUTPUT       => $rng,
                                PREFIX_MAP   => {$bltx_ns    => $bltx,
-                                                $default_ns => ''});
+                                                $default_ns => ""});
 
   $writer->xmlDecl();
   $writer->comment('Auto-generated from .bcf Datamodel');
   $writer->forceNSDecl($default_ns);
   $writer->forceNSDecl($bltx_ns);
-  $writer->startTag('grammar',
-                    'datatypeLibrary' => 'http://www.w3.org/2001/XMLSchema-datatypes');
-  $writer->startTag('start');
-  $writer->startTag('element', 'name' => "$bltx:entries");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bltx:entry");
-  $writer->emptyTag('attribute', 'name' => 'id');
-  $writer->startTag('attribute', 'name' => 'entrytype');
-  $writer->startTag('choice');
+  $writer->startTag("grammar",
+                    "datatypeLibrary" => "http://www.w3.org/2001/XMLSchema-datatypes");
+  $writer->startTag("start");
+  $writer->startTag("element", "name" => "$bltx:entries");
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => "$bltx:entry");
+  $writer->emptyTag("attribute", "name" => "id");
+  $writer->startTag("attribute", "name" => "entrytype");
+  $writer->startTag("choice");
   foreach let $entrytype ($dm->entrytypes->@*) {
-    $writer->dataElement('value', $entrytype);
+    $writer->dataElement("value", $entrytype);
   }
   $writer->endTag();// choice
   $writer->endTag();// attribute
-  $writer->startTag('interleave');
+  $writer->startTag("interleave");
 
   foreach let $ft ($dm->fieldtypes->@*) {
     foreach let $dt ($dm->datatypes->@*) {
       if ($dm->is_fields_of_type($ft, $dt)) {
-        if $dt == 'datepart' { // not legal in input, only output
+        if $dt == "datepart" { // not legal in input, only output
           continue;
         }
         $writer->comment("$dt ${ft}s");
-        $writer->emptyTag('ref', 'name' => "$dt$ft");
+        $writer->emptyTag("ref", "name" => "$dt$ft");
       }
     }
   }
 
   // Annotations
-  $writer->emptyTag('ref', 'name' => "mannotation");
+  $writer->emptyTag("ref", "name" => "mannotation");
 
   $writer->endTag();// interleave
   $writer->endTag();// entry element
@@ -870,107 +868,107 @@ fn generate_bltxml_schema(dm, outfile) {
   foreach let $ft ($dm->fieldtypes->@*) {
     foreach let $dt ($dm->datatypes->@*) {
       if ($dm->is_fields_of_type($ft, $dt)) {
-        if $dt == 'datepart' { // not legal in input, only output
+        if $dt == "datepart" { // not legal in input, only output
           continue;
         }
         $writer->comment("$dt ${ft}s definition");
-        $writer->startTag('define', 'name' => "$dt$ft");
+        $writer->startTag("define", "name" => "$dt$ft");
 
         // Name lists element definition
         // =============================
-        if ($ft == 'list' && $dt == 'name') {
-          $writer->startTag('zeroOrMore');// for example, XDATA doesn't need a name
-          $writer->startTag('element', 'name' => "$bltx:names");
+        if ($ft == "list" && $dt == "name") {
+          $writer->startTag("zeroOrMore");// for example, XDATA doesn't need a name
+          $writer->startTag("element", "name" => format!("{bltx}:names"));
 
-          $writer->startTag('choice');
+          $writer->startTag("choice");
           // xdata attribute ref
-          $writer->emptyTag('ref', 'name' => 'xdata');
+          $writer->emptyTag("ref", "name" => "xdata");
 
-          $writer->startTag('group');
+          $writer->startTag("group");
           // useprefix attribute
-          $writer->comment('useprefix option');
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'useprefix');
-          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->comment("useprefix option");
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "useprefix");
+          $writer->emptyTag("data", "type" => "boolean");
           $writer->endTag();    // attribute
           $writer->endTag();    // optional
 
           // sortingnamekeytemplatename attribute
-          $writer->comment('sortingnamekeytemplatename option');
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'sortingnamekeytemplatename');
-          $writer->emptyTag('data', 'type' => 'string');
+          $writer->comment("sortingnamekeytemplatename option");
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "sortingnamekeytemplatename");
+          $writer->emptyTag("data", "type" => "string");
           $writer->endTag();    // attribute
           $writer->endTag();    // optional
 
           // type attribute
-          $writer->comment('types of names elements');
-          $writer->startTag('attribute', 'name' => 'type');
-          $writer->startTag('choice');
+          $writer->comment("types of names elements");
+          $writer->startTag("attribute", "name" => "type");
+          $writer->startTag("choice");
           foreach let $name ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->dataElement('value', $name);
+            $writer->dataElement("value", $name);
           }
           $writer->endTag();    // choice
           $writer->endTag();    // attribute
 
           // morenames attribute
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'morenames');
-          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "morenames");
+          $writer->emptyTag("data", "type" => "boolean");
           $writer->endTag();    // attribute
           $writer->endTag();    // optional
-          $writer->startTag('oneOrMore');
+          $writer->startTag("oneOrMore");
 
           // Individual name element
-          $writer->startTag('element', 'name' => "$bltx:name");
+          $writer->startTag("element", "name" => format!("{bltx}:name"));
 
-          $writer->startTag('choice');
+          $writer->startTag("choice");
           // xdata attribute ref
-          $writer->emptyTag('ref', 'name' => 'xdata');
+          $writer->emptyTag("ref", "name" => "xdata");
 
-          $writer->startTag('group');
+          $writer->startTag("group");
           // useprefix attribute
-          $writer->comment('useprefix option');
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'useprefix');
-          $writer->emptyTag('data', 'type' => 'boolean');
+          $writer->comment("useprefix option");
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "useprefix");
+          $writer->emptyTag("data", "type" => "boolean");
           $writer->endTag();    // attribute
           $writer->endTag();    // optional
 
           // sortingnamekeytemplatename attribute
-          $writer->comment('sortingnamekeytemplatename option');
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'sortingnamekeytemplatename');
-          $writer->emptyTag('data', 'type' => 'string');
+          $writer->comment("sortingnamekeytemplatename option");
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "sortingnamekeytemplatename");
+          $writer->emptyTag("data", "type" => "string");
           $writer->endTag();    // attribute
           $writer->endTag();    // optional
 
           // gender attribute ref
-          $writer->emptyTag('ref', 'name' => 'gender');
+          $writer->emptyTag("ref", "name" => "gender");
           // namepart element
-          $writer->startTag('oneOrMore');
-          $writer->startTag('element', 'name' => "$bltx:namepart");
-          $writer->startTag('attribute', 'name' => 'type');
-          $writer->startTag('choice');
-          foreach let $np ($dm->get_constant_value('nameparts')) {// list type so returns list
-            $writer->dataElement('value', $np);
+          $writer->startTag("oneOrMore");
+          $writer->startTag("element", "name" => format!("{bltx}:namepart"));
+          $writer->startTag("attribute", "name" => "type");
+          $writer->startTag("choice");
+          foreach let $np ($dm->get_constant_value("nameparts")) {// list type so returns list
+            $writer->dataElement("value", $np);
           }
 
           $writer->endTag();    // choice
           $writer->endTag();    // attribute
-          $writer->startTag('optional');
-          $writer->emptyTag('attribute', 'name' => 'initial');
+          $writer->startTag("optional");
+          $writer->emptyTag("attribute", "name" => "initial");
           $writer->endTag();    // optional
-          $writer->startTag('choice');
-          $writer->startTag('oneOrMore');
-          $writer->startTag('element', 'name' => "$bltx:namepart");
-          $writer->startTag('optional');
-          $writer->emptyTag('attribute', 'name' => 'initial');
+          $writer->startTag("choice");
+          $writer->startTag("oneOrMore");
+          $writer->startTag("element", "name" => format!("{bltx}:namepart"));
+          $writer->startTag("optional");
+          $writer->emptyTag("attribute", "name" => "initial");
           $writer->endTag();    // optional
-          $writer->emptyTag('text');// text
+          $writer->emptyTag("text");// text
           $writer->endTag();    // (sub)namepart element
           $writer->endTag();    // oneOrMore
-          $writer->emptyTag('text');// text
+          $writer->emptyTag("text");// text
           $writer->endTag();    // choice
           $writer->endTag();    // namepart element
           $writer->endTag();    // oneOrMore
@@ -984,23 +982,23 @@ fn generate_bltxml_schema(dm, outfile) {
           $writer->endTag();    // zeroOrMore
           // ========================
         }
-        else if ($ft == 'list') {
+        else if ($ft == "list") {
           // lists element definition
           // ========================
-          $writer->startTag('interleave');
+          $writer->startTag("interleave");
           foreach let $list ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->startTag('optional');
-            $writer->startTag('element', 'name' => "$bltx:$list");
-            $writer->startTag('choice');
-            $writer->emptyTag('ref', 'name' => 'xdata');
-            $writer->startTag('choice');
-            $writer->emptyTag('text');// text
-            $writer->startTag('element', 'name' => "$bltx:list");
-            $writer->startTag('oneOrMore');
-            $writer->startTag('element', 'name' => "$bltx:item");
-            $writer->startTag('choice');
-            $writer->emptyTag('ref', 'name' => 'xdata');
-            $writer->emptyTag('text');// text
+            $writer->startTag("optional");
+            $writer->startTag("element", "name" => format!("{bltx}:$list"));
+            $writer->startTag("choice");
+            $writer->emptyTag("ref", "name" => "xdata");
+            $writer->startTag("choice");
+            $writer->emptyTag("text");// text
+            $writer->startTag("element", "name" => format!("{bltx}:list"));
+            $writer->startTag("oneOrMore");
+            $writer->startTag("element", "name" => format!("{bltx}:item"));
+            $writer->startTag("choice");
+            $writer->emptyTag("ref", "name" => "xdata");
+            $writer->emptyTag("text");// text
             $writer->endTag(); // choice
             $writer->endTag(); // item element
             $writer->endTag(); // oneOrMore element
@@ -1013,16 +1011,16 @@ fn generate_bltxml_schema(dm, outfile) {
           $writer->endTag();// interleave
           // ========================
         }
-        else if ($ft == 'field' && $dt == 'uri') {
+        else if ($ft == "field" && $dt == "uri") {
           // uri field element definition
           // ============================
-          $writer->startTag('interleave');
+          $writer->startTag("interleave");
           foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->startTag('optional');
-            $writer->startTag('element', 'name' => "$bltx:$field");
-            $writer->startTag('choice');
-            $writer->emptyTag('ref', 'name' => 'xdata');
-            $writer->emptyTag('data', 'type' => 'anyURI');
+            $writer->startTag("optional");
+            $writer->startTag("element", "name" => format!("{bltx}:{field}"));
+            $writer->startTag("choice");
+            $writer->emptyTag("ref", "name" => "xdata");
+            $writer->emptyTag("data", "type" => "anyURI");
             $writer->endTag();   // choice
             $writer->endTag();   // $field element
             $writer->endTag();// optional
@@ -1030,33 +1028,33 @@ fn generate_bltxml_schema(dm, outfile) {
           $writer->endTag();// interleave
           // ============================
         }
-        else if ($ft == 'field' && $dt == 'range') {
+        else if ($ft == "field" && $dt == "range") {
           // range field element definition
           // ==============================
-          $writer->startTag('interleave');
+          $writer->startTag("interleave");
           foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->startTag('optional');
-            $writer->startTag('element', 'name' => "$bltx:$field");
+            $writer->startTag("optional");
+            $writer->startTag("element", "name" => format!("{bltx}:{field}"));
 
-            $writer->startTag('choice');
+            $writer->startTag("choice");
             // xdata attribute ref
-            $writer->emptyTag('ref', 'name' => 'xdata');
+            $writer->emptyTag("ref", "name" => "xdata");
 
-            $writer->startTag('element', 'name' => "$bltx:list");
-            $writer->startTag('oneOrMore');
-            $writer->startTag('element', 'name' => "$bltx:item");
+            $writer->startTag("element", "name" => format!("{bltx}:list"));
+            $writer->startTag("oneOrMore");
+            $writer->startTag("element", "name" => format!("{bltx}:item"));
 
-            $writer->startTag('choice');
+            $writer->startTag("choice");
             // xdata attribute ref
-            $writer->emptyTag('ref', 'name' => 'xdata');
-            $writer->startTag('group');
-            $writer->startTag('element', 'name' => "$bltx:start");
-            $writer->emptyTag('text');
+            $writer->emptyTag("ref", "name" => "xdata");
+            $writer->startTag("group");
+            $writer->startTag("element", "name" => format!("{bltx}:start"));
+            $writer->emptyTag("text");
             $writer->endTag();  // start element
-            $writer->startTag('element', 'name' => "$bltx:end");
-            $writer->startTag('choice');
-            $writer->emptyTag('text');
-            $writer->emptyTag('empty');
+            $writer->startTag("element", "name" => format!("{bltx}:end"));
+            $writer->startTag("choice");
+            $writer->emptyTag("text");
+            $writer->emptyTag("empty");
             $writer->endTag();  // choice
             $writer->endTag();  // end element
             $writer->endTag();  // group
@@ -1071,25 +1069,25 @@ fn generate_bltxml_schema(dm, outfile) {
           $writer->endTag();// interleave
           // ==============================
         }
-        else if ($ft == 'field' && $dt == 'entrykey') {
+        else if ($ft == "field" && $dt == "entrykey") {
           // entrykey field element definition
           // =================================
-          $writer->startTag('interleave');
+          $writer->startTag("interleave");
           foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->startTag('optional');
+            $writer->startTag("optional");
             // related field is special
-            if ($field == 'related') {
-              $writer->startTag('element', 'name' => "$bltx:$field");
-              $writer->startTag('element', 'name' => "$bltx:list");
-              $writer->startTag('oneOrMore');
-              $writer->startTag('element', 'name' => "$bltx:item");
-              $writer->emptyTag('attribute', 'name' => 'type');
-              $writer->emptyTag('attribute', 'name' => 'ids');
-              $writer->startTag('optional');
-              $writer->emptyTag('attribute', 'name' => 'string');
+            if ($field == "related") {
+              $writer->startTag("element", "name" => format!("{bltx}:{field}"));
+              $writer->startTag("element", "name" => format!("{bltx}:list"));
+              $writer->startTag("oneOrMore");
+              $writer->startTag("element", "name" => format!("{bltx}:item"));
+              $writer->emptyTag("attribute", "name" => "type");
+              $writer->emptyTag("attribute", "name" => "ids");
+              $writer->startTag("optional");
+              $writer->emptyTag("attribute", "name" => "string");
               $writer->endTag(); // optional
-              $writer->startTag('optional');
-              $writer->emptyTag('attribute', 'name' => 'options');
+              $writer->startTag("optional");
+              $writer->emptyTag("attribute", "name" => "options");
               $writer->endTag(); // optional
               $writer->endTag(); // item element
               $writer->endTag(); // oneOrMore
@@ -1097,19 +1095,19 @@ fn generate_bltxml_schema(dm, outfile) {
               $writer->endTag(); // $field element
             }
             else {
-              $writer->startTag('element', 'name' => "$bltx:$field");
-              $writer->startTag('choice');
-              $writer->emptyTag('ref', 'name' => 'xdata');
-              $writer->startTag('choice');
-              $writer->startTag('list');
-              $writer->startTag('oneOrMore');
-              $writer->emptyTag('data', 'type' => 'string');
+              $writer->startTag("element", "name" => format!("{bltx}:{field}"));
+              $writer->startTag("choice");
+              $writer->emptyTag("ref", "name" => "xdata");
+              $writer->startTag("choice");
+              $writer->startTag("list");
+              $writer->startTag("oneOrMore");
+              $writer->emptyTag("data", "type" => "string");
               $writer->endTag(); // oneOrMore
               $writer->endTag(); // list
-              $writer->startTag('element', 'name' => "$bltx:list");
-              $writer->startTag('oneOrMore');
-              $writer->startTag('element', 'name' => "$bltx:item");
-              $writer->emptyTag('text');// text
+              $writer->startTag("element", "name" => format!("{bltx}:list"));
+              $writer->startTag("oneOrMore");
+              $writer->startTag("element", "name" => format!("{bltx}:item"));
+              $writer->emptyTag("text");// text
               $writer->endTag(); // item element
               $writer->endTag(); // oneOrMore
               $writer->endTag(); // list element
@@ -1121,37 +1119,37 @@ fn generate_bltxml_schema(dm, outfile) {
           }
           $writer->endTag();// interleave
         }
-        else if ($ft == 'field' && $dt == 'date') {
+        else if ($ft == "field" && $dt == "date") {
           // date field element definition
           // Can't strongly type dates as we allow full ISO8601 meta characters
           // =============================
           let @types = map { s/date$//r } $dm->get_fields_of_type($ft, $dt)->@*;
-          $writer->startTag('zeroOrMore');
-          $writer->startTag('element', 'name' => "$bltx:date");
-          $writer->startTag('optional');
-          $writer->startTag('attribute', 'name' => 'type');
-          $writer->startTag('choice');
+          $writer->startTag("zeroOrMore");
+          $writer->startTag("element", "name" => format!("{bltx}:date"));
+          $writer->startTag("optional");
+          $writer->startTag("attribute", "name" => "type");
+          $writer->startTag("choice");
           foreach let $datetype(@types) {
             if !($datetype) {
               continue;
             }
-            $writer->dataElement('value', $datetype);
+            $writer->dataElement("value", $datetype);
           }
           $writer->endTag(); // choice
           $writer->endTag(); // attribute
           $writer->endTag(); // optional
-          $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'string');
-          $writer->startTag('group');
-          $writer->startTag('element', 'name' => "$bltx:start");
-          $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'string');
+          $writer->startTag("choice");
+          $writer->emptyTag("data", "type" => "string");
+          $writer->startTag("group");
+          $writer->startTag("element", "name" => format!("{bltx}:start"));
+          $writer->startTag("choice");
+          $writer->emptyTag("data", "type" => "string");
           $writer->endTag(); // choice
           $writer->endTag(); // start element
-          $writer->startTag('element', 'name' => "$bltx:end");
-          $writer->startTag('choice');
-          $writer->emptyTag('data', 'type' => 'string');
-          $writer->emptyTag('empty');
+          $writer->startTag("element", "name" => format!("{bltx}:end"));
+          $writer->startTag("choice");
+          $writer->emptyTag("data", "type" => "string");
+          $writer->emptyTag("empty");
           $writer->endTag(); // choice
           $writer->endTag(); // end element
           $writer->endTag(); // group
@@ -1160,16 +1158,16 @@ fn generate_bltxml_schema(dm, outfile) {
           $writer->endTag(); // zeroOrMore
           // =============================
         }
-        else if ($ft == 'field') {
+        else if ($ft == "field") {
           // field element definition
           // ========================
-          $writer->startTag('interleave');
+          $writer->startTag("interleave");
           foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
-            $writer->startTag('optional');
-            $writer->startTag('element', 'name' => "$bltx:$field");
-            $writer->startTag('choice');
-            $writer->emptyTag('ref', 'name' => 'xdata');
-            $writer->emptyTag('text');// text
+            $writer->startTag("optional");
+            $writer->startTag("element", "name" => format!("{bltx}:{field}"));
+            $writer->startTag("choice");
+            $writer->emptyTag("ref", "name" => "xdata");
+            $writer->emptyTag("text");// text
             $writer->endTag(); // choice
             $writer->endTag(); // $field element
             $writer->endTag();// optional
@@ -1185,10 +1183,10 @@ fn generate_bltxml_schema(dm, outfile) {
   // xdata attribute definition
   // ===========================
   $writer->comment('xdata attribute definition');
-  $writer->startTag('define', 'name' => 'xdata');
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'xdata');
-  $writer->emptyTag('text');// text
+  $writer->startTag("define", "name" => "xdata");
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "xdata");
+  $writer->emptyTag("text");// text
   $writer->endTag();// attribute
   $writer->endTag();// optional
   $writer->endTag();// define
@@ -1197,12 +1195,12 @@ fn generate_bltxml_schema(dm, outfile) {
   // gender attribute definition
   // ===========================
   $writer->comment('gender attribute definition');
-  $writer->startTag('define', 'name' => 'gender');
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'gender');
-  $writer->startTag('choice');
-  foreach let $gender ($dm->get_constant_value('gender')) {// list type so returns list
-    $writer->dataElement('value', $gender);
+  $writer->startTag("define", "name" => "gender");
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "gender");
+  $writer->startTag("choice");
+  foreach let $gender ($dm->get_constant_value("gender")) {// list type so returns list
+    $writer->dataElement("value", $gender);
   }
   $writer->endTag();// choice
   $writer->endTag();// attribute
@@ -1213,23 +1211,23 @@ fn generate_bltxml_schema(dm, outfile) {
   // generic meta annotation element definition
   // ===========================================
   $writer->comment('generic annotation element definition');
-  $writer->startTag('define', 'name' => 'mannotation');
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bltx:mannotation");
-  $writer->emptyTag('attribute', 'name' => 'field');
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'name');
+  $writer->startTag("define", "name" => "mannotation");
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bltx}:mannotation"));
+  $writer->emptyTag("attribute", "name" => "field");
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "name");
   $writer->endTag(); // optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'item');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "item");
   $writer->endTag(); // optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'part');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "part");
   $writer->endTag(); // optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'literal');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "literal");
   $writer->endTag(); // optional
-  $writer->emptyTag('text');// text
+  $writer->emptyTag("text");// text
   $writer->endTag(); // mannotation element
   $writer->endTag(); // zeroOrMore
   $writer->endTag();// define
@@ -1247,7 +1245,7 @@ fn generate_bblxml_schema(dm, $outfile) {
   let $dmh = $dm->{helpers};
 
   // Set the .rng path to the output dir, if specified
-  if (let $outdir = crate::Config->getoption('output_directory')) {
+  if (let $outdir = crate::Config->getoption("output_directory")) {
     let (undef, undef, $file) = File::Spec->splitpath($outfile);
     $outfile = File::Spec->catfile($outdir, $file)
   }
@@ -1256,213 +1254,213 @@ fn generate_bblxml_schema(dm, $outfile) {
 
   info!("Writing bblXML RNG schema '{}' for datamodel", outfile);
   require XML::Writer;
-  let $bbl_ns = 'https://sourceforge.net/projects/biblatex/bblxml';
-  let $bbl = 'bbl';
-  let $default_ns = 'http://relaxng.org/ns/structure/1.0';
+  let $bbl_ns = "https://sourceforge.net/projects/biblatex/bblxml";
+  let $bbl = "bbl";
+  let $default_ns = "http://relaxng.org/ns/structure/1.0";
   let $writer = new XML::Writer(NAMESPACES   => 1,
                                ENCODING     => "UTF-8",
                                DATA_MODE    => 1,
                                DATA_INDENT  => 2,
                                OUTPUT       => $rng,
                                PREFIX_MAP   => {$bbl_ns     => $bbl,
-                                                $default_ns => ''});
+                                                $default_ns => ""});
 
   $writer->xmlDecl();
   $writer->comment('Auto-generated from .bcf Datamodel');
   $writer->forceNSDecl($default_ns);
   $writer->forceNSDecl($bbl_ns);
-  $writer->startTag('grammar',
-                    'datatypeLibrary' => 'http://www.w3.org/2001/XMLSchema-datatypes');
-  $writer->startTag('start');
-  $writer->startTag('element', 'name' => "$bbl:refsections");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:refsection");
-  $writer->emptyTag('attribute', 'name' => 'id');
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:datalist");
-  $writer->emptyTag('attribute', 'name' => 'id');
-  $writer->startTag('attribute', 'name' => 'type');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'entry');
-  $writer->dataElement('value', 'list');
+  $writer->startTag("grammar",
+                    "datatypeLibrary" => "http://www.w3.org/2001/XMLSchema-datatypes");
+  $writer->startTag("start");
+  $writer->startTag("element", "name" => format!("{bbl}:refsections"));
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:refsection"));
+  $writer->emptyTag("attribute", "name" => "id");
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:datalist"));
+  $writer->emptyTag("attribute", "name" => "id");
+  $writer->startTag("attribute", "name" => "type");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "entry");
+  $writer->dataElement("value", "list");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
-  $writer->startTag('oneOrMore');
-  $writer->startTag('choice');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("choice");
   // Set parent entries are special
-  $writer->startTag('element', 'name' => "$bbl:entry");
-  $writer->emptyTag('attribute', 'name' => 'key');
-  $writer->startTag('attribute', 'name' => 'type');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'set');
+  $writer->startTag("element", "name" => format!("{bbl}:entry"));
+  $writer->emptyTag("attribute", "name" => "key");
+  $writer->startTag("attribute", "name" => "type");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "set");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
-  $writer->startTag('element', 'name' => "$bbl:set");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:member");
-  $writer->emptyTag('text');// text
+  $writer->startTag("element", "name" => format!("{bbl}:set"));
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:member"));
+  $writer->emptyTag("text");// text
   $writer->endTag();    // member
   $writer->endTag();    // oneOrMore
   $writer->endTag();    // set
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:field");
-  $writer->startTag('attribute', 'name' => 'name');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'labelprefix');
-  $writer->dataElement('value', 'labelalpha');
-  $writer->dataElement('value', 'extraalpha');
-  $writer->dataElement('value', 'annotation');
-  $writer->dataElement('value', 'sortinit');
-  $writer->dataElement('value', 'sortinithash');
-  $writer->dataElement('value', 'label');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:field"));
+  $writer->startTag("attribute", "name" => "name");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "labelprefix");
+  $writer->dataElement("value", "labelalpha");
+  $writer->dataElement("value", "extraalpha");
+  $writer->dataElement("value", "annotation");
+  $writer->dataElement("value", "sortinit");
+  $writer->dataElement("value", "sortinithash");
+  $writer->dataElement("value", "label");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
-  $writer->emptyTag('text');// text
+  $writer->emptyTag("text");// text
   $writer->endTag();    // field
   $writer->endTag();    // oneOrMore
   $writer->endTag(); // entry
   // Normal entries
-  $writer->startTag('element', 'name' => "$bbl:entry");
-  $writer->emptyTag('attribute', 'name' => 'key');
-  $writer->startTag('attribute', 'name' => 'type');
-  $writer->startTag('choice');
+  $writer->startTag("element", "name" => format!("{bbl}:entry"));
+  $writer->emptyTag("attribute", "name" => "key");
+  $writer->startTag("attribute", "name" => "type");
+  $writer->startTag("choice");
   foreach let $et ($dm->entrytypes->@*) {
-    $writer->dataElement('value', $et);
+    $writer->dataElement("value", $et);
   }
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
 
   // source
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'source');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'crossref');
-  $writer->dataElement('value', 'xref');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "source");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "crossref");
+  $writer->dataElement("value", "xref");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
   // singletitle
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'singletitle');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "singletitle");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
   // uniquetitle
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'uniquetitle');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "uniquetitle");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
   // uniquework
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'uniquework');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "uniquework");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
   // uniqueprimaryauthor
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'uniqueprimaryauthor');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "uniqueprimaryauthor");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
-  $writer->startTag('interleave');
+  $writer->startTag("interleave");
 
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:inset");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:member");
-  $writer->emptyTag('text');// text
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:inset"));
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:member"));
+  $writer->emptyTag("text");// text
   $writer->endTag();    // member
   $writer->endTag();    // oneOrMore
   $writer->endTag();    // inset
   $writer->endTag();    // zeroOrMore
 
   // Per-entry options
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:options");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:option");
-  $writer->emptyTag('text');// text
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:options"));
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:option"));
+  $writer->emptyTag("text");// text
   $writer->endTag();    // option
   $writer->endTag();    // oneOrMore
   $writer->endTag();    // options
   $writer->endTag();    // zeroOrMore
 
   // names
-  let @names = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_type('list', 'name')->@*;
+  let @names = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_type("list", "name")->@*;
 
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:names");
-  $writer->startTag('attribute', 'name' => 'type');
-  $writer->startTag('choice');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:names"));
+  $writer->startTag("attribute", "name" => "type");
+  $writer->startTag("choice");
   foreach let $name (@names) {
-    $writer->dataElement('value', $name);
+    $writer->dataElement("value", $name);
   }
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
-  $writer->startTag('attribute', 'name' => 'count');
-  $writer->emptyTag('data', 'type' => 'integer');
+  $writer->startTag("attribute", "name" => "count");
+  $writer->emptyTag("data", "type" => "integer");
   $writer->endTag();    // attribute
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'ul');
-  $writer->emptyTag('data', 'type' => 'integer');
-  $writer->endTag();    // attribute
-  $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'useprefix');
-  $writer->emptyTag('data', 'type' => 'boolean');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "ul");
+  $writer->emptyTag("data", "type" => "integer");
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'sortingnamekeytemplatename');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "useprefix");
+  $writer->emptyTag("data", "type" => "boolean");
+  $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'more');
-  $writer->emptyTag('data', 'type' => 'boolean');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "sortingnamekeytemplatename");
+  $writer->endTag();    // optional
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "more");
+  $writer->emptyTag("data", "type" => "boolean");
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
 
   // name
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:name");
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'useprefix');
-  $writer->emptyTag('data', 'type' => 'boolean');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:name"));
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "useprefix");
+  $writer->emptyTag("data", "type" => "boolean");
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'sortingnamekeytemplatename');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "sortingnamekeytemplatename");
   $writer->endTag();    // optional
-  $writer->emptyTag('attribute', 'name' => 'hash');
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'un');
-  $writer->emptyTag('data', 'type' => 'integer');
+  $writer->emptyTag("attribute", "name" => "hash");
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "un");
+  $writer->emptyTag("data", "type" => "integer");
   $writer->endTag();    // attribute
-  $writer->startTag('attribute', 'name' => 'uniquepart');
-  $writer->emptyTag('data', 'type' => 'string');
+  $writer->startTag("attribute", "name" => "uniquepart");
+  $writer->emptyTag("data", "type" => "string");
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:namepart");
-  $writer->emptyTag('attribute', 'name' => 'type');
-  $writer->emptyTag('attribute', 'name' => 'initials');
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'un');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:namepart"));
+  $writer->emptyTag("attribute", "name" => "type");
+  $writer->emptyTag("attribute", "name" => "initials");
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "un");
   $writer->endTag();    // optional
-  $writer->emptyTag('text');// text
+  $writer->emptyTag("text");// text
   $writer->endTag();// namepart
   $writer->endTag();// oneOrMore
   $writer->endTag();// name
@@ -1473,31 +1471,31 @@ fn generate_bblxml_schema(dm, $outfile) {
   // lists
   // verbatim lists don't need special handling in XML, unlike TeX so they are here
   let @lists = grep {
-    !$dm->field_is_datatype('name', $_)
-        && !$dm->field_is_datatype('uri', $_)
+    !$dm->field_is_datatype("name", $_)
+        && !$dm->field_is_datatype("uri", $_)
           && !$dm->field_is_skipout($_)
-        } $dm->get_fields_of_fieldtype('list')->@*;
+        } $dm->get_fields_of_fieldtype("list")->@*;
 
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:list");
-  $writer->startTag('attribute', 'name' => 'name');
-  $writer->startTag('choice');
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:list"));
+  $writer->startTag("attribute", "name" => "name");
+  $writer->startTag("choice");
   foreach let $list (@lists) {
-    $writer->dataElement('value', $list);
+    $writer->dataElement("value", $list);
   }
   $writer->endTag();          // choice
   $writer->endTag();          // attribute
-  $writer->startTag('attribute', 'name' => 'count');
-  $writer->emptyTag('data', 'type' => 'integer');
+  $writer->startTag("attribute", "name" => "count");
+  $writer->emptyTag("data", "type" => "integer");
   $writer->endTag();          // attribute
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'more');
-  $writer->emptyTag('data', 'type' => 'boolean');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "more");
+  $writer->emptyTag("data", "type" => "boolean");
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:item");
-  $writer->emptyTag('text');// text
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:item"));
+  $writer->emptyTag("text");// text
   $writer->endTag();          // item
   $writer->endTag();          // oneOrMore
   $writer->endTag();          // list
@@ -1527,152 +1525,152 @@ fn generate_bblxml_schema(dm, $outfile) {
 
   // verbatim fields don't need special handling in XML, unlike TeX so they are here
   let @fs2 = grep {
-      !($dm->get_fieldformat($_) == 'xsv')
+      !($dm->get_fieldformat($_) == "xsv")
         && !$dm->field_is_skipout($_)
-      } $dm->get_fields_of_type('field',
-                                  ['entrykey',
-                                   'key',
-                                   'integer',
-                                   'datepart',
-                                   'literal',
-                                   'code',
-                                   'verbatim'])->@*;
+      } $dm->get_fields_of_type("field",
+                                  ["entrykey",
+                                   "key",
+                                   "integer",
+                                   "datepart",
+                                   "literal",
+                                   "code",
+                                   "verbatim"])->@*;
 
   // uri fields
-  let @fs3 = $dm->get_fields_of_type('field', 'uri')->@*;
+  let @fs3 = $dm->get_fields_of_type("field", "uri")->@*;
 
   // <namelist>namehash and <namelist>fullhash
   let @fs4;
   map {push @fs4, "${_}namehash";push @fs4, "${_}bibnamehash";push @fs4, "${_}fullhash"} $dmh->{namelists}->@*;
 
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:field");
-  $writer->startTag('choice'); // start choice of normal vs datepart fields
-  $writer->startTag('group'); //
-  $writer->startTag('attribute', 'name' => 'name');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:field"));
+  $writer->startTag("choice"); // start choice of normal vs datepart fields
+  $writer->startTag("group"); //
+  $writer->startTag("attribute", "name" => "name");
 
-  $writer->startTag('choice');
+  $writer->startTag("choice");
   foreach let $f (@fs1, @fs2, @fs3, @fs4) {
-    $writer->dataElement('value', $f);
+    $writer->dataElement("value", $f);
   }
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // group
-  $writer->startTag('group'); //
-  $writer->startTag('attribute', 'name' => 'name');
+  $writer->startTag("group"); //
+  $writer->startTag("attribute", "name" => "name");
 
-  $writer->startTag('choice');
-  foreach let $dp ($dm->get_fields_of_type('field', 'datepart')->@*) {
-    $writer->dataElement('value', $dp);
+  $writer->startTag("choice");
+  foreach let $dp ($dm->get_fields_of_type("field", "datepart")->@*) {
+    $writer->dataElement("value", $dp);
   }
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   // dateparts may have an era attributes
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startera');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'bce');
-  $writer->dataElement('value', 'ce');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "startera");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "bce");
+  $writer->dataElement("value", "ce");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'endera');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'bce');
-  $writer->dataElement('value', 'ce');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "endera");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "bce");
+  $writer->dataElement("value", "ce");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
   // dateparts may have a julian attributes
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startjulian');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "startjulian");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'endjulian');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "endjulian");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
   // dateparts may have a approximate attributes
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startapproximate');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "startapproximate");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'endapproximate');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "endapproximate");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
   // dateparts may have an uncertain attributes
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startuncertain');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "startuncertain");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'enduncertain');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "enduncertain");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
   // dateparts may have an unknown attributes
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'startunknown');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "startunknown");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
-  $writer->startTag('optional');
-  $writer->startTag('attribute', 'name' => 'endunknown');
-  $writer->startTag('choice');
-  $writer->dataElement('value', 'true');
+  $writer->startTag("optional");
+  $writer->startTag("attribute", "name" => "endunknown");
+  $writer->startTag("choice");
+  $writer->dataElement("value", "true");
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
   $writer->endTag();    // optional
   $writer->endTag();    // group
   $writer->endTag();    // choice (normal vs datepart)
-  $writer->emptyTag('text');// text
+  $writer->emptyTag("text");// text
   $writer->endTag();    // field
   $writer->endTag();    // oneOrMore
 
   // ranges
-  let @ranges = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_datatype('range')->@*;
+  let @ranges = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_datatype("range")->@*;
 
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:range");
-  $writer->startTag('attribute', 'name' => 'name');
-  $writer->startTag('choice');
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:range"));
+  $writer->startTag("attribute", "name" => "name");
+  $writer->startTag("choice");
   foreach let $r (@ranges) {
-    $writer->dataElement('value', $r);
+    $writer->dataElement("value", $r);
   }
   $writer->endTag();    // choice
   $writer->endTag();    // attribute
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:item");
-  $writer->startTag('attribute', 'name' => 'length');
-  $writer->emptyTag('data', 'type' => 'integer');
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:item"));
+  $writer->startTag("attribute", "name" => "length");
+  $writer->emptyTag("data", "type" => "integer");
   $writer->endTag();    // attribute
-  $writer->startTag('element', 'name' => "$bbl:start");
-  $writer->emptyTag('text');// text
+  $writer->startTag("element", "name" => format!("{bbl}:start"));
+  $writer->emptyTag("text");// text
   $writer->endTag();    // start
-  $writer->startTag('optional');
-  $writer->startTag('element', 'name' => "$bbl:end");
-  $writer->emptyTag('text');// text
+  $writer->startTag("optional");
+  $writer->startTag("element", "name" => format!("{bbl}:end"));
+  $writer->emptyTag("text");// text
   $writer->endTag();    // end
   $writer->endTag();    // optional
   $writer->endTag();    // item
@@ -1681,22 +1679,22 @@ fn generate_bblxml_schema(dm, $outfile) {
   $writer->endTag();    // zeroOrMore
 
   // uri lists - not in default data model
-  if (let @uril = $dm->get_fields_of_type('list', 'uri')->@*) {
-    $writer->startTag('optional');
-    $writer->startTag('element', 'name' => "$bbl:list");
-    $writer->startTag('attribute', 'name' => 'name');
-    $writer->startTag('choice');
+  if (let @uril = $dm->get_fields_of_type("list", "uri")->@*) {
+    $writer->startTag("optional");
+    $writer->startTag("element", "name" => format!("{bbl}:list"));
+    $writer->startTag("attribute", "name" => "name");
+    $writer->startTag("choice");
     foreach let $u (@uril) {
-      $writer->dataElement('value', $u);
+      $writer->dataElement("value", $u);
     }
     $writer->endTag();          // choice
     $writer->endTag();          // attribute
-    $writer->startTag('attribute', 'name' => 'count');
-    $writer->emptyTag('data', 'type' => 'integer');
+    $writer->startTag("attribute", "name" => "count");
+    $writer->emptyTag("data", "type" => "integer");
     $writer->endTag();          // attribute
-    $writer->startTag('oneOrMore');
-    $writer->startTag('element', 'name' => "$bbl:item");
-    $writer->emptyTag('data', 'type' => 'anyURI');
+    $writer->startTag("oneOrMore");
+    $writer->startTag("element", "name" => format!("{bbl}:item"));
+    $writer->emptyTag("data", "type" => "anyURI");
     $writer->endTag();          // item
     $writer->endTag();          // oneOrMore
     $writer->endTag();          // list element
@@ -1704,56 +1702,56 @@ fn generate_bblxml_schema(dm, $outfile) {
   }
 
   // nocite
-  $writer->startTag('optional');
-  $writer->startTag('element', 'name' => "$bbl:nocite");
-  $writer->emptyTag('empty');
+  $writer->startTag("optional");
+  $writer->startTag("element", "name" => format!("{bbl}:nocite"));
+  $writer->emptyTag("empty");
   $writer->endTag();// nocite
   $writer->endTag();// optional
 
   // keywords
-  $writer->startTag('optional');
-  $writer->startTag('element', 'name' => "$bbl:keywords");
-  $writer->startTag('oneOrMore');
-  $writer->startTag('element', 'name' => "$bbl:keyword");
-  $writer->emptyTag('data', 'type' => 'string');
+  $writer->startTag("optional");
+  $writer->startTag("element", "name" => format!("{bbl}:keywords"));
+  $writer->startTag("oneOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:keyword"));
+  $writer->emptyTag("data", "type" => "string");
   $writer->endTag();// item
   $writer->endTag();// oneOrMore
   $writer->endTag();// keywords
   $writer->endTag();// optional
 
   // annotations
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:annotation");
-  $writer->startTag('attribute', 'name' => 'scope');
-  $writer->startTag('choice');
-  foreach let $s ('field', 'list', 'names', 'item', 'name', 'namepart') {
-    $writer->dataElement('value', $s);
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:annotation"));
+  $writer->startTag("attribute", "name" => "scope");
+  $writer->startTag("choice");
+  foreach let $s ("field", "list", "names", "item", "name", "namepart") {
+    $writer->dataElement("value", $s);
   }
   $writer->endTag();// choice
   $writer->endTag();// scope attribute
-  $writer->emptyTag('attribute', 'name' => 'field');
-  $writer->emptyTag('attribute', 'name' => 'name');
-  $writer->emptyTag('attribute', 'name' => 'value');
-  $writer->startTag('attribute', 'name' => 'literal');
-  $writer->startTag('choice');
+  $writer->emptyTag("attribute", "name" => "field");
+  $writer->emptyTag("attribute", "name" => "name");
+  $writer->emptyTag("attribute", "name" => "value");
+  $writer->startTag("attribute", "name" => "literal");
+  $writer->startTag("choice");
   foreach let $s ('1', '0') {
-    $writer->dataElement('value', $s);
+    $writer->dataElement("value", $s);
   }
   $writer->endTag();// choice
   $writer->endTag();// literal attribute
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'item');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "item");
   $writer->endTag();// optional
-  $writer->startTag('optional');
-  $writer->emptyTag('attribute', 'name' => 'part');
+  $writer->startTag("optional");
+  $writer->emptyTag("attribute", "name" => "part");
   $writer->endTag();// optional
   $writer->endTag();// annotation
   $writer->endTag();// zeroOrMore
 
   // warnings
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:warning");
-  $writer->emptyTag('data', 'type' => 'string');
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:warning"));
+  $writer->emptyTag("data", "type" => "string");
   $writer->endTag();// warning
   $writer->endTag();// zeroOrMore
 
@@ -1765,17 +1763,17 @@ fn generate_bblxml_schema(dm, $outfile) {
   $writer->endTag();// oneOrMore
 
   // aliases
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:keyalias");
-  $writer->emptyTag('attribute', 'name' => 'key');
-  $writer->emptyTag('text');// text
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:keyalias"));
+  $writer->emptyTag("attribute", "name" => "key");
+  $writer->emptyTag("text");// text
   $writer->endTag();// keyalias
   $writer->endTag();// zeroOrMore
 
   // missing keys
-  $writer->startTag('zeroOrMore');
-  $writer->startTag('element', 'name' => "$bbl:missing");
-  $writer->emptyTag('text');// text
+  $writer->startTag("zeroOrMore");
+  $writer->startTag("element", "name" => format!("{bbl}:missing"));
+  $writer->emptyTag("text");// text
   $writer->endTag();// missing
   $writer->endTag();// zeroOrMore
 

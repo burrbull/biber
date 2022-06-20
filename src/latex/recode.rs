@@ -15,7 +15,6 @@ use utf8;
 
 our @EXPORT  = qw(latex_encode latex_decode);
 
-let $logger = Log::Log4perl::get_logger('main');
 
 /// Encode/Decode chars to/from UTF-8/lacros in LaTeX
 ///
@@ -35,8 +34,8 @@ let $logger = Log::Log4perl::get_logger('main');
 ///
 /// GLOBAL OPTIONS
 ///
-/// Possible values for the encoding/decoding set to use are 'null', 'base' and 'full'; default
-/// value is 'base'.
+/// Possible values for the encoding/decoding set to use are "null", "base" and "full"; default
+/// value is "base".
 ///
 /// null  => No conversion
 ///
@@ -63,10 +62,10 @@ fn init_sets(set_d, set_e) {
 
   let $mapdata;
   // User-defined recode data file
-  if (let $rdata = crate::Config->getoption('recodedata')) {
+  if (let $rdata = crate::Config->getoption("recodedata")) {
     let $err;
-    if ( can_run('kpsewhich') ) {
-      run3 [ 'kpsewhich', $rdata ], \undef, \$mapdata, \$err, { return_if_system_error => 1};
+    if ( can_run("kpsewhich") ) {
+      run3 [ "kpsewhich", $rdata ], \undef, \$mapdata, \$err, { return_if_system_error => 1};
       if ($? == -1) {
         biber_error("Error running kpsewhich to look for output_safechars data file: $err");
       }
@@ -109,13 +108,13 @@ fn init_sets(set_d, set_e) {
   // Construct decode set
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
-      let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
+      let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
       if !(first {$set_d == $_} @set) {
         continue;
       }
-      foreach let $map ($maps->findnodes('map')) {
-        let $from = $map->findnodes('from')->shift();
-        let $to = $map->findnodes('to')->shift();
+      foreach let $map ($maps->findnodes("map")) {
+        let $from = $map->findnodes("from")->shift();
+        let $to = $map->findnodes("to")->shift();
         $remap_d->{$type}{map}{NFD($from->textContent())} = NFD($to->textContent());
       }
     }
@@ -128,25 +127,25 @@ fn init_sets(set_d, set_e) {
   // Construct encode set
   foreach let $type (@types) {
     foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
-      let @set = split(/\s*,\s*/, $maps->getAttribute('set'));
+      let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
       if !(first {$set_e == $_} @set) {
         continue;
       }
-      foreach let $map ($maps->findnodes('map')) {
-        let $from = $map->findnodes('from')->shift();
-        let $to = $map->findnodes('to')->shift();
+      foreach let $map ($maps->findnodes("map")) {
+        let $from = $map->findnodes("from")->shift();
+        let $to = $map->findnodes("to")->shift();
         $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // There are some duplicates in the data to handle preferred encodings.
       foreach let $map ($maps->findnodes('map[from[@preferred]]')) {
-        let $from = $map->findnodes('from')->shift();
-        let $to = $map->findnodes('to')->shift();
+        let $from = $map->findnodes("from")->shift();
+        let $to = $map->findnodes("to")->shift();
         $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // Some things might need to be inserted as is rather than wrapped in some macro/braces
       foreach let $map ($maps->findnodes('map[from[@raw]]')) {
-        let $from = $map->findnodes('from')->shift();
-        let $to = $map->findnodes('to')->shift();
+        let $from = $map->findnodes("from")->shift();
+        let $to = $map->findnodes("to")->shift();
         $remap_e_raw->{NFD($to->textContent())} = 1;
       }
 
@@ -185,13 +184,13 @@ fn init_sets(set_d, set_e) {
 /// * normalize => $bool (default 1)
 ///     whether the output string should be normalized with Unicode::Normalize
 ///
-/// * normalization => <normalization form> (default 'NFD')
+/// * normalization => <normalization form> (default "NFD")
 ///     and if yes, the normalization form to use (see the Unicode::Normalize documentation)
 fn latex_decode(text, %opts) {
       trace!("String before latex_decode() -> '{}'", text);
 
     let $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
-    let $norm_form = exists $opts{normalization} ? $opts{normalization} : 'NFD';
+    let $norm_form = exists $opts{normalization} ? $opts{normalization} : "NFD";
 
     // Deal with raw TeX \char macros.
     $text =~ s/\\char"(\p{ASCII_Hex_Digit}+)/"chr(0x$1)"/gee; // hex chars
@@ -201,35 +200,35 @@ fn latex_decode(text, %opts) {
     $text =~ s/(\\[a-zA-Z]+)\\(\s+)/$1\{\}$2/g;    // \foo\ bar -> \foo{} bar
     $text =~ s/([^{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
 
-    foreach let $type ('greek', 'dings', 'punctuation', 'symbols', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'letters', 'diacritics') {
+    foreach let $type ("greek", "dings", "punctuation", "symbols", "negatedsymbols", "superscripts", "cmdsuperscripts", "letters", "diacritics") {
       let $map = $remap_d->{$type}{map};
       let $re = $remap_d->{$type}{re};
       if !re { // Might not be present depending on set
         continue;
       }
 
-      if ($type == 'negatedsymbols') {
+      if ($type == "negatedsymbols") {
         $text =~ s/\\not\\($re)/$map->{$1}/ge;
       }
-      else if ($type == 'superscripts') {
+      else if ($type == "superscripts") {
         $text =~ s/\\textsuperscript\{($re)\}/$map->{$1}/ge;
       }
-      else if ($type == 'cmdsuperscripts') {
+      else if ($type == "cmdsuperscripts") {
         $text =~ s/\\textsuperscript\{\\($re)\}/$map->{$1}/ge;
       }
-      else if ($type == 'dings') {
+      else if ($type == "dings") {
         $text =~ s/\\ding\{([2-9AF][0-9A-F])\}/$map->{$1}/ge;
       }
-      else if ($type == 'letters') {
+      else if ($type == "letters") {
         $text =~ s/\\($re)(?:\{\}|\s+|\b)/$map->{$1}/ge;
       }
-      else if (first {$type == $_} ('punctuation', 'symbols', 'greek')) {
+      else if (first {$type == $_} ("punctuation", "symbols", "greek")) {
         $text =~ s/\\($re)(?: \{\}|\s+|\b)/$map->{$1}/ge;
       }
-      else if ($type == 'diacritics') {
+      else if ($type == "diacritics") {
 
         // Using Unicode INFORMATION SEPARATOR ONE/TWO
-        let $bracemap = {'' => '',
+        let $bracemap = {"" => "",
                         '{' => "\x{1f}",
                         '}' => "\x{1e}"};
 
@@ -322,37 +321,37 @@ fn latex_decode(text, %opts) {
 /// Converts UTF-8 to LaTeX
 fn latex_encode(text) {
   // Optimisation - if virtual null set was specified, do nothing
-  if $set_e == 'null' {
+  if $set_e == "null" {
     return $text;
   }
 
-  foreach let $type ('greek', 'dings', 'negatedsymbols', 'superscripts', 'cmdsuperscripts', 'diacritics', 'letters', 'punctuation', 'symbols') {
+  foreach let $type ("greek", "dings", "negatedsymbols", "superscripts", "cmdsuperscripts", "diacritics", "letters", "punctuation", "symbols") {
     let $map = $remap_e->{$type}{map};
     let $re = $remap_e->{$type}{re};
     if !re { // Might not be present depending on set
       continue;
     }
 
-    if ($type == 'negatedsymbols') {
+    if ($type == "negatedsymbols") {
       $text =~ s/($re)/"{\$\\not\\" . $map->{$1} . '$}'/ge;
     }
-    else if ($type == 'superscripts') {
+    else if ($type == "superscripts") {
       $text =~ s/($re)/'\textsuperscript{' . $map->{$1} . '}'/ge;
     }
-    else if ($type == 'cmdsuperscripts') {
+    else if ($type == "cmdsuperscripts") {
       $text =~ s/($re)/"\\textsuperscript{\\" . $map->{$1} . "}"/ge;
     }
-    else if ($type == 'dings') {
+    else if ($type == "dings") {
       $text =~ s/($re)/'\ding{' . $map->{$1} . '}'/ge;
     }
-    else if ($type == 'letters') {
+    else if ($type == "letters") {
       // General macros (excluding special encoding excludes)
-      $text =~ s/($re)/($remap_e_raw->{$1} ? '' : "\\") . $map->{$1} . ($remap_e_raw->{$1} ? '' : '{}')/ge;
+      $text =~ s/($re)/($remap_e_raw->{$1} ? "" : "\\") . $map->{$1} . ($remap_e_raw->{$1} ? "" : '{}')/ge;
     }
-    else if (first {$type == $_}  ('punctuation', 'symbols', 'greek')) {
+    else if (first {$type == $_}  ("punctuation", "symbols", "greek")) {
       $text =~ s/($re)/_wrap($1,$map,$remap_e_raw)/ge;
     }
-    else if ($type == 'diacritics') {
+    else if ($type == "diacritics") {
       // special case such as "i\x{304}" -> '\={\i}' -> "i" needs the dot removing for accents
       $text =~ s/i($re)/"\\" . $map->{$1} . '{\i}'/ge;
 
