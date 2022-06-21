@@ -22,14 +22,14 @@ use Unicode::UCD qw(num);
 // nameparts from the data model list of valid nameparts
 fn _getnamehash(self, $citekey, $names, $dlist, $bib) {
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
 
   let $hashkey = "";
   let $count = $names->count;
   let $visible = $bib ? $dlist->get_visible_bib($names->get_id) : $dlist->get_visible_cite($names->get_id);
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
   // namehash obeys list truncations but not uniquename
@@ -61,7 +61,7 @@ fn _getnamehash(self, $citekey, $names, $dlist, $bib) {
 
 fn _getfullhash(self, $citekey, $names) {
   let $hashkey = "";
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
   foreach let $n ($names->names->@*) {
@@ -85,7 +85,7 @@ fn _getfullhash(self, $citekey, $names) {
 // It's used for extra* tracking only
 fn _getnamehash_u(self, $citekey, $names, $dlist) {
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
 
@@ -93,7 +93,7 @@ fn _getnamehash_u(self, $citekey, $names, $dlist) {
   let $count = $names->count;
   let $nlid = $names->get_id;
   let $visible = $dlist->get_visible_cite($nlid);
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
   // refcontext or per-entry uniquenametemplate
@@ -161,7 +161,7 @@ fn _getnamehash_u(self, $citekey, $names, $dlist) {
 // Special hash to track per-name information
 fn _genpnhash(self, $citekey, $n) {
   let $hashkey = "";
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
   foreach let $nt (@nps) {// list type so returns list
@@ -217,7 +217,7 @@ fn _dispatch_table_label(field, dm) {
 // Main label loop
 fn _genlabel(self, $citekey, $dlist) {
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $labelalphatemplate = crate::Config->getblxoption($secnum, "labelalphatemplate", $be->get_field("entrytype"));
   let $label;
@@ -239,7 +239,7 @@ fn _genlabel(self, $citekey, $dlist) {
 // Disjunctive set of label parts
 fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
   let $bee = $be->get_field("entrytype");
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let $maxan = crate::Config->getblxoption($secnum, "maxalphanames", $bee, $citekey);
   let $minan = crate::Config->getblxoption($secnum, "minalphanames", $bee, $citekey);
   let $lp;
@@ -324,7 +324,7 @@ fn _dispatch_label(self, $part, $citekey, $secnum, $section, $be, $dlist) {
   let $code_args_ref;
   let $lp;
   let $slp;
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
 
 
   // real label field
@@ -589,8 +589,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
   }
   let $rfield_string;
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
-  let @citekeys = $section->get_citekeys;
+  let $section = $self.sections()->get_section($secnum);
+  let @citekeys = $section.get_citekeys();
   let $nindex = first_index {$_ == $citekey} @citekeys;
 
   foreach let $fieldinfo ($fieldstrings->@*) {
@@ -1042,7 +1042,7 @@ fn _dispatch_table_sorting(field, dm) {
 fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
   let $code_ref;
   let $code_args_ref;
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
 
   // If this field is excluded from sorting for this entrytype, then skip it and return
   if (let $se = crate::Config->getblxoption(undef, "sortexclusion", $be->get_field("entrytype"))) {
@@ -1087,7 +1087,7 @@ fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist,
 fn _generatesortinfo(self, $citekey, $dlist) {
   let $sortingtemplate = $dlist->get_sortingtemplate;
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $sortobj;
   let $szero = 0;
@@ -1144,7 +1144,7 @@ fn _generatesortinfo(self, $citekey, $dlist) {
 
 // Process sorting set
 fn _sortset(self, $sortset, $citekey, $secnum, $section, $be, $dlist) {
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   foreach let $sortelement ($sortset->@[1..$sortset->$#*]) {
     let ($sortelementname, $sortelementattributes) = %$sortelement;
     $BIBER_SORT_NULL = 0; // reset this per sortset
@@ -1180,7 +1180,7 @@ fn _sort_citeorder(self, $citekey, $secnum, $section, $be, $dlist, $sortelementa
   // keys which have one (the \cited keys) and then an orig_order_citekey index based index
   // for the nocite ones.
   let $ko = crate::Config->get_keyorder($secnum, $citekey);// only for \cited keys
-  if ($section->is_allkeys) {
+  if section.is_allkeys() {
     let $biborder = (crate::Config->get_keyorder_max($secnum) +
                     (first_index {$_ == $citekey} $section->get_orig_order_citekeys) + 1);
     let $allkeysorder = crate::Config->get_keyorder($secnum, '*');
@@ -1369,7 +1369,7 @@ fn _sort_presort(self, $citekey, $secnum, $section, $be, $dlist, $sortelementatt
 }
 
 fn _sort_sortname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
 
   // sortname is ignored if no use<name> option is defined - see biblatex manual
   if ($be->get_field("sortname") &&
@@ -1440,7 +1440,7 @@ fn _process_sort_attributes(field_string, sortelementattributes) {
 // This is used to generate sorting string for names
 fn _namestring(self, citekey, field, dlist) {
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
   let $names = $be->get_field($field);
@@ -1525,7 +1525,7 @@ fn _namestring(self, citekey, field, dlist) {
                 // section as this is the only way to make sorting work
                 // properly The padding is spaces as this sorts before all
                 // glyphs but it also of variable weight and ignorable in
-                // DUCET so we have to set U::C to variable=>'non-ignorable'
+                // DUCET so we have to set U::C to variable=>"non-ignorable"
                 // as sorting default so that spaces are non-ignorable
                 $nps = normalise_string_sort(join("", $npistring->@*), $field);
 
@@ -1577,7 +1577,7 @@ fn _namestring(self, citekey, field, dlist) {
 
 fn _liststring(self, $citekey, $field, $verbatim) {
   let $secnum = $self->get_current_section;
-  let $section = $self->sections->get_section($secnum);
+  let $section = $self.sections()->get_section($secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
   let $f = $be->get_field($field); // _liststring is used in tests so there has to be
@@ -1633,7 +1633,7 @@ fn _translit(target, entry, string) {
         if !langid {
           continue;
         }
-        if !(first {fc($langid) == fc($_)} split(/\s*,\s*/, $tr->{langids})) {
+        if !(first {unicase::eq(langid, $_)} split(/\s*,\s*/, $tr->{langids})) {
           continue;
         }
       }

@@ -27,7 +27,7 @@ __PACKAGE__->mk_accessors(qw (
 impl Name {
   /// Initialise a crate::Entry::Name object, optionally with key=>value arguments.
   fn new(params) -> Self {
-    let $dm = crate::Config->get_dm;
+    let $dm = crate::config::get_dm();
     if (%params) {
       let $name = {};
 
@@ -116,7 +116,7 @@ impl Name {
   /// Create biblatexml data for a name
   fn name_to_biblatexml(self, $out, $xml, $key, $namefield, $count) -> String {
     let $xml_prefix = $out->{xml_prefix};
-    let $dm = crate::Config->get_dm;
+    let $dm = crate::config::get_dm();
     let @attrs;
 
 
@@ -193,7 +193,7 @@ impl Name {
 
   /// Return bbl data for a name
   fn name_to_bbl(self, un: &str) -> String {
-    let $dm = crate::Config->get_dm;
+    let $dm = crate::config::get_dm();
     let @pno; // per-name options
     let @namestrings;
     let $nid = self.{id};
@@ -259,7 +259,7 @@ impl Name {
 
   /// Return bblxml data for a name
   fn name_to_bblxml*(self, $xml, $xml_prefix, $un) {
-    let $dm = crate::Config->get_dm;
+    let $dm = crate::config::get_dm();
     let %pno; // per-name options
     let %names;
     let $nid = self.{id};
@@ -350,7 +350,7 @@ impl Name {
 
   /// Return extended bibtex data format for name
   fn name_to_xname(self) {
-    let $dm = crate::Config->get_dm;
+    let $dm = crate::config::get_dm();
     let $parts;
     let namestring = Vec::new();
     let $xns = crate::Config->getoption("output_xnamesep");

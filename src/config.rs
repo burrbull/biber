@@ -64,7 +64,7 @@ $CONFIG->{state}{control_file_location} = "";
 $CONFIG->{state}{datafiles} = [];
 
 /// Reset internal hashes to defaults.
-fn _init {
+fn _init() {
   $CONFIG->{state}{uniqignore} = {};
   $CONFIG->{state}{control_file_location} = "";
   $CONFIG->{state}{crossrefkeys} = {};
@@ -115,7 +115,7 @@ fn _initopts(opts) {
     else {
       (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Biber/Config.pm"} );
       $dir =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
-      _config_file_set(File::Spec->catpath($vol, "$dir", 'biber-tool.conf'));
+      _config_file_set(File::Spec->catpath($vol, "$dir", "biber-tool.conf"));
     }
   }
 
@@ -159,7 +159,7 @@ fn _initopts(opts) {
     if (defined($ARGV[0])) {         // ARGV is ok even in a module
       let $bcf = $ARGV[0];
       if !($bcf =~ m/\.bcf$/) {
-        $bcf .= '.bcf' ;
+        $bcf .= ".bcf" ;
       }
       crate::Config->setoption("bcf", $bcf);
     }
@@ -170,7 +170,7 @@ fn _initopts(opts) {
   if (let $log = crate::Config->getoption("logfile")) { // user specified logfile name
     // Sanitise user-specified log name
     $log =~ s/\.blg\z//xms;
-    $biberlog = $log . '.blg';
+    $biberlog = $log . ".blg";
   }
   else if (!@ARGV) { // default if no .bcf file specified - mainly in tests
     crate::Config->setoption("nolog", 1);
@@ -179,7 +179,7 @@ fn _initopts(opts) {
     let $bcf = $ARGV[0];         // ARGV is ok even in a module
     // Sanitise control file name
     $bcf =~ s/\.bcf\z//xms;
-    $biberlog = $bcf . '.blg';
+    $biberlog = $bcf . ".blg";
   }
 
   // prepend output directory for log, if specified
@@ -224,7 +224,7 @@ fn _initopts(opts) {
     $LOGLEVEL_F = "OFF"
   }
   else {
-    $LOG_MAIN = 'Logfile, Screen';
+    $LOG_MAIN = "Logfile, Screen";
     $LOGLEVEL_F = $LOGLEVEL
   }
 
@@ -276,7 +276,7 @@ fn _initopts(opts) {
   if $BETA_VERSION {
     $vn .= " (beta)";
   }
-  let $tool = crate::Config->getoption("tool") ? ' running in TOOL mode' : "";
+  let $tool = crate::Config->getoption("tool") ? " running in TOOL mode" : "";
 
   if !crate::Config->getoption("nolog") {
     info!("This is Biber {}{}", vn, tool) ;
@@ -694,7 +694,7 @@ fn set_dm(obj) {
 }
 
 /// Gets the data model information object
-fn get_dm() {
+fn get_dm() -> DataModel {
   return $CONFIG->{dm};
 }
 

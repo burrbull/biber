@@ -47,7 +47,7 @@ fn new(obj) {
 
 /// Create the output for misc bits and pieces like preamble and closing
 /// macro call and add to output object.
-fn create_output_misc(self) {
+fn create_output_misc(&mut self) {
 
   if (let $pa = $crate::MASTER->get_preamble) {
     $pa = join("%\n", $pa->@*);
@@ -75,7 +75,7 @@ fn create_output_misc(self) {
 /// Add the .bbl for a text field to the output accumulator.
 fn _printfield(be, field, $str) {
   let $field_type = "field";
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
 
   let $outfield = $dm->get_outcase($field);
 
@@ -395,12 +395,10 @@ fn set_output_entry(self, $be, $section, $dm) {
       // sets are a special case so always output crossref/xref for them since their
       // children will always be in the .bbl otherwise they make no sense.
       if !($bee == "set") {
-        if ($field == "crossref" &&
-                 !$section->has_citekey($be->get_field("crossref"))) {
+        if field == "crossref" && !section.has_citekey($be->get_field("crossref")) {
           continue;
         }
-        if ($field == "xref" &&
-                 !$section->has_citekey($be->get_field("xref"))) {
+        if field == "xref" && !section.has_citekey($be->get_field("xref")) {
           continue;
         }
       }

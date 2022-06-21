@@ -32,9 +32,9 @@ privateuse: 'x' ('-' alphanum(1..8))(s)
 
 grandfathered: irregular|regular
 
-irregular: 'en-GB-oed'|'i-ami'|'i-bnn'|'i-default'|'i-enochian'|'i-hak'|'i-klingon'|'i-lux'|'i-mingo'|'i-navajo'|'i-pwn'|'i-tao'|'i-tay'|'i-tsu'|'sgn-BE-FR'|'sgn-BE-NL'|'sgn-CH-DE'
+irregular: "en-GB-oed"|"i-ami"|"i-bnn"|"i-default"|"i-enochian"|"i-hak"|"i-klingon"|"i-lux"|"i-mingo"|"i-navajo"|"i-pwn"|"i-tao"|"i-tay"|"i-tsu"|"sgn-BE-FR"|"sgn-BE-NL"|"sgn-CH-DE"
 
-regular: 'art-lojban'|'cel-gaulish'|'no-bok'|'no-nyn'|'zh-guoyu'|'zh-hakka'|'zh-min'|'zh-min-nan'|'zh-xiang'
+regular: "art-lojban"|"cel-gaulish"|"no-bok"|"no-nyn"|"zh-guoyu"|"zh-hakka"|"zh-min"|"zh-min-nan"|"zh-xiang"
 
 alphanum: ALPHA|DIGIT
 

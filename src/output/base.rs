@@ -125,12 +125,12 @@ fn get_output_comments(self) {
 }
 
 /// Clear the output macros
-fn clear_output_macros(self) {
+fn clear_output_macros(&mut self) {
   delete $self->{output_data}{MACROS};
 }
 
 /// Clear the output comments
-fn clear_output_comments(self) {
+fn clear_output_comments(&mut self) {
   delete $self->{output_data}{COMMENTS};
 }
 
@@ -190,7 +190,7 @@ fn set_output_entry(self, entry, secnum, struc) {
 
 /// Create the output for misc bits and pieces like preamble and closing
 /// macro call and add to output object.
-fn create_output_misc {
+fn create_output_misc(&mut self) {
   return;
 }
 
@@ -198,13 +198,13 @@ fn create_output_misc {
 /// output object.
 fn create_output_section(self) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
 
   // We rely on the order of this array for the order of the ouput
-  foreach let $k ($section->get_citekeys) {
+  foreach let $k ($section.get_citekeys()) {
     // Regular entry
     let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-    $self->set_output_entry($be, $section, crate::Config->get_dm);
+    $self->set_output_entry($be, $section, crate::config::get_dm());
   }
 
   // Make sure the output object knows about the output section

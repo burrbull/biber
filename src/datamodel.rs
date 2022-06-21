@@ -36,7 +36,7 @@ fn new(dms) -> Self {
 
       // Constants
       foreach let $uc ($udm->{constants}{constant}->@*) {
-        let $uce = firstidx {fc($_->{name}) == fc($uc->{name})} $dm->{constants}{constant}->@*;
+        let $uce = firstidx {unicase::eq($_->{name}, $uc->{name})} $dm->{constants}{constant}->@*;
         if ($uce >= 0) { // since constants are named, we can overwrite easily
           $dm->{constants}{constant}[$uce] = $uc;
         }
@@ -53,7 +53,7 @@ fn new(dms) -> Self {
       // Entryfields
       foreach let $uef ($udm->{entryfields}->@*) {
         if (let $et = $uef->{entrytype}) {
-          let $ef = firstidx {$_->{entrytype}[0]{content} && (fc($_->{entrytype}[0]{content}) == fc($et->[0]{content}))} $dm->{entryfields}->@*;
+          let $ef = firstidx {$_->{entrytype}[0]{content} && (unicase::eq($_->{entrytype}[0]{content}, $et->[0]{content}))} $dm->{entryfields}->@*;
           if ($ef >= 0) {       // Push fields onto existing type
             push $dm->{entryfields}[$ef]{field}->@*, $uef->{field}->@*;
           }
@@ -76,7 +76,7 @@ fn new(dms) -> Self {
 
       // Fields
       foreach let $f ($udm->{fields}{field}->@*) {
-        let $df = firstidx {fc($_->{content}) == fc($f->{content}) } $dm->{fields}{field}->@*;
+        let $df = firstidx {unicase::eq($_->{content}, $f->{content}) } $dm->{fields}{field}->@*;
         if ($df >= 0) {
           $dm->{fields}{field}->[$df] = $f;
         }
@@ -96,12 +96,12 @@ fn new(dms) -> Self {
   // comparisons but we save a map of case-folded variants to actual names
   // so that we can recover the information later for output
   foreach let $et ($dm->{entrytypes}{entrytype}->@*) {
-    $self->{casemap}{foldtoorig}{fc($et->{content})} = $et->{content};
-    $et->{content} = fc($et->{content});
+    $self->{casemap}{foldtoorig}{UniCase::new($et->{content})} = $et->{content};
+    $et->{content} = UniCase::new($et->{content});
   }
   foreach let $f ($dm->{fields}{field}->@*) {
-    $self->{casemap}{foldtoorig}{fc($f->{content})} = $f->{content};
-    $f->{content} = fc($f->{content});
+    $self->{casemap}{foldtoorig}{UniCase::new($f->{content})} = $f->{content};
+    $f->{content} = UniCase::new($f->{content});
   }
 
   // Early check for fatal datamodel errors
@@ -535,7 +535,7 @@ fn field_is_skipout(self, $field) {
 /// returns an arry of warnings, if any
 fn check_mandatory_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let @warnings;
   let $et = $be->get_field("entrytype");
   let $key = $be->get_field("citekey");
@@ -593,7 +593,7 @@ fn check_mandatory_constraints(self, be) {
 /// returns an arry of warnings, if any
 fn check_conditional_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let @warnings;
   let $et = $be->get_field("entrytype");
   let $key = $be->get_field("citekey");
@@ -626,16 +626,12 @@ fn check_conditional_constraints(self, be) {
     let @actual_cfs = (grep {$be->field_exists($_)} $cfs->@*);
     if ($cq == "all") {
       if !($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
-        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
-          join(', ', $cfs->@*) .
-            ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
+        push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", join(", ", $cfs->@*), join(", ", $afs->@*));
       }
     }
     else if ($cq == "none") {
       if (@actual_cfs) {        // ? -> NONE not satisfied
-        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
-          join(', ', @actual_cfs) .
-            ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist. Ignoring them.";
+        push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist. Ignoring them.", join(", ", @actual_cfs), join(", ", $afs->@*));
         // delete the offending fields
         foreach let $f (@actual_cfs) {
           $be->del_field($f);
@@ -644,9 +640,7 @@ fn check_conditional_constraints(self, be) {
     }
     else if ($cq == "one") {
       if !(@actual_cfs) {    // ? -> ONE not satisfied
-        push @warnings, "Datamodel: Entry '$key' ($ds): Constraint violation - $cq of fields (" .
-          join(', ', $cfs->@*) .
-            ") must exist when $aq of fields (" . join(', ', $afs->@*). ") exist";
+        push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", join(", ", $cfs->@*), join(", ", $afs->@*));
       }
     }
   }
@@ -657,7 +651,7 @@ fn check_conditional_constraints(self, be) {
 /// returns an array of warnings, if any
 fn check_data_constraints(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let @warnings;
   let $et = $be->get_field("entrytype");
   let $key = $be->get_field("citekey");
@@ -675,7 +669,7 @@ fn check_data_constraints(self, be) {
           }
           foreach ($fv->@*) {
             if (!$DM_DATATYPES{isbn}->($_, $f)) {
-              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISBN in value of field '$f'";
+              push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'");
             }
           }
         }
@@ -755,7 +749,7 @@ fn check_data_constraints(self, be) {
 /// in the datamodel but rather checks of the datatype of fields in the datamodel.
 fn check_datatypes(self, be) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let @warnings;
   let $et = $be->get_field("entrytype");
   let $key = $be->get_field("citekey");

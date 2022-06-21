@@ -1,5 +1,8 @@
 use core::fmt;
 
+pub struct Unknown;
+
+
 #[derive(Clone, Copy, Debug)]
 pub struct Bool(pub bool);
 

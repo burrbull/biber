@@ -334,7 +334,7 @@ fn set_output_entry(
         $field == "dates") {
       let @donefields;
       foreach let $key (sort keys %acc) {
-        if (first {fc($_) == fc(strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
+        if (first {unicase::eq($_, strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
           $acc .= bibfield($key, $acc{$key}, $max_field_len);
           push @donefields, $key;
         }
@@ -450,13 +450,13 @@ fn output(self) {
 /// output object.
 fn create_output_section(self) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
 
   // We rely on the order of this array for the order of the .bib
-  foreach let $k ($section->get_citekeys) {
+  foreach let $k ($section.get_citekeys()) {
     // Regular entry
     let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-    $self->set_output_entry($be, $section, crate::Config->get_dm);
+    $self->set_output_entry($be, $section, crate::config::get_dm());
   }
 
   // Create the comments output

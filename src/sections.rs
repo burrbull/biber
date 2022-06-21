@@ -1,40 +1,40 @@
 //! `Sections` objects
  
-pub struct Sections;
+pub struct Sections(Hash<u32, Section>);
 
-/// Initialize a crate::Sections object
-fn new() -> Self {
-  let $self = bless {}, $class;
-  return $self;
-}
+impl Sections {
+  /// Initialize a crate::Sections object
+  fn new() -> Self {
+    Self(Hash::new())
+  }
 
-/// Gets the number of crate::Section objects
-fn get_num_sections(self) {
-  let @keys = keys $self->%*;
-  return $#keys + 1;
-}
+  /// Gets the number of crate::Section objects
+  fn get_num_sections(self) -> usize {
+    self.0.len()
+  }
 
-/// Gets a crate::Section by number from the crate::Sections object
-fn get_section(self, number) {
-  return $self->{$number};
-}
+  /// Gets a crate::Section by number from the crate::Sections object
+  fn get_section(&self, number: u32) -> Option<Section> {
+    self.0.get(number)
+  }
 
-/// Gets an sorted array ref of all crate::Section objects
-fn get_sections(self) {
-  return [ sort {$a->number <=> $b->number} values $self->%* ];
-}
+  /// Gets an sorted array ref of all crate::Section objects
+  fn get_sections(&self) -> Vec<&Section> {
+    let mut v: Vec<_> = self.0.values().collect();
+    v.sort_by_key(|k| k.number);
+    v
+  }
 
-/// Adds a crate::Section to the crate::Sections object
-fn add_section(self, section) {
-  let $number = $section->number;
-  $self->{$number} = $section;
-  return;
-}
+  /// Adds a crate::Section to the crate::Sections object
+  fn add_section(&mut self, section: Section) {
+    let number = section.number;
+    self.0.insert(number, section);
+  }
 
-/// Deletes a section
-/// Mainly used in test scripts
-fn delete_section(self, section) {
-  let $number = $section->number;
-  delete $self->{$number};
-  return;
+  /// Deletes a section
+  /// Mainly used in test scripts
+  fn delete_section(&mut self, section: &Section) {
+    let number = section.number;
+    self.remove(number)
+  }
 }

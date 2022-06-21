@@ -41,9 +41,9 @@ our @EXPORT = qw{
 
 // Version of biblatex control file which this release expects. Matched against version
 // passed in control file. Used when checking the .bcf
-our $BCF_VERSION = '3.9';
+our $BCF_VERSION = "3.9";
 // Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = '3.2';
+our $BBL_VERSION = "3.2";
 
 // Global flags needed for sorting
 our $BIBER_SORT_FINAL;
@@ -51,7 +51,7 @@ our $BIBER_SORT_NULL;
 
 // the name of the Biber configuration file, which should be
 // either returned by kpsewhich or located at "$HOME/.$BIBER_CONF_NAME"
-our $BIBER_CONF_NAME = 'biber.conf';
+our $BIBER_CONF_NAME = "biber.conf";
 
 // Biber CONFIGURATION DEFAULTS
 
@@ -59,10 +59,10 @@ our $BIBER_CONF_NAME = 'biber.conf';
 let $locale;
 if !($locale) {
   if ( $^O =~ /Win/) {
-    $locale = 'English_United States.1252';
+    $locale = "English_United States.1252";
   }
   else {
-    $locale = 'en_US.UTF-8';
+    $locale = "en_US.UTF-8";
   }
 }
 
@@ -160,7 +160,7 @@ our %DM_DATATYPES = (
                        // Just in case it is already set. We also need to fake this in tests or it will
                        // look for it in the blib dir
                        if $ENV{ISBN_RANGE_MESSAGE}.is_none() {
-                         $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
+                         $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", "RangeMessage.xml");
                        }
 
                        let isbn = Business::ISBN->new($v);
@@ -242,10 +242,10 @@ our $CONFIG_DEFAULT_BIBER = {
   others_string                               => { content => "others" },
   output_align                                => { content => 0 },
   output_all_macrodefs                        => { content => 0 },
-  output_annotation_marker                    => { content => '+an' },
+  output_annotation_marker                    => { content => "+an" },
   output_named_annotation_marker              => { content => ':' },
   output_encoding                             => { content => "UTF-8" },
-  output_field_order                          => { content => 'options,abstract,names,lists,dates' },
+  output_field_order                          => { content => "options,abstract,names,lists,dates" },
   output_format                               => { content => "bbl" },
   output_indent                               => { content => '2' },
   output_fieldcase                            => { content => "upper" },
@@ -279,8 +279,8 @@ our $CONFIG_DEFAULT_BIBER = {
   winunicode                                  => { content => 0 },
   wraplines                                   => { content => 0 },
   xdatamarker                                 => { content => "xdata" },
-  xdatasep                                    => { content => '-' },
-  xnamesep                                    => { content => '=' },
+  xdatasep                                    => { content => "-" },
+  xnamesep                                    => { content => "=" },
   xsvsep                                      => { content => q/\s*,\s*/ },
 };
 
@@ -327,11 +327,11 @@ define_alias("ansinew"        => "cp1252"); // inputenc alias for cp1252
 define_alias("applemac"       => "MacRoman");
 define_alias("applemacce"     => "MacCentralEurRoman");
 define_alias("next"           => "MacRoman");
-define_alias('x-mac-roman'    => "MacRoman");
-define_alias('x-mac-centeuro' => "MacCentralEurRoman");
-define_alias('x-mac-cyrillic' => "MacCyrillic");
-define_alias('x-nextstep'     => "MacRoman");
-define_alias('x-ascii'        => "ascii"); // Encode doesn't resolve this one by default
+define_alias("x-mac-roman"    => "MacRoman");
+define_alias("x-mac-centeuro" => "MacCentralEurRoman");
+define_alias("x-mac-cyrillic" => "MacCyrillic");
+define_alias("x-nextstep"     => "MacRoman");
+define_alias("x-ascii"        => "ascii"); // Encode doesn't resolve this one by default
 define_alias("lutf8"          => "UTF-8"); // Luatex
 define_alias("utf8x"          => "UTF-8"); // UCS (old)
 

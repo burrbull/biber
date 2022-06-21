@@ -30,7 +30,7 @@ let $BIBLATEXML_NAMESPACE_URI = "http://biblatex-biber.sourceforge.net/biblatexm
 let $NS = "bltx";
 
 // Determine handlers from data model
-let $dm = crate::Config->get_dm;
+let $dm = crate::config::get_dm();
 let $handlers = {
                 "CUSTOM" => {"related" => \&_related,
                              "annotation" => \&_annotation},
@@ -70,7 +70,7 @@ let $handlers = {
 fn extract_entries(filename, _encoding, keys) {
   // $encoding is ignored as it is always assumed to be UTF-8 for XML
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $bibentries = $section->bibentries;
 
   let @rkeys = $keys->@*;
@@ -112,7 +112,7 @@ fn extract_entries(filename, _encoding, keys) {
   let $xpc = XML::LibXML::XPathContext->new($bltxml);
   $xpc->registerNs($NS, $BIBLATEXML_NAMESPACE_URI);
 
-  if ($section->is_allkeys) {
+  if section.is_allkeys()) {
       debug!("All citekeys will be used for section '{}'", secnum);
     // Loop over all entries, creating objects
     foreach let $entry ($xpc->findnodes("/$NS:entries/$NS:entry")) {
@@ -193,7 +193,7 @@ fn extract_entries(filename, _encoding, keys) {
     // the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     // no explicitly cited keys
     $section->add_citekeys(@{$orig_key_order->{$filename}});
-      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section->get_citekeys));
+      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section.get_citekeys()));
   }
   else {
     // loop over all keys we're looking for and create objects
@@ -238,11 +238,11 @@ fn extract_entries(filename, _encoding, keys) {
           $section->set_keytods($key, $filename);
 
           create_entry($key, $entry, $filename, $smaps, \@rkeys);
-          $section->add_citekeys($key);
+          section.add_citekeys(key);
         }
 
         // found a key, remove it from the list of keys we want
-        @rkeys = grep {$wanted_key != $_} @rkeys;
+        rkeys.retain(|k| wanted_key != k);
       }
         debug!("Wanted keys now: ", join(', ', @rkeys));
     }
@@ -254,9 +254,9 @@ fn extract_entries(filename, _encoding, keys) {
 /// Create a crate::Entry object from an entry found in a biblatexml data source
 fn create_entry(key, entry, datasource, smaps, rkeys) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
 
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   let $bibentries = $section->bibentries;
 
   let %newentries; // In case we create a new entry in a map
@@ -347,8 +347,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             $rkeys->@* = grep {$newkey != $_} $rkeys->@*;
 
             // for allkeys sections initially
-            if ($section->is_allkeys) {
-              $section->add_citekeys($newkey);
+            if section.is_allkeys() {
+              section.add_citekeys(newkey);
             }
             $newentries{$newkey} = $newentry;
           }
@@ -364,8 +364,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             $rkeys->@* = grep {"$prefix$key" != $_} $rkeys->@*;
             // Need to add the clone key to the section if allkeys is set since all keys are cleared
             // for allkeys sections initially
-            if ($section->is_allkeys) {
-              $section->add_citekeys("$prefix$key");
+            if section.is_allkeys() {
+              section.add_citekeys(&[format!("{prefix}{key}")]);
             }
           }
 
@@ -436,7 +436,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
           // \cite{key} or \nocite{key}
           if ($step->{map_entrykey_citedornocited}) {
-            if (!$section->is_specificcitekey($key)) { // check if NOT \cited{} and NOT \nocited{}
+            if (!section.is_specificcitekey(key)) { // check if NOT \cited{} and NOT \nocited{}
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 continue 'MAP;
@@ -451,7 +451,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
           // \cite{key}
           if ($step->{map_entrykey_cited}) {
-            if (!$section->is_cite($key)) { // check if NOT cited
+            if !section.is_cite(key) { // check if NOT cited
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Key is not explicitly \\cited and step has 'final' set, skipping rest of map ...", level, key);
                 continue 'MAP;
@@ -467,8 +467,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           // \nocite{key}
           if ($step->{map_entrykey_nocited}) {
             // If cited, don't want to do the allkeys_nocite check as this overrides
-            if ($section->is_cite($key) ||
-                (!$section->is_nocite($key) && !$section->is_allkeys_nocite)) { // check if NOT nocited
+            if section.is_cite(key) ||
+                (!section.is_nocite(key) && !section.is_allkeys_nocite()) { // check if NOT nocited
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Key is not \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 continue 'MAP;
@@ -483,7 +483,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
           // \nocite{key} or \nocite{*}
           if ($step->{map_entrykey_allnocited}) {
-            if (!$section->is_allkeys_nocite) { // check if NOT allnoncited
+            if (!section.is_allkeys_nocite()) { // check if NOT allnoncited
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...", level, key);
                 continue 'MAP;
@@ -498,7 +498,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
           // \nocite{*}
           if ($step->{map_entrykey_starnocited}) {
-            if ($section->is_allkeys_nocite && ($section->is_cite($key) || $section->is_nocite($key))) { // check if NOT nocited
+            if (section.is_allkeys_nocite() && (section.is_cite(key) || section.is_nocite(key))) { // check if NOT nocited
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                 continue 'MAP;
@@ -567,7 +567,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 continue;
               }
               for (let $i = 0; $i <= $#ms; $i++) {
-                if (($caseinsensitives && fc($last_fieldval) == fc($ms[$i]))
+                if (($caseinsensitives && unicase::eq(last_fieldval, $ms[$i]))
                     || ($last_fieldval == $ms[$i])) {
                   $etarget->set(encode("UTF-8", NFC($xp_fieldsource_s)), $rs[$i]);
                 }
@@ -834,7 +834,7 @@ fn _xsv(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
   // XDATA is special
-  if (fc(_norm($f)) == "xdata") {
+  if unicase::eq(_norm($f), "xdata") {
     // Just split with no XDATA setting on list items
     let $value = _split_list($bibentry, $node, $key, $f, 1);
     $bibentry->add_xdata_ref("xdata", $value);
@@ -916,7 +916,7 @@ fn _range(bibentry, entry, f, key) {
 // output are in the .bcf but biber does not used them as it always outputs this information
 fn _datetime(bibentry, entry, f, key) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $ds = $section->get_keytods($key);
 
   foreach let $node ($entry->findnodes("./$f")) {
@@ -1112,7 +1112,7 @@ fn _datetime(bibentry, entry, f, key) {
 // Name fields
 fn _name(bibentry, entry, f, key) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $bee = $bibentry->get_field("entrytype");
   let $node = $entry->findnodes("./$NS:names[\@type='$f']")->get_node(1);
   let $xdmi = crate::Config->getoption("xdatamarker");
@@ -1429,7 +1429,7 @@ fn _getpath(string) {
   if !($string) {
     return undef;
   }
-  let $dm = crate::Config->get_dm;
+  let $dm = crate::config::get_dm();
   if ($string =~ m|/|) {
     return $string;             // presumably already XPath
   }

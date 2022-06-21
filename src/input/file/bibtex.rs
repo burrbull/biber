@@ -1,3 +1,5 @@
+use unicase::UniCase;
+
 use sigtrap qw(handler TBSIG SEGV);
 
 use Carp;
@@ -40,7 +42,7 @@ fn init_cache {
 }
 
 // Determine handlers from data model
-let $dm = crate::Config->get_dm;
+let $dm = crate::config::get_dm();
 let $handlers = {
                 "custom" => {"annotation" => \&_annotation},
                 "field" => {
@@ -86,7 +88,7 @@ fn TBSIG(sig) {
 /// passes out an array of keys it didn't find.
 fn extract_entries(filename, encoding, keys) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let @rkeys = $keys->@*;
 
     trace!("Entering extract_entries() in driver 'bibtex'");
@@ -139,7 +141,7 @@ fn extract_entries(filename, encoding, keys) {
   let $tberr_name;
   if !($logger->is_debug() || $logger->is_trace()) {
     $tberr = File::Temp->new(TEMPLATE => "biber_Text_BibTeX_STDERR_XXXXX",
-                             DIR      => $crate::MASTER->biber_tempdir);
+                             DIR      => crate::MASTER.biber_tempdir());
     $tberr_name = $tberr->filename;
     open OLDERR, '>&', \*STDERR;
     open STDERR, '>', $tberr_name;
@@ -160,7 +162,7 @@ fn extract_entries(filename, encoding, keys) {
       debug!("Using cached data for BibTeX format file '{}' for section {}", filename, secnum);
   }
 
-  if ($section->is_allkeys) {
+  if (section.is_allkeys()) {
       debug!("All citekeys will be used for section '{}'", secnum);
 
     // Loop over all entries, creating objects
@@ -190,7 +192,7 @@ fn extract_entries(filename, encoding, keys) {
     // no explicitly cited keys
     $section->add_citekeys($cache->{orig_key_order}{$filename}->@*);
 
-      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section->get_citekeys));
+      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section.get_citekeys()));
     // Special case when allkeys but also some dynamic set entries. These keys must also be
     // in the section or they will be missed on output.
     if ($section->has_dynamic_sets) {
@@ -312,7 +314,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
   // key from the list of wanted keys because new/cloned entries will never appear to the normal
   // key search loop
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $crret = 1; // Return value from create_entry() is used to signal some things
 
   if ( $entry->metatype == BTE_REGULAR ) {
@@ -341,13 +343,13 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
         // Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
         // messier to write than Q
         if !(!exists($map->{per_type}) ||
-                first {fc($_->{content}) == fc($entry->type)} $map->{per_type}->@*) {
+                first {unicase::eq($_->{content}, $entry->type)} $map->{per_type}->@*) {
           continue;
         }
 
         // Check negated pertype restrictions
         if (exists($map->{per_nottype}) &&
-            first {fc($_->{content}) == fc($entry->type)} $map->{per_nottype}->@*) {
+            first {unicase::eq($_->{content}, $entry->type)} $map->{per_nottype}->@*) {
           continue;
         }
 
@@ -378,7 +380,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           }
           // casefold here as the field name does not come from Text::BibTeX so it might not be
           // valid in the case found in the mapping
-          else if (let $felist = $entry->get(encode("UTF-8", NFC(fc($foreach))))) { // datafield
+          else if (let $felist = $entry->get(encode("UTF-8", NFC(UniCase::new($foreach))))) { // datafield
             @maploop = split(/\s*,\s*/, $felist);
           }
           else { // explicit CSV
@@ -422,14 +424,14 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // Add to the section if explicitly nocited in the map
               if ($step->{map_entry_nocite}) {
-                $section->add_nocite($newkey);
-                $section->add_citekeys($newkey);
+                section.add_nocite(newkey);
+                section.add_citekeys(newkey);
               }
 
               // Need to add the new key to the section if allkeys is set since all keys
               // are cleared for allkeys sections initially
-              if ($section->is_allkeys) {
-                $section->add_citekeys($newkey);
+              if (section.is_allkeys()) {
+                section.add_citekeys(newkey);
               }
               $newentries{$newkey} = $newentry;
             }
@@ -449,14 +451,14 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // Add to the section if explicitly nocited in the map
               if ($step->{map_entry_nocite}) {
-                $section->add_nocite($clonekey);
-                $section->add_citekeys($clonekey);
+                section.add_nocite(clonekey);
+                section.add_citekeys(clonekey);
               }
 
               // Need to add the clone key to the section if allkeys is set since all keys
               // are cleared for allkeys sections initially
-              if ($section->is_allkeys) {
-                $section->add_citekeys($clonekey);
+              if (section.is_allkeys()) {
+                section.add_citekeys(clonekey);
               }
               $newentries{$clonekey} = $entry->clone;
             }
@@ -485,7 +487,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // Entrytype map
             if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
-              $typesource = fc($typesource);
+              $typesource = UniCase::new($typesource);
               if !($etarget->type == $typesource) {
                 // Skip the rest of the map if this step doesn't match and match is final
                 if ($step->{map_final}) {
@@ -500,7 +502,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               }
               // Change entrytype if requested
               $last_type = $etarget->type;
-              let $t = fc(maploopreplace($step->{map_type_target}, $maploop));
+              let $t = UniCase::new(maploopreplace($step->{map_type_target}, $maploop));
                 debug!("Source mapping (type={}, key={}): Changing entry type from '{}' to {}", level, etargetkey, last_type, t);
               $etarget->set_type(encode("UTF-8", NFC($t)));
             }
@@ -510,7 +512,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             let $nfieldsource;
             // Negated source field map
             if ($nfieldsource = maploopreplace($step->{map_notfield}, $maploop)) {
-              $nfieldsource = fc($nfieldsource);
+              $nfieldsource = UniCase::new($nfieldsource);
               if ($etarget->exists($nfieldsource)) {
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Field '{}' exists and step has 'final' set, skipping rest of map ...", level, etargetkey, nfieldsource);
@@ -533,7 +535,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // \cite{key} or \nocite{key}
             if ($step->{map_entrykey_citedornocited}) {
-              if (!$section->is_specificcitekey($key)) { // check if NOT \cited{} and NOT \nocited{}
+              if (!section.is_specificcitekey(key)) { // check if NOT \cited{} and NOT \nocited{}
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is neither \\cited nor \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                   continue 'MAP;
@@ -548,7 +550,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // \cite{key}
             if ($step->{map_entrykey_cited}) {
-              if (!$section->is_cite($key)) { // check if NOT cited
+              if !section.is_cite(key) { // check if NOT cited
                     debug!("Source mapping (type={}, key={}): Key is not \\cited and step has 'final' set, skipping rest of map ...", level, key);
                 }
                 else {
@@ -562,8 +564,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             // \nocite{key}
             if ($step->{map_entrykey_nocited}) {
               // If cited, don't want to do the allkeys_nocite check as this overrides
-              if ($section->is_cite($key) ||
-                  (!$section->is_nocite($key) && !$section->is_allkeys_nocite)) {  // check if NOT nocited
+              if section.is_cite(key) ||
+                  (!section.is_nocite(key) && !section.is_allkeys_nocite()) {  // check if NOT nocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is not \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                   continue 'MAP;
@@ -578,7 +580,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // \nocite{key} or \nocite{*}
             if ($step->{map_entrykey_allnocited}) {
-              if (!$section->is_allkeys_nocite) {  // check if NOT allnocited
+              if !section.is_allkeys_nocite() {  // check if NOT allnocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is not \\nocite{*}'ed and step has 'final' set, skipping rest of map ...", level, key);
                   continue 'MAP;
@@ -593,7 +595,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // \nocite{*}
             if ($step->{map_entrykey_starnocited}) {
-              if ($section->is_allkeys_nocite && ($section->is_cite($key) || $section->is_nocite($key))) {  // check if NOT nocited
+              if section.is_allkeys_nocite() && (section.is_cite(key) || section.is_nocite(key)) {  // check if NOT nocited
                 if ($step->{map_final}) {
                     debug!("Source mapping (type={}, key={}): Key is \\nocite{*}'ed but also either \\cite'd or explicitly \\nocited and step has 'final' set, skipping rest of map ...", level, key);
                   continue 'MAP;
@@ -608,7 +610,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // Field map
             if ($fieldsource = maploopreplace($step->{map_field_source}, $maploop)) {
-              $fieldsource = fc($fieldsource);
+              $fieldsource = UniCase::new($fieldsource);
 
               // key is a pseudo-field. It's guaranteed to exist so
               // just check if that's what's being asked for
@@ -666,7 +668,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                   continue;
                 }
                 for (let $i = 0; $i <= $#ms; $i++) {
-                  if (($caseinsensitives && fc($last_fieldval) == fc($ms[$i]))
+                  if (($caseinsensitives && unicase::eq(last_fieldval, $ms[$i]))
                       || ($last_fieldval == $ms[$i])) {
                     $etarget->set(encode("UTF-8", NFC($fieldsource)), $rs[$i]);
                   }
@@ -712,7 +714,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
               // Set to a different target if there is one
               if (let $target = maploopreplace($step->{map_field_target}, $maploop)) {
-                $target = fc($target);
+                $target = UniCase::new($target);
                 // Can't remap entry key pseudo-field
                 if ($fieldsource == "entrykey") {
                     debug!("Source mapping (type={}, key={}): Field '{}' is 'entrykey'- cannot map this to a new field as you must have an entrykey, skipping ...", level, etargetkey, fieldsource);
@@ -738,7 +740,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
             // field changes
             if (let $field = maploopreplace($step->{map_field_set}, $maploop)) {
-              $field = fc($field);
+              $field = UniCase::new($field);
               // Deal with special tokens
               if ($step->{map_null}) {
                   debug!("Source mapping (type={}, key={}): Deleting field '{}'", level, etargetkey, field);
@@ -829,7 +831,7 @@ fn _create_entry(k, e) {
     return 1; // newentry might be undef
   }
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $ds = $section->get_keytods($k);
 
   let $bibentry = crate::Entry->new();
@@ -845,11 +847,11 @@ fn _create_entry(k, e) {
   // We put all the fields we find modulo field aliases into the object
   // validation happens later and is not datasource dependent
   foreach let $f ($e->fieldlist) {
-    let $fc = fc($f);
+    let fc = UniCase::new($f);
 
     // We have to process local options as early as possible in order
     // to make them available for things that need them like parsename()
-    if ($fc == "options") {
+    if fc == "options" {
       let $value = $e->get(encode("UTF-8", NFC($f)));
       let $Srx = crate::Config->getoption("xsvsep");
       let $S = qr/$Srx/;
@@ -860,7 +862,7 @@ fn _create_entry(k, e) {
     if ($dm->is_field($fc)) {
       // Check the Text::BibTeX field in case we have e.g. date = {}
       if ($e->get(encode("UTF-8", NFC($f))) != "") {
-        let $handler = _get_handler($fc);
+        let $handler = _get_handler(fc);
         let $v = $handler->($bibentry, $e, $f, $k);
         if (defined($v)) {
           if ($v == "BIBER_SKIP_ENTRY") {// field data is bad enough to cause entry to be skipped
@@ -877,7 +879,7 @@ fn _create_entry(k, e) {
     }
   }
 
-  $bibentry->set_field("entrytype", fc($entrytype));
+  $bibentry->set_field("entrytype", UniCase::new($entrytype));
   $bibentry->set_field("datatype", "bibtex");
     debug!("Adding entry with key '{}' to entry list", k);
   $section->bibentries->add_entry($k, $bibentry);
@@ -889,7 +891,7 @@ fn _create_entry(k, e) {
 
 // Data annotation fields
 fn _annotation(bibentry, entry, field, key) {
-  let $fc = fc($field); // Casefolded field which is what we need internally
+  let $fc = UniCase::new($field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
   let $ann = quotemeta(crate::Config->getoption("annotation_marker"));
   let $nam = quotemeta(crate::Config->getoption("named_annotation_marker"));
@@ -923,7 +925,7 @@ fn _annotation(bibentry, entry, field, key) {
 
 // Literal fields
 fn _literal(bibentry, entry, field, key) {
-  let $fc = fc($field); // Casefolded field which is what we need internally
+  let $fc = UniCase::new($field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Record any XDATA and skip if we did
@@ -959,7 +961,7 @@ fn _literal(bibentry, entry, field, key) {
     // Just in case it is already set. We also need to fake this in tests or it will
     // look for it in the blib dir
     if !(exists($ENV{ISBN_RANGE_MESSAGE})) {
-      $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", 'RangeMessage.xml');
+      $ENV{ISBN_RANGE_MESSAGE} = File::Spec->catpath($vol, "$dir/ISBN/", "RangeMessage.xml");
     }
     let $isbn = Business::ISBN->new($value);
 
@@ -1083,9 +1085,9 @@ fn _range(bibentry, entry, field, key) {
 
 // Names
 fn _name(bibentry, entry, field, key) {
-  let $fc = fc($field); // Casefolded field which is what we need internally
+  let fc = UniCase::new($field); // Casefolded field which is what we need internally
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $value = $entry->get(encode("UTF-8", NFC($field)));
   let $xnamesep = crate::Config->getoption("xnamesep");
   let $bee = $bibentry->get_field("entrytype");
@@ -1148,17 +1150,16 @@ fn _name(bibentry, entry, field, key) {
     else { // Normal bibtex name format
       // Check for malformed names in names which aren't completely escaped
       // Too many commas
-      if !($name =~ m/\A\{\X+\}\z/xms) { // Ignore these tests for escaped names
-        let @commas = $name =~ m/,/g;
-        if ($#commas > 1) {
-          biber_error("Name \"$name\" has too many commas, skipping entry '$key'", 1);
-          $section->del_citekey($key);
+      if !(name.starts_with('{') && name.ends_with('}')) { // Ignore these tests for escaped names
+        if name.matches(',').count() > 1 {
+          biber_error("Name \"$name\" has too many commas, skipping entry '$key'", true);
+          section.del_citekey(key);
           return "BIBER_SKIP_ENTRY";
         }
 
         // Consecutive commas cause Text::BibTeX::Name to segfault
         if ($name =~ /,,/) {
-          biber_error("Name \"$name\" is malformed (consecutive commas): skipping entry '$key'", 1);
+          biber_error("Name \"$name\" is malformed (consecutive commas): skipping entry '$key'", true);
           $section->del_citekey($key);
           return "BIBER_SKIP_ENTRY";
         }
@@ -1192,7 +1193,7 @@ fn _datetime(bibentry, entry, field, key) {
   let $datetype = $field =~ s/date\z//xmsr;
   let $date = $entry->get(encode("UTF-8", NFC($field)));
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
   let $ds = $section->get_keytods($key);
 
   let ($sdate, $edate, $sep, $unspec) = parse_date_range($bibentry, $datetype, $date);
@@ -1397,7 +1398,7 @@ fn _urilist(bibentry, entry, field) {
 /// datasource key, decoded into UTF8
 fn cache_data(filename, encoding) {
   let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER->sections->get_section($secnum);
+  let $section = $crate::MASTER.sections()->get_section($secnum);
 
   // Initialise this
   $cache->{preamble}{$filename} = [];
@@ -1536,7 +1537,7 @@ fn preprocess_file(filename, benc) {
   // Put the utf8 encoded file into the global biber tempdir
   // We have to do this in case we can't write to the location of the
   // .bib file
-  let $td = $crate::MASTER->biber_tempdir;
+  let $td = crate::MASTER.biber_tempdir();
   let (_, _, fn_) = File::Spec->splitpath($filename);
 
   // The filename that Text::BibTeX actually opens cannot be UTF-8 on Windows as there is no
@@ -1581,7 +1582,7 @@ fn preprocess_file(filename, benc) {
 /// such decoding is regexp based and since braces are used to protect data in
 /// .bib files, it makes it hard to do some parsing.
 fn parse_decode(ufilename) {
-  let $dmh = crate::Config->get_dm_helpers;
+  let $dmh = crate::config::get_dm_helpers();
   let $lbuf;
 
   let $bib = Text::BibTeX::File->new();
@@ -1596,7 +1597,7 @@ fn parse_decode(ufilename) {
         let $fv = $entry->get(encode("UTF-8", NFC($f))); // NFC boundary: $f is "output" to Text::BibTeX
 
         // Don't decode verbatim fields
-        if (!first {fc($f) == fc($_)} $dmh->{verbs}->@*) {
+        if (!first {unicase::eq(f, $_)} $dmh->{verbs}->@*) {
           $fv = crate::LaTeX::Recode::latex_decode($fv);
         }
         $lbuf .= "  $f = {$fv},\n";

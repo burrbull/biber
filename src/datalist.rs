@@ -994,7 +994,7 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
     return "";
   }
 
-  let $dmh = crate::Config->get_dm_helpers;
+  let $dmh = crate::config::get_dm_helpers();
 
   $format = format.unwrap_or("bbl"); // default
 
@@ -1005,7 +1005,7 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
 
     // entryset
     if (let $es = $self->get_entryfield($key, "entryset")) {
-      let $str = "\\set{" . join(',', $es->@*) . '}';
+      let $str = format!("\\set{{{}}}", join(",", $es->@*));
       $entry_string =~ s|<BDS>ENTRYSET</BDS>|$str|gxms;
     }
 
@@ -1053,7 +1053,7 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
       }
       let $nlid = nl->get_id;
       if (defined($self->get_uniquelist($nlid))) {
-        let $str = 'ul=' . $self->get_uniquelist($nlid);
+        let $str = "ul=" . $self->get_uniquelist($nlid);
         $entry_string =~ s|<BDS>UL-$nlid</BDS>|$str|gxms;
       }
       else {
@@ -1071,9 +1071,9 @@ fn instantiate_entry(self, $section, $entry, $key, $format) {
       foreach let $n ($nl->names->@*) {
         let $nid = $n->get_id;
         if (defined($self->get_unsummary($nlid, $nid))) {
-          let $str = 'un=' . $self->get_unsummary($nlid, $nid);
+          let $str = "un=" . $self->get_unsummary($nlid, $nid);
           $entry_string =~ s|<BDS>UNS-$nid</BDS>|$str|gxms;
-          $str = 'uniquepart=' . $self->get_unpart($nlid, $nid);
+          $str = "uniquepart=" . $self->get_unpart($nlid, $nid);
           $entry_string =~ s|<BDS>UNP-$nid</BDS>|$str|gxms;
           foreach let $np ($n->get_nameparts) {
             if ($self->is_unbasepart($nlid, $nid, $np)) {

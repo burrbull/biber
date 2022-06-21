@@ -84,8 +84,9 @@ fn output(self) {
   $i = ' '; // starting indentation
 
   // Loop over sections, sort so we can run tests
-  foreach let $section (sort {$a->number <=> $b->number} $biber->sections->get_sections->@*) {
-    let $secnum = $section->number;
+  // NOTE: already sorted
+  for section in &biber.sections().get_sections() {
+    let secnum = section.number();
     if ($gopts->{section}) {
       $graph .= $i x $in . "subgraph \"cluster_section${secnum}\" {\n";
       $in += 2;
@@ -104,14 +105,18 @@ fn output(self) {
       let $et = uc($be->get_field("entrytype"));
 
       // colour depends on whether cited, uncited, dataonly or key alias
-      let $c = $section->has_citekey($citekey) ? '#a0d0ff' : '#deefff';
+      let mut c = if section.has_citekey(citekey) {
+        "#a0d0ff"
+      } else {
+        "#deefff"
+      };
       if (let $options = $be->get_field("options")) {
         if $options =~ m/skip(?:bib|biblist|lab)/o {
-          $c = "#fdffd9" ;
+          c = "#fdffd9" ;
         }
       }
       if $section->get_citekey_alias($citekey) {
-        $c = "#a1edec" ;
+        c = "#a1edec" ;
       }
 
       // make a set subgraph if a set member
@@ -297,10 +302,10 @@ fn _graph_inheritance(type, secnum) {
   let $edgecolor;
 
   if ($type == "crossref") {
-    $edgecolor = '#7d7879';
+    $edgecolor = "#7d7879";
   }
   else if ($type == "xdata") {
-    $edgecolor = '#2ca314';
+    $edgecolor = "#2ca314";
   }
 
   if (let $gr = crate::Config->get_graph($type)) {

@@ -116,7 +116,7 @@ pub fn locate_data_file($source) {
         // It may, however, have been removed by some biber unpacked dists
         if (!exists($ENV{PERL_LWP_SSL_CA_FILE}) &&
             !exists($ENV{PERL_LWP_SSL_CA_PATH}) &&
-            !defined(crate::Config->getoption('ssl-nointernalca')) &&
+            !defined(crate::Config->getoption("ssl-nointernalca")) &&
             eval {require Mozilla::CA}) {
           // we assume that the default CA file is in .../Mozilla/CA/cacert.pem
           (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
@@ -161,7 +161,7 @@ pub fn locate_data_file($source) {
       // will be needed after this sub has finished and so it must not be unlinked
       // by going out of scope
       let $tf = File::Temp->new(TEMPLATE => "biber_remote_data_source_XXXXX",
-                               DIR => $crate::MASTER->biber_tempdir,
+                               DIR => crate::MASTER.biber_tempdir(),
                                SUFFIX => '.bib',
                                UNLINK => 0);
 
@@ -207,7 +207,7 @@ pub fn locate_data_file($source) {
   }
 
   // File is where control file lives
-  if (let $cfp = crate::Config->get_ctrlfile_path) {
+  if (let $cfp = crate::config::get_ctrlfile_path()) {
     let ($ctlvolume, $ctldir, undef) = File::Spec->splitpath($cfp);
     if ($ctlvolume) { // add vol sep for windows if volume is set and there isn't one
       if !($ctlvolume =~ /:\z/) {
@@ -312,12 +312,12 @@ pub fn biber_warn($warning, $entry) {
 
 /// Wrapper around error logging
 /// Forces an exit.
-pub fn biber_error($error, $nodie) {
-  $logger->error($error);
+pub fn biber_error($error, nodie: bool) {
+  error!($error);
   $crate::MASTER->{errors}++;
   // exit unless user requested not to for errors
-  if !($nodie || crate::Config->getoption("nodieonerror")) {
-    $crate::MASTER->display_end;
+  if !(nodie || crate::Config->getoption("nodieonerror")) {
+    $crate::MASTER.display_end();
     exit EXIT_ERROR;
   }
 }
@@ -346,7 +346,7 @@ pub fn latex_recode_output($string) {
 
 /// Removes elements which are not to be considered during initials generation
 /// in names
-pub fn strip_noinit($string) {
+pub fn strip_noinit(string) {
   if !($string) {
     return ""; // Sanitise missing data
   }
@@ -364,7 +364,7 @@ pub fn strip_noinit($string) {
 }
 
 /// Removes elements which are not to be used in sorting a name from a string
-pub fn strip_nosort($string, $fieldname) {
+pub fn strip_nosort(string, fieldname) {
   no autovivification;
   if !($string) {
     return ""; // Sanitise missing data
@@ -377,11 +377,11 @@ pub fn strip_nosort($string, $fieldname) {
 
   foreach let $nsopt ($nosort->@*) {
     // Specific fieldnames override sets
-    if (fc($nsopt->{name}) == fc($fieldname)) {
+    if (unicase::eq($nsopt->{name}, fieldname)) {
       push $restrings->@*, $nsopt->{value};
     }
     else if (let $set = $DATAFIELD_SETS{lc($nsopt->{name})} ) {
-      if (first {fc($_) == fc($fieldname)} $set->@*) {
+      if (first {unicase::eq($_, fieldname)} $set->@*) {
         push $restrings->@*, $nsopt->{value};
       }
     }
@@ -404,7 +404,7 @@ pub fn strip_nosort($string, $fieldname) {
 /// * uniquename generation
 ///
 /// from a name
-pub fn strip_nonamestring($string, $fieldname) {
+pub fn strip_nonamestring(string, fieldname) {
   no autovivification;
   if !($string) {
     return ""; // Sanitise missing data
@@ -417,11 +417,10 @@ pub fn strip_nonamestring($string, $fieldname) {
 
   foreach let $nnopt ($nonamestring->@*) {
     // Specific fieldnames override sets
-    if (fc($nnopt->{name}) == fc($fieldname)) {
+    if (unicase::eq($nnopt->{name}, fieldname)) {
       push $restrings->@*, $nnopt->{value};
-    }
-        else if (let $set = $DATAFIELD_SETS{lc($nnopt->{name})} ) {
-      if (first {fc($_) == fc($fieldname)} $set->@*) {
+    } else if (let $set = $DATAFIELD_SETS{lc($nnopt->{name})} ) {
+      if (first {unicase::eq($_, fieldname)} $set->@*) {
         push $restrings->@*, $nnopt->{value};
       }
     }
@@ -585,20 +584,22 @@ pub fn reduce_array($a, $b) {
 ///     "{string} {string}" -> "string} {string"
 ///
 /// Return (boolean if stripped, string)
-pub fn remove_outer($str) {
-  if $str =~ m/}\s*{/ {
-    return (0, $str);
+pub fn remove_outer(s: &str) -> (bool, String) {
+  if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
+    (false, s.into())
+  } else if s.starts_with('{') && s.ends_with('}') {
+    (true, s[1..s.len()-1].to_string())
+  } else {
+    (false, s.into())
   }
-  let $r = $str =~ s/^{(\X+)}$/$1/;
-  return (($r ? 1 : 0), $str);
 }
 
 /// Return (boolean if surrounded in braces
 pub fn has_outer(s: &str) -> bool {
-  if Regex::new(r"}\s*{").unwrap().is_match(s) {
+  if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
     return false;
   }
-  Regex::new(r"^{\X+}$").unwrap().is_match(s)
+  s.starts_with('{') &&  s.ends_with('}')
 }
 
 /// Add surrounding curly brackets:
@@ -1344,7 +1345,7 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
   if ($from == "iast" && $to == "devanagari") {
     return new Lingua::Translit('IAST Devanagari');
   }
-  else if ($from == "russian" && $to == 'ala-lc') {
+  else if ($from == "russian" && $to == "ala-lc") {
     return new Lingua::Translit('ALA-LC RUS');
   }
   else if ($from == "russian" && $to == 'bgn/pcgn-standard') {
