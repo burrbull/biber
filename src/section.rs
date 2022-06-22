@@ -61,7 +61,7 @@ impl Section {
   }
 
   /// Get the count of a key
-  fn get_seenkey(self, $key) -> Option<u32> {
+  fn get_seenkey(self, key: &str) -> Option<u32> {
     self.seenkeys.get(key)
   }
 
@@ -261,24 +261,22 @@ impl Section {
 
   /// Returns a crate::Entry object for the given citation key
   /// Understands citekey aliases
-  fn bibentry(self, $key) {
-    if (let $realkey = $self->get_citekey_alias($key)) {
-      return $self->bibentries->entry($realkey);
-    }
-    else {
-      return $self->bibentries->entry($key);
+  fn bibentry(&self, key: &str) -> Option<&Entry> {
+    if let Some(realkey) = self.get_citekey_alias(key) {
+      self.bibentries.entry(realkey)
+    } else {
+      self.bibentries.entry(key)
     }
   }
 
   /// Return crate::Entries object for this section
-  fn bibentries(self) {
-    return $self->{bibentries};
+  fn bibentries(&self) -> &Entries {
+    &self.bibentries
   }
 
   /// Delete all crate::Entry objects from the crate::Section object
-  fn del_bibentries(self) {
-    $self->{bibentries} = new crate::Entries;
-    return;
+  fn del_bibentries(&mut self) {
+    self.bibentries = crate::Entries::new();
   }
 
   /// Sets the citekeys in a crate::Section object
@@ -376,7 +374,7 @@ impl Section {
   }
 
   /// Get citekey alias information
-  fn get_citekey_alias(&self, alias: &str) -> &Option<String> {
+  fn get_citekey_alias(&self, alias: &str) -> Option<&String> {
     self.citekey_alias.get(alias)
   }
 

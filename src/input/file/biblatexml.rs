@@ -71,7 +71,7 @@ fn extract_entries(filename, _encoding, keys) {
   // $encoding is ignored as it is always assumed to be UTF-8 for XML
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
-  let $bibentries = $section->bibentries;
+  let bibentries = section.bibentries();
 
   let @rkeys = $keys->@*;
 
@@ -214,10 +214,9 @@ fn extract_entries(filename, _encoding, keys) {
         // See comment above about the importance of the case of the key
         // passed to create_entry()
         // Skip creation if it's already been done, for example, via a citekey alias
-        if !($section->bibentries->entry_exists($wanted_key)) {
-
+        if !section.bibentries().entry_exists(wanted_key) {
           // Record a key->datasource name mapping for error reporting
-          $section->set_keytods($wanted_key, $filename);
+          section.set_keytods(wanted_key, filename);
 
           create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys);
         }
@@ -231,13 +230,13 @@ fn extract_entries(filename, _encoding, keys) {
 
         // Make sure there is a real, cited entry for the citekey alias
         // just in case only the alias is cited
-        if !($section->bibentries->entry_exists($key)) {
-          let $entry = $xpc->findnodes("/$NS:entries/$NS:entry/[\@id='$key']");
+        if !section.bibentries().entry_exists(key) {
+          let entry = xpc.findnodes("/$NS:entries/$NS:entry/[\@id='$key']");
 
           // Record a key->datasource name mapping for error reporting
-          $section->set_keytods($key, $filename);
+          section.set_keytods(key, filename);
 
-          create_entry($key, $entry, $filename, $smaps, \@rkeys);
+          create_entry($key, entry, $filename, $smaps, \@rkeys);
           section.add_citekeys(key);
         }
 
@@ -256,8 +255,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
 
-  let $dm = crate::config::get_dm();
-  let $bibentries = $section->bibentries;
+  let dm = crate::config::get_dm();
+  let bibentries = section.bibentries();
 
   let %newentries; // In case we create a new entry in a map
 
@@ -723,9 +722,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       continue;
     }
 
-    let $bibentry = new crate::Entry;
-    let $k = $e->getAttribute("id");
-    $bibentry->set_field("citekey", $k);
+    let bibentry = crate::Entry::new();
+    let k = e.getAttribute("id");
+    bibentry.set_field("citekey", k);
       debug!("Creating entry with key '{}'", k);
 
     // We put all the fields we find modulo field aliases into the object.
@@ -748,9 +747,9 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       }
     }
 
-    $bibentry->set_field("entrytype", $e->getAttribute("entrytype"));
-    $bibentry->set_field("datatype", "biblatexml");
-    $bibentries->add_entry($k, $bibentry);
+    bibentry.set_field("entrytype", e.getAttribute("entrytype"));
+    bibentry.set_field("datatype", "biblatexml");
+    bibentries.add_entry(k, bibentry);
   }
   return;
 }

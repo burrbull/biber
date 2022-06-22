@@ -750,13 +750,13 @@ impl DataList {
   }
 
   /// Gets the keys for the list
-  fn get_keys(self) {
-    return $self->{keys};
+  fn get_keys(&self) -> &Vec<String> {
+    &self.keys
   }
 
   /// Count the keys for the list
-  fn count_keys(self) {
-    return $#{$self->{keys}} + 1;
+  fn count_keys(&self) {
+    self.keys.len()
   }
 
   /// Gets  name list data
@@ -983,11 +983,11 @@ impl DataList {
   /// of the reference context and not the entry per se so it cannot be stored
   /// statically in the entry and must be retrieved from the specific datalist
   /// when outputting the entry.
-  fn instantiate_entry(self, section: Section, $entry, $key, fmt: Option<OutputFormat>) {
-    let $be = $section->bibentry($key);
-    let $bee = $be->get_field("entrytype");
+  fn instantiate_entry(self, section: Section, $entry, key: &str, fmt: Option<OutputFormat>) {
+    let be = section.bibentry(key);
+    let bee = be.get_field("entrytype");
 
-    if !($entry && $be) {
+    if !(entry && be) {
       return "";
     }
 

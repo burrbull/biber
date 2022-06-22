@@ -1151,13 +1151,13 @@ impl Biber {
       return;
     }
 
-    foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
+    for citekey in section.get_citekeys() {
+      let be = section.bibentry(citekey);
 
       // XREF
-      if (let $refkey = $be->get_field("xref")) {
-        if (let $realkey = $section->get_citekey_alias($refkey)) {
-          $be->set_datafield("xref", $realkey);
+      if (let $refkey = be.get_field("xref")) {
+        if (let $realkey = section.get_citekey_alias(refkey)) {
+          be.set_datafield("xref", realkey);
         }
       }
       // CROSSREF
@@ -1202,7 +1202,7 @@ impl Biber {
 
   /// This instantiates any dynamic entries so that they are available
   /// for processing later on. This has to be done before most all other
-  /// processing so that when we call $section->bibentry($key), as we
+  /// processing so that when we call `section.bibentry(key)`, as we
   /// do many times in the code, we don't die because there is a key but
   /// no Entry object.
   fn instantiate_dynamic(self) {
@@ -1223,12 +1223,12 @@ impl Biber {
       @members = @realmems;
       section.set_dynamic_set(dset, realmems.iter().map(|s| s.as_str()));
 
-      let $be = new crate::Entry;
+      let be = crate::Entry::new();
       $be->set_field("entrytype", "set");
       $be->set_field("entryset", [ @members ]);
       $be->set_field("citekey", $dset);
       $be->set_field("datatype", "dynamic");
-      $section->bibentries->add_entry($dset, $be);
+      section.bibentries().add_entry(dset, be);
         debug!("Created dynamic set entry '{}' in section {}", dset, secnum);
 
       foreach let $m (@members) {
@@ -1237,14 +1237,14 @@ impl Biber {
           crate::Config->set_graph("set", $dset, $m);
         }
         // Instantiate any related entry clones we need from dynamic set members
-        $section->bibentry($m)->relclone;
+        section.bibentry(m).relclone();
       }
       // Setting dataonly options for members is handled by process_sets()
     }
 
     // Instantiate any related entry clones we need from regular entries
     foreach let $citekey ($section.get_citekeys()) {
-      $section->bibentry($citekey)->relclone;
+      section.bibentry(citekey).relclone();
     }
 
     return;
@@ -1265,7 +1265,7 @@ impl Biber {
 
     // We are not looping over citekeys here as XDATA entries are not cited.
     // They may have been added to the section as entries, however.
-    foreach let $be ($section->bibentries->entries) {
+    for be in section.bibentries.entries() {
       // Don't directly resolve XDATA entrytypes - this is done recursively in the Entry method
       // Otherwise, we will die on loops etc. for XDATA entries which are never referenced from
       // any cited entry
@@ -1290,7 +1290,7 @@ impl Biber {
       debug!("Adding set members to citekeys for section {}", secnum);
 
     foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // promote indirectly cited inset set members to fully cited entries
       if ($be->get_field("entrytype") == "set" &&
@@ -1323,7 +1323,7 @@ impl Biber {
         // Set parents inherit first child member data so that they get sensible
         // sorting/labelling defaults. Most of these inherited fields will not be output
         // in the .bbl
-        $be->set_inherit_from($section->bibentry($inset_keys->[0]), $section);
+        $be->set_inherit_from(section.bibentry($inset_keys->[0]), $section);
 
         // warning for the old pre-Biber way of doing things
         if ($be->get_field("crossref")) {
@@ -1352,7 +1352,7 @@ impl Biber {
       debug!("Recording set information");
 
     foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // Record set information
       // It's best to do this in the loop here as every entry needs the information
@@ -1368,7 +1368,7 @@ impl Biber {
           $section->set_set_cp($member, $citekey);
 
           // Instantiate any related entry clones we need from static set members
-          $section->bibentry($member)->relclone;
+          section.bibentry(member).relclone();
         }
       }
     }
@@ -1387,7 +1387,7 @@ impl Biber {
       debug!("Calculating explicit and implicit xref/crossrefs for section {}", secnum);
 
     foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // Loop over cited keys and count the cross/xrefs
       // Can't do this when parsing entries as this would count them
@@ -1396,7 +1396,7 @@ impl Biber {
           debug!("Incrementing crossrefkey count for entry '{}' via entry '{}'", refkey, citekey);
 
         // Don't increment if the crossref doesn't exist
-        if $section->bibentry($refkey) {
+        if section.bibentry(refkey) {
           crate::Config->incr_crossrefkey($refkey);
         }
       }
@@ -1422,7 +1422,7 @@ impl Biber {
           debug!("cross key '{}' is crossref'ed >= mincrossrefs, adding to citekeys", k);
         // Don't add this flag if the entry is also cited directly
         if !section.has_citekey(k) {
-          $section->bibentry($k)->set_field("crossrefsource", 1);
+          section.bibentry(k).set_field("crossrefsource", 1);
         }
         $section->add_citekeys($k);
       }
@@ -1437,7 +1437,7 @@ impl Biber {
           debug!("xref key '{}' is xref'ed >= minxrefs, adding to citekeys", k);
         // Don't add this flag if the entry is also cited directly
         if !section.has_citekey(k) {
-          $section->bibentry($k)->set_field("xrefsource", 1);
+          section.bibentry(k).set_field("xrefsource", 1);
         }
         $section->add_citekeys($k);
       }
@@ -1464,7 +1464,7 @@ impl Biber {
     // This must come after doing implicit inclusion based on minref/mincrossref
     // otherwise cascading xref->crossref wont' work
     foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // Do crossref inheritance
       if (let $cr = $be->get_field("crossref")) {
@@ -1472,10 +1472,10 @@ impl Biber {
         if crate::Config->get_inheritance("crossref", $cr, $be->get_field("citekey")) {
           continue;
         }
-        let $parent = $section->bibentry($cr);
+        let parent = section.bibentry(cr);
           debug!("Entry {} inheriting fields from parent {}", citekey, cr);
-        if !($parent) {
-          biber_warn("Cannot inherit from crossref key '$cr' - does it exist?", $be);
+        if !parent {
+          biber_warn("Cannot inherit from crossref key '$cr' - does it exist?", be);
         }
         else {
           $be->inherit_from($parent);
@@ -1497,11 +1497,11 @@ impl Biber {
     if (crate::Config->getoption("validate_datamodel")) {
       info!("Datamodel validation starting");
       let $dmwe = crate::Config->getoption("dieondatamodel") ? \&biber_error : \&biber_warn;
-      foreach let $citekey ($section.get_citekeys()) {
-        let $be = $section->bibentry($citekey);
-        let $citekey = $be->get_field("citekey");
-        let $et = $be->get_field("entrytype");
-        let $ds = $section->get_keytods($citekey);
+      for citekey in section.get_citekeys() {
+        let be = section.bibentry(citekey);
+        let citekey = be.get_field("citekey");
+        let et = be.get_field("entrytype");
+        let ds = section.get_keytods(citekey);
 
         // default entrytype to MISC type if not a known type
         if !($dm->is_entrytype($et)) {
@@ -1551,7 +1551,7 @@ impl Biber {
   /// Generate name strings and disambiguation schema. Has to be in the context
   /// of a data list (reference context) because uniquenametemplate can be specified
   /// per-list/context
-  fn process_namedis(self, $citekey, $dlist) {
+  fn process_namedis(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
@@ -1559,11 +1559,11 @@ impl Biber {
     // Use nameuniqueness template to construct uniqueness strings
     let $untname = $dlist->get_uniquenametemplatename;
 
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
-    let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $citekey);
-    let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
+    let $un = crate::Config->getblxoption(secnum, "uniquename", bee, citekey);
+    let $ul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
 
     // Can be per-entry
     $untname = crate::Config->getblxoption($secnum, "uniquenametemplatename", undef, $citekey).unwrap_or($untname);
@@ -1572,7 +1572,7 @@ impl Biber {
     // to use this method to get data without setting it in the list object (in uniqueprimaryauthor())
     let $namedis;
 
-  MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
+  'MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
       let nl = $be->get_field($pn);
       if !nl {
         continue;
@@ -1780,7 +1780,7 @@ impl Biber {
       debug!("Processing entries in section {} (before uniqueness)", secnum);
     foreach let $citekey ( $section.get_citekeys() ) {
 
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // process name disambiguation schemata
       let $namedis = $self->process_namedis($citekey, $dlist);
@@ -1881,13 +1881,13 @@ impl Biber {
   }
 
   /// Track seen primary author base names for generation of uniqueprimaryauthor
-  fn process_uniqueprimaryauthor(self, $citekey, $dlist) {
+  fn process_uniqueprimaryauthor(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     let $bee = $be->get_field("entrytype");
 
-    if (let $lni = $be->get_labelname_info) {
+    if (let $lni = be.get_labelname_info()) {
       if (crate::Config->getblxoption(undef, "uniqueprimaryauthor", $bee, $citekey)) {
         let $nl = $be->get_field($lni);
           trace!("Creating uniqueprimaryauthor information for '{}'", citekey);
@@ -1913,14 +1913,14 @@ impl Biber {
 
   /// Track seen work combination for generation of singletitle, uniquetitle, uniquebaretitle and
   /// uniquework
-  fn process_workuniqueness(self, $citekey, $dlist) {
+  fn process_workuniqueness(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
     let $identifier;
-    let $lni = $be->get_labelname_info;
+    let $lni = be.get_labelname_info();
     let $lti = $be->get_labeltitle_info;
 
     // ignore settings from inheritance data?
@@ -1986,11 +1986,11 @@ impl Biber {
   }
 
   /// Track labelname/date parts combination for generation of extradate
-  fn process_extradate(self, $citekey, $dlist) {
+  fn process_extradate(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
     // Generate labelname/year combination for tracking extradate
     // * If there is no labelname to use, use empty string
@@ -2007,7 +2007,7 @@ impl Biber {
         trace!("Creating extradate information for '{}'", citekey);
 
       let $namehash = "";
-      if (let $lni = $be->get_labelname_info) {
+      if (let $lni = be.get_labelname_info()) {
         $namehash = $self->_getnamehash_u($citekey, $be->get_field($lni), $dlist);
       }
 
@@ -2037,20 +2037,20 @@ impl Biber {
   }
 
   /// Track labelname only for generation of extraname
-  fn process_extraname(self, $citekey, $dlist) {
+  fn process_extraname(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption($secnum, "skiplab", $bee, $citekey)) {
+    if (crate::Config->getblxoption($secnum, "skiplab", bee, citekey)) {
       return;
     }
 
       trace!("Creating extraname information for '{}'", citekey);
 
     let $namehash;
-    if (let $lni = $be->get_labelname_info) {
+    if (let $lni = be.get_labelname_info()) {
       $namehash = $self->_getnamehash_u($citekey, $be->get_field($lni), $dlist);
     }
 
@@ -2064,11 +2064,11 @@ impl Biber {
   }
 
   /// Track labelname/labeltitle combination for generation of extratitle
-  fn process_extratitle(self, $citekey, $dlist) {
+  fn process_extratitle(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
     // Generate labelname/labeltitle combination for tracking extratitle
     // * If there is no labelname to use, use empty string
@@ -2078,15 +2078,15 @@ impl Biber {
     // This is different from extradate in that we do track the information
     // if the labelname is empty as titles are much more unique than years
 
-    if (crate::Config->getblxoption(undef, "labeltitle", $bee)) {
-      if (crate::Config->getblxoption($secnum, "skiplab", $bee, $citekey)) {
+    if (crate::Config->getblxoption(undef, "labeltitle", bee)) {
+      if (crate::Config->getblxoption($secnum, "skiplab", bee, citekey)) {
         return;
       }
 
         trace!("Creating extratitle information for '{}'", citekey);
 
       let $namehash = "";
-      if (let $lni = $be->get_labelname_info) {
+      if (let $lni = be.get_labelname_info()) {
         $namehash = $self->_getnamehash_u($citekey, $be->get_field($lni), $dlist);
       }
 
@@ -2106,11 +2106,11 @@ impl Biber {
   }
 
   /// Track labeltitle/labelyear combination for generation of extratitleyear
-  fn process_extratitleyear(self, $citekey, $dlist) {
+  fn process_extratitleyear(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
     // Generate labeltitle/labelyear combination for tracking extratitleyear
     // * If there is no labeltitle to use, use empty string
@@ -2119,8 +2119,8 @@ impl Biber {
     //   (see code in incr_seen_titleyear method).
     // * Don't increment if skiplab is set
 
-    if (crate::Config->getblxoption(undef, "labeltitleyear", $bee, $citekey)) {
-      if (crate::Config->getblxoption($secnum, "skiplab", $bee, $citekey)) {
+    if (crate::Config->getblxoption(undef, "labeltitleyear", bee, citekey)) {
+      if (crate::Config->getblxoption($secnum, "skiplab", bee, citekey)) {
         return;
       }
 
@@ -2149,16 +2149,16 @@ impl Biber {
   /// Checks for common set errors and enforces "dataonly" options for set members.
   /// It's not necessary to set skipbib, skipbiblist in the OPTIONS field for
   /// the set members as these are automatically set by biblatex due to the \inset
-  fn process_sets(self, citekey) {
+  fn process_sets(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     if (let @entrysetkeys = $section->get_set_children($citekey)) {
       // Enforce Biber parts of virtual "dataonly" options for set members
       // Also automatically create an "entryset" field for the members
       foreach let $member (@entrysetkeys) {
-        let $me = $section->bibentry($member);
-        process_entry_options($member, [ "skipbib", "skiplab", "skipbiblist", "uniquename=false", "uniquelist=false" ], $secnum);
+        let me = section.bibentry(member);
+        process_entry_options($member, [ "skipbib", "skiplab", "skipbiblist", "uniquename=false", "uniquelist=false" ], secnum);
 
         // Use get_datafield() instead of get_field() because we add "entryset" below
         // and if the same entry is used in more than one set, it will pass this test
@@ -2185,23 +2185,23 @@ impl Biber {
   }
 
   /// Generate nocite information
-  fn process_nocite(self, $citekey) {
+  fn process_nocite(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     // Either specifically nocited or \nocite{*} and not specifically cited without nocite
     if (section.is_nocite(citekey) ||
         (section.is_allkeys_nocite() && !section.is_specificcitekey(citekey))) {
-      $be->set_field("nocite", '1');
+      $be->set_field("nocite", "1");
     }
   }
 
   /// Generate labelname information.
-  fn process_labelname(self, $citekey) {
+  fn process_labelname(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
     let $lnamespec = crate::Config->getblxoption(undef, "labelnamespec", $bee);
     let $dm = crate::config::get_dm();
     let $dmh = crate::config::get_dm_helpers();
@@ -2259,21 +2259,21 @@ impl Biber {
       }
     }
 
-    if !($be->get_labelname_info) {
+    if !(be.get_labelname_info()) {
         debug!("Could not determine the labelname source of entry {}", citekey);
     }
   }
 
   /// Generate labeldate information, including times
-  fn process_labeldate(self, citekey) {
+  fn process_labeldate(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
     let $dm = crate::config::get_dm();
 
-    if (crate::Config->getblxoption(undef, "labeldateparts", $bee, $citekey)) {
-      let $ldatespec = crate::Config->getblxoption(undef, "labeldatespec", $bee);
+    if (crate::Config->getblxoption(undef, "labeldateparts", bee, citekey)) {
+      let $ldatespec = crate::Config->getblxoption(undef, "labeldatespec", bee);
       foreach let $lds ($ldatespec->@*) {
         let pseudodate = false;
         let $ld = $lds->{content};
@@ -2427,13 +2427,13 @@ impl Biber {
   /// Note that this is not conditionalised on the biblatex "labeltitle"
   /// as labeltitle should always be output since all standard styles need it.
   /// Only extratitle is conditionalised on the biblatex "labeltitle" option.
-  fn process_labeltitle(self, citekey) {
+  fn process_labeltitle(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
 
-    let $ltitlespec = crate::Config->getblxoption(undef, "labeltitlespec", $bee);
+    let $ltitlespec = crate::Config->getblxoption(undef, "labeltitlespec", bee);
 
     foreach let $h_ltn ($ltitlespec->@*) {
       let $ltn = $h_ltn->{content};
@@ -2447,10 +2447,10 @@ impl Biber {
   }
 
   /// Generate fullhash
-  fn process_fullhash(self, citekey) {
+  fn process_fullhash(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     let $dmh = crate::config::get_dm_helpers();
 
     // fullhash is generated from the labelname but ignores SHORT* fields and
@@ -2476,16 +2476,16 @@ impl Biber {
   }
 
   /// Generate namehash
-  fn process_namehash(self, citekey, dlist) {
+  fn process_namehash(self, citekey: &str, dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     let $dmh = crate::config::get_dm_helpers();
 
     // namehash is generated from the labelname
     // This can't be resolved nicely by biblatex because it depends on use* options
     // and also SHORT* fields etc.
-    if (let $lni = $be->get_labelname_info) {
+    if (let $lni = be.get_labelname_info()) {
       if (let $ln = $be->get_field($lni)) {
         $dlist->set_entryfield($citekey, "namehash", $self->_getnamehash($citekey, $ln, $dlist));
         $dlist->set_entryfield($citekey, "bibnamehash", $self->_getnamehash($citekey, $ln, $dlist, 1));
@@ -2506,10 +2506,10 @@ impl Biber {
   }
 
   /// Generate per_name_hashes
-  fn process_pername_hashes(self, $citekey, $dlist) {
+  fn process_pername_hashes(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     let $dmh = crate::config::get_dm_helpers();
 
     foreach let $pn ($dmh->{namelistsall}->@*) {
@@ -2534,18 +2534,18 @@ impl Biber {
     let $dmh = crate::config::get_dm_helpers();
 
       debug!("Postprocessing visible names for section {}", secnum);
-    foreach let $citekey ($section.get_citekeys()) {
-      let $be = $section->bibentry($citekey);
-      let $bee = $be->get_field("entrytype");
+    for citekey in section.get_citekeys() {
+      let be = section.bibentry(citekey);
+      let bee = be.get_field("entrytype");
 
-      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", $bee, $citekey);
-      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", $bee, $citekey);
-      let $maxbn = crate::Config->getblxoption($secnum, "maxbibnames", $bee, $citekey);
-      let $minbn = crate::Config->getblxoption($secnum, "minbibnames", $bee, $citekey);
-      let $maxsn = crate::Config->getblxoption($secnum, "maxsortnames", $bee, $citekey);
-      let $minsn = crate::Config->getblxoption($secnum, "minsortnames", $bee, $citekey);
-      let $maxan = crate::Config->getblxoption($secnum, "maxalphanames", $bee, $citekey);
-      let $minan = crate::Config->getblxoption($secnum, "minalphanames", $bee, $citekey);
+      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", bee, citekey);
+      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", bee, citekey);
+      let $maxbn = crate::Config->getblxoption($secnum, "maxbibnames", bee, citekey);
+      let $minbn = crate::Config->getblxoption($secnum, "minbibnames", bee, citekey);
+      let $maxsn = crate::Config->getblxoption($secnum, "maxsortnames", bee, citekey);
+      let $minsn = crate::Config->getblxoption($secnum, "minsortnames", bee, citekey);
+      let $maxan = crate::Config->getblxoption($secnum, "maxalphanames", bee, citekey);
+      let $minan = crate::Config->getblxoption($secnum, "minalphanames", bee, citekey);
 
       foreach let $n ($dmh->{namelistsall}->@*) {
         let $nl = $be->get_field($n);
@@ -2648,16 +2648,16 @@ impl Biber {
   }
 
   /// Generate the labelalpha and also the variant for sorting
-  fn process_labelalpha(self, $citekey, $dlist) {
+  fn process_labelalpha(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
     // Don't add a label if skiplab is set for entry
-    if (crate::Config->getblxoption($secnum, "skiplab", $bee, $citekey)) {
+    if (crate::Config->getblxoption($secnum, "skiplab", bee, citekey)) {
       return;
     }
-    if ( let $la = crate::Config->getblxoption(undef, "labelalpha", $bee, $citekey) ) {
+    if ( let $la = crate::Config->getblxoption(undef, "labelalpha", bee, citekey) ) {
       let ($label, $sortlabel) = $self->_genlabel($citekey, $dlist)->@*;
       $dlist->set_entryfield($citekey, "labelalpha", $label);
       $dlist->set_entryfield($citekey, "sortlabelalpha", $sortlabel);
@@ -2665,12 +2665,12 @@ impl Biber {
   }
 
   /// Generate the extraalpha information
-  fn process_extraalpha(self, $citekey, $dlist) {
+  fn process_extraalpha(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
-    let $bee = $be->get_field("entrytype");
-    if (crate::Config->getblxoption(undef, "labelalpha", $bee, $citekey)) {
+    let be = section.bibentry(citekey);
+    let bee = be.get_field("entrytype");
+    if (crate::Config->getblxoption(undef, "labelalpha", bee, citekey)) {
       if (let $la = $dlist->get_entryfield($citekey, "labelalpha")) {
         $dlist->incr_la_disambiguation($la);
       }
@@ -2680,13 +2680,13 @@ impl Biber {
   /// Put presort fields for an entry into the main Biber bltx state
   /// so that it is all available in the same place since this can be
   /// set per-type and globally too.
-  fn process_presort(self, citekey) {
+  fn process_presort(self, citekey: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $be = $section->bibentry($citekey);
+    let be = section.bibentry(citekey);
     // We are treating presort as an option as it can be set per-type and globally too
-    if (let $ps = $be->get_field("presort")) {
-      crate::Config->setblxoption($secnum, "presort", $ps, "ENTRY", $citekey);
+    if (let $ps = be.get_field("presort")) {
+      crate::Config->setblxoption($secnum, "presort", $ps, "ENTRY", citekey);
     }
   }
 
@@ -2714,7 +2714,7 @@ impl Biber {
         $list->set_labelalphanametemplatename("global");
       }
       $list->set_keys([ $section.get_citekeys() ]);
-        debug!("Populated datalist '{}' of type '{}' with attributes '{}' in section {} with keys: {}", lname, ltype, lattrs, secnum, join(', ', $list->get_keys->@*));
+        debug!("Populated datalist '{}' of type '{}' with attributes '{}' in section {} with keys: {}", lname, ltype, lattrs, secnum, list.get_keys().join(", "));
 
       // A datalist represents a biblatex refcontext
       // and many things are refcontext specific and so we need to use the right data. For
@@ -2747,10 +2747,9 @@ impl Biber {
       // Filtering - must come before sorting/labelling so that there are no gaps in e.g. extradate
       if (let $filters = $list->get_filters) {
         let $flist = [];
-      'KEYLOOP: foreach let $k ($list->get_keys->@*) {
-
-          let $be = $section->bibentry($k);
-          foreach let $f ($filters->@*) {
+      'KEYLOOP: for k list.get_keys() {
+          let be = section.bibentry(k);
+          for f in &filters {
             // Filter disjunction is ok if any of the checks are ok, hence the grep()
             if (ref $f == "ARRAY") {
               if !(grep {check_list_filter($k, $_->{type}, $_->{value}, $be)} $f->@*) {
@@ -2912,7 +2911,7 @@ impl Biber {
   /// Generate information for sorting
   fn generate_sortinfo(self, $dlist) {
 
-    foreach let $key ($dlist->get_keys->@*) {
+    for key dlist.get_keys() {
       $self->_generatesortinfo($key, $dlist);
     }
     return;
@@ -3024,19 +3023,18 @@ impl Biber {
   fn create_uniquename_info(self, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
+    let bibentries = section.bibentries();
 
     // Reset uniquename information as we have to generate it
     // again because uniquelist information might have changed
     $dlist->reset_uniquenamecount;
 
     'MAIN: foreach let $citekey ( $section.get_citekeys() ) {
-      let $be = $bibentries->entry($citekey);
-      let $bee = $be->get_field("entrytype");
-      let $lni = $be->get_labelname_info;
-
-      if !defined($lni) { // only care about labelname
-        continue;
+      let be = bibentries.entry(citekey);
+      let bee = be.get_field("entrytype");
+      let lni = match be.get_labelname_info() {
+        None => continue, // only care about labelname
+        Some(lni) => lni,
       }
 
       let $nl = $be->get_field($lni);
@@ -3191,18 +3189,18 @@ impl Biber {
   fn generate_uniquename(self, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
+    let bibentries = section.bibentries();
 
     // Now use the information to set the actual uniquename information
-  'MAIN:  foreach let $citekey ( $section.get_citekeys() ) {
-      let $be = $bibentries->entry($citekey);
-      let $bee = $be->get_field("entrytype");
-      let $lni = $be->get_labelname_info;
-      if !defined($lni) { // only care about labelname
-        continue;
+  'MAIN:  for citekey in section.get_citekeys() {
+      let be = bibentries.entry(citekey);
+      let bee = be.get_field("entrytype");
+      let lni = match be.get_labelname_info() {
+        None => continue, // only care about labelname
+        Some(lni) => lni,
       }
 
-      let $nl = $be->get_field($lni);
+      let nl = be.get_field(lni);
       let $nlid = $nl->get_id;
 
       let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $citekey);
@@ -3283,7 +3281,7 @@ impl Biber {
 
         let $eul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
         // Per-namelist uniquelist
-        let $names = $be->get_field($be->get_labelname_info);
+        let $names = $be->get_field(be.get_labelname_info());
         if (defined($names->get_uniquelist)) {
           $eul = $names->get_uniquelist;
         }
@@ -3315,22 +3313,22 @@ impl Biber {
   fn create_uniquelist_info(self, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
+    let bibentries = section.bibentries();
 
     // Reset uniquelist information as we have to generate it again because uniquename
     // information might have changed
     $dlist->reset_uniquelistcount;
 
-    foreach let $citekey ($section.get_citekeys()) {
-      let $be = $bibentries->entry($citekey);
-      let $bee = $be->get_field("entrytype");
-      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", $bee, $citekey);
-      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", $bee, $citekey);
-      let $lni = $be->get_labelname_info;
-      if !defined($lni) { // only care about labelname
-        continue;
+    for citekey in section.get_citekeys() {
+      let be = bibentries.entry(citekey);
+      let bee = be.get_field("entrytype");
+      let $maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let $mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
+      let lni = match be.get_labelname_info() {
+        None => continue, // only care about labelname
+        Some(lni) => lni,
       }
-      let $nl = $be->get_field($lni);
+      let $nl = $be->get_field(lni);
       let $nlid = $nl->get_id;
       let $labelyear = $be->get_field("labelyear");
 
@@ -3418,17 +3416,17 @@ impl Biber {
   fn generate_uniquelist(self, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
+    let bibentries = section.bibentries();
 
-  'MAIN: foreach let $citekey ( $section.get_citekeys() ) {
-      let $be = $bibentries->entry($citekey);
-      let $bee = $be->get_field("entrytype");
-      let $labelyear = $be->get_field("labelyear");
-      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", $bee, $citekey);
-      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", $bee, $citekey);
-      let $lni = $be->get_labelname_info;
-      if !defined($lni) { // only care about labelname
-        continue;
+  'MAIN: for citekey in section.get_citekeys() {
+      let be = bibentries.entry(citekey);
+      let bee = be.get_field("entrytype");
+      let labelyear = be.get_field("labelyear");
+      let $maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let $mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
+      let lni = match be.get_labelname_info() {
+        None => continue, // only care about labelname
+        Some(lni) => lni,
       }
       let $nl = $be->get_field($lni);
       let $nlid = $nl->get_id;
@@ -3505,10 +3503,10 @@ impl Biber {
 
     // This loop critically depends on the order of the citekeys which
     // is why we have to do sorting before this
-    foreach let $key ($dlist->get_keys->@*) {
-      let $be = $section->bibentry($key);
-      let $bee = $be->get_field("entrytype");
-      let $lni = $be->get_labelname_info;
+    for key in dlist.get_keys() {
+      let be = section.bibentry(key);
+      let bee = be.get_field("entrytype");
+      let lni = be.get_labelname_info();
 
       // Sort any set members according to the list sorting order of the keys.
       // This gets the indices of the set elements in the sorted datalist, sorts
@@ -3517,12 +3515,12 @@ impl Biber {
       if ($be->get_field("entrytype") == "set") {
         let @es;
         if (crate::Config->getblxoption(undef, "sortsets")) {
-          let $setkeys = $be->get_field("entryset");
-          let $keys = $dlist->get_keys;
-          let @sorted_setkeys;
+          let setkeys: Vec<_> = be.get_field("entryset");
+          let keys = dlist.get_keys();
+          let sorted_setkeys = Vec::new();
           // Generate array of indices of set members in the main sorted datalist
-          foreach let $elem ($setkeys->@*) {
-            push @sorted_setkeys, first_index {$elem == $_} $keys->@*;
+          for elem in &setkeys {
+            sorted_setkeys.push(keys.position(|v| v == elem));
           }
           // Sort the indices numerically (sorting has already been done so this is fine)
           // then get the actual citekeys using an array slice on the main sorted list
@@ -3635,12 +3633,12 @@ impl Biber {
   fn generate_singletitle(self, $citekey, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
-    let $be = $bibentries->entry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let bibentries = section.bibentries();
+    let be = bibentries.entry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption(undef, "singletitle", $bee, $citekey)) {
-      let $sn = $dlist->get_entryfield($citekey, "seenname");
+    if (crate::Config->getblxoption(undef, "singletitle", bee, citekey)) {
+      let $sn = dlist.get_entryfield(citekey, "seenname");
       if (defined($sn) && $dlist->get_seenname($sn) < 2 ) {
         $dlist->set_entryfield($citekey, "singletitle", 1);
       }
@@ -3650,15 +3648,15 @@ impl Biber {
 
   /// Generate the uniquetitle field, if requested. The information for generating
   /// this is gathered in process_workuniqueness()
-  fn generate_uniquetitle(self, $citekey, $dlist) {
+  fn generate_uniquetitle(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
-    let $be = $bibentries->entry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let bibentries = section.bibentries();
+    let be = bibentries.entry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption(undef, "uniquetitle", $bee, $citekey)) {
-      let $ut = $dlist->get_entryfield($citekey, "seentitle");
+    if (crate::Config->getblxoption(undef, "uniquetitle", bee, citekey)) {
+      let ut = dlist.get_entryfield(citekey, "seentitle");
       if (defined($ut) && $dlist->get_seentitle($ut) < 2 ) {
         $dlist->set_entryfield($citekey, "uniquetitle", 1);
       }
@@ -3668,15 +3666,15 @@ impl Biber {
 
   /// Generate the uniquebaretitle field, if requested. The information for generating
   /// this is gathered in process_workuniqueness()
-  fn generate_uniquebaretitle(self, $citekey, $dlist) {
+  fn generate_uniquebaretitle(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
-    let $be = $bibentries->entry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let bibentries = section.bibentries();
+    let be = bibentries.entry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption(undef, "uniquebaretitle", $bee, $citekey)) {
-      let $ubt = $dlist->get_entryfield($citekey, "seenbaretitle");
+    if (crate::Config->getblxoption(undef, "uniquebaretitle", bee, citekey)) {
+      let ubt = dlist.get_entryfield(citekey, "seenbaretitle");
       if (defined($ubt) && $dlist->get_seenbaretitle($ubt) < 2 ) {
         $dlist->set_entryfield($citekey, "uniquebaretitle", 1);
       }
@@ -3686,14 +3684,14 @@ impl Biber {
 
   /// Generate the uniquework field, if requested. The information for generating
   /// this is gathered in process_workuniqueness()
-  fn generate_uniquework(self, $citekey, $dlist) {
+  fn generate_uniquework(self, citekey: &str, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
-    let $be = $bibentries->entry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let bibentries = section.bibentries();
+    let be = bibentries.entry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption(undef, "uniquework", $bee, $citekey)) {
+    if (crate::Config->getblxoption(undef, "uniquework", bee, citekey)) {
       if ($dlist->get_entryfield($citekey, "seenwork") &&
           $dlist->get_seenwork($dlist->get_entryfield($citekey, "seenwork")) < 2 ) {
           trace!("Setting uniquework for '{}'", citekey);
@@ -3711,15 +3709,15 @@ impl Biber {
   fn generate_uniquepa(self, $citekey, $dlist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $bibentries = $section->bibentries;
-    let $be = $bibentries->entry($citekey);
-    let $bee = $be->get_field("entrytype");
+    let bibentries = section.bibentries();
+    let be = bibentries.entry(citekey);
+    let bee = be.get_field("entrytype");
 
-    if (crate::Config->getblxoption(undef, "uniqueprimaryauthor", $bee, $citekey)) {
-      if ($dlist->get_entryfield($citekey, "seenprimaryauthor") &&
-          $dlist->get_seenpa($dlist->get_entryfield($citekey, "seenprimaryauthor")) < 2 ) {
+    if (crate::Config->getblxoption(undef, "uniqueprimaryauthor", bee, citekey)) {
+      if (dlist.get_entryfield(citekey, "seenprimaryauthor") &&
+          dlist.get_seenpa(dlist.get_entryfield(citekey, "seenprimaryauthor")) < 2 ) {
           trace!("Setting uniqueprimaryauthor for '{}'", citekey);
-        $dlist->set_entryfield($citekey, "uniqueprimaryauthor", 1);
+        dlist.set_entryfield(citekey, "uniqueprimaryauthor", 1);
       }
       else {
           trace!("Not setting uniqueprimaryauthor for '{}'", citekey);
@@ -3733,7 +3731,7 @@ impl Biber {
   fn sort_list(self, $dlist) {
     let $sortingtemplate = $dlist->get_sortingtemplate;
     let $lsds  = $dlist->get_sortdataschema;
-    let @keys = $dlist->get_keys->@*;
+    let keys = dlist.get_keys();
     let $lstn = $dlist->get_sortingtemplatename;
     let $ltype = $dlist->get_type;
     let $lname = $dlist->get_name;
@@ -4171,7 +4169,7 @@ impl Biber {
       else if (let @dmems = $section->get_dynamic_set($citekey)) {
         // skip looking for dependent if it's already there
         foreach let $dm (@dmems) {
-          if !($section->bibentry($dm)) {
+          if !section.bibentry($dm) {
             push $new_deps->@*, $dm;
             if !(first {$citekey == $_} $keyswithdeps->@*) {
               push $keyswithdeps->@*, $citekey;
@@ -4182,14 +4180,14 @@ impl Biber {
       }
       else {
         // This must exist for all but dynamic sets
-        let $be = $section->bibentry($citekey);
+        let be = section.bibentry(citekey);
 
         // xdata
         if (let $xdata = $be->get_xdata_refs) {
           foreach let $xdatum ($xdata->@*) {
             foreach let $xdref ($xdatum->{xdataentries}->@*) {
               // skip looking for dependent if it's already there (loop suppression)
-              if !($section->bibentry($xdref)) {
+              if !section.bibentry(xdref) {
                 push $new_deps->@*, $xdref;
               }
                 debug!("Entry '{}' has xdata '{}'", citekey, xdref);
@@ -4201,10 +4199,10 @@ impl Biber {
         }
 
         // xrefs
-        if (let $refkey = $be->get_field("xref")) {
+        if (let $refkey = be.get_field("xref")) {
           // skip looking for dependent if it's already there (loop suppression)
-          if !($section->bibentry($refkey)) {
-            push $new_deps->@*, $refkey;
+          if !section.bibentry(refkey) {
+            new_deps.push(refkey);
           }
             debug!("Entry '{}' has xref '{}'", citekey, refkey);
           if !(first {$citekey == $_} $keyswithdeps->@*) {
@@ -4213,14 +4211,14 @@ impl Biber {
         }
 
         // crossrefs
-        if (let $refkey = $be->get_field("crossref")) {
+        if (let $refkey = be.get_field("crossref")) {
           // skip looking for dependent if it's already there (loop suppression)
-          if !($section->bibentry($refkey)) {
-            push $new_deps->@*, $refkey;
+          if !section.bibentry(refkey) {
+            new_deps.push(refkey);
           }
             debug!("Entry '{}' has crossref '{}'", citekey, refkey);
-          if !(first {$citekey == $_} $keyswithdeps->@*) {
-            push $keyswithdeps->@*, $citekey;
+          if !keyswithdeps.contains(citekey) {
+            keyswithdeps.push(citekey);
           }
         }
 
@@ -4333,10 +4331,10 @@ impl Biber {
       }
     }
     else {
-      let $be = $section->bibentry($citekey);
+      let be = section.bibentry(citekey);
 
       // remove any xrefs
-      if ($be->get_field("xref") && ($be->get_field("xref") == $missing_key)) {
+      if be.get_field("xref") && (be.get_field("xref") == missing_key) {
         biber_warn("I didn't find a database entry for xref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
 
           trace!("Removed xref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
@@ -4347,7 +4345,7 @@ impl Biber {
       }
 
       // remove any crossrefs
-      if ($be->get_field("crossref") && ($be->get_field("crossref") == $missing_key)) {
+      if be.get_field("crossref") && (be.get_field("crossref") == missing_key) {
         biber_warn("I didn't find a database entry for crossref '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
 
           trace!("Removed crossref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);

@@ -81,29 +81,30 @@ impl Dot {
 
     out($target, $data->{HEAD});
 
-    $in = 2; // indentation
-    $i = ' '; // starting indentation
+    let i_n = 2; // indentation
+    let i = ' '.to_string(); // starting indentation
 
     // Loop over sections, sort so we can run tests
     // NOTE: already sorted
     for section in &biber.sections().get_sections() {
       let secnum = section.number();
       if ($gopts->{section}) {
-        $graph .= $i x $in . "subgraph \"cluster_section${secnum}\" {\n";
-        $in += 2;
-        $graph .= $i x $in . "label=\"Section $secnum\";\n";
-        $graph .= $i x $in . "tooltip=\"Section $secnum\";\n";
-        $graph .= $i x $in . "fontsize=\"10\";\n";
-        $graph .= $i x $in . "fontname=serif;\n";
-        $graph .= $i x $in . "fillcolor=\"#fce3fa\";\n";
-        $graph .= "\n";
+        graph.push_str(&format!("{}subgraph \"cluster_section{secnum}\" {{\n"), i.repeat(i_n));
+        i_n += 2;
+        let iin = i.repeat(i_n);
+        graph.push_str(&format!("{iin}label=\"Section {secnum}\";\n"));
+        graph.push_str(&format!("{iin}tooltip=\"Section {secnum}\";\n"));
+        graph.push_str(&format!("{iin}fontsize=\"10\";\n"));
+        graph.push_str(&format!("{iin}fontname=serif;\n"));
+        graph.push_str(&format!("{iin}fillcolor=\"#fce3fa\";\n"));
+        graph.push_str("\n");
       }
 
       // First create nodes/groups for entries
-      foreach let $be (sort {$a->get_field("citekey") cmp $b->get_field("citekey")} $section->bibentries->entries) {
-        let $citekey = $be->get_field("citekey");
+      for be in (sort {a.get_field("citekey") cmp b.get_field("citekey")} section.bibentries().entries()) {
+        let citekey = be.get_field("citekey");
         $state->{$secnum}{"${secnum}/${citekey}"} = 1;
-        let $et = uc($be->get_field("entrytype"));
+        let $et = uc(be.get_field("entrytype"));
 
         // colour depends on whether cited, uncited, dataonly or key alias
         let mut c = if section.has_citekey(citekey) {
@@ -111,7 +112,7 @@ impl Dot {
         } else {
           "#deefff"
         };
-        if (let $options = $be->get_field("options")) {
+        if (let $options = be.get_field("options")) {
           if $options =~ m/skip(?:bib|biblist|lab)/o {
             c = "#fdffd9" ;
           }
@@ -141,11 +142,11 @@ impl Dot {
         }
 
         // Citekey aliases
-        let $aliases = "";
-        foreach let $alias (sort $section->get_citekey_aliases) {
-          let $realkey = $section->get_citekey_alias($alias);
-          if ($realkey == $citekey) {
-            $aliases .= "\\n$alias (alias)";
+        let mut aliases = String::new();
+        for in alias (sort section.get_citekey_aliases()) {
+          let realkey = section.get_citekey_alias(alias);
+          if realkey == citekey {
+            aliases.push_str(&format!("\\n{alias} (alias)"));
           }
         }
 

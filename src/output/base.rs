@@ -112,7 +112,7 @@ impl Base {
   fn get_output_entries(self, section, list) {
     return [ map {$self->{output_data}{ENTRIES}{$section}{index}{$_} ||
                   $self->{output_data}{MISSING_ENTRIES}{$section}{index}{$_} ||
-                  $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} $list->get_keys->@*];
+                  $self->{output_data}{ALIAS_ENTRIES}{$section}{index}{$_}} list.get_keys()];
   }
 
   /// Get the output macros for tool mode tests
@@ -202,10 +202,10 @@ impl Base {
     let section = crate::MASTER.sections().get_section(secnum);
 
     // We rely on the order of this array for the order of the ouput
-    foreach let $k ($section.get_citekeys()) {
+    for k in section.get_citekeys() {
       // Regular entry
-      let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-      $self->set_output_entry($be, $section, crate::config::get_dm());
+      let be = section.bibentry(k) || biber_error("Cannot find entry with key '$k' to output");
+      $self->set_output_entry(be, section, crate::config::get_dm());
     }
 
     // Make sure the output object knows about the output section
@@ -218,7 +218,7 @@ impl Base {
     }
 
     // alias citekeys are global to a section
-    foreach let $k ($section->get_citekey_aliases) {
+    for k in section.get_citekey_aliases() {
       let $realkey = $section->get_citekey_alias($k);
       $self->set_output_keyalias($k, $realkey, $section)
     }
@@ -258,7 +258,7 @@ impl Base {
         let $listlabel = $list->get_label;
         let $listtype = $list->get_type;
         out($target, "  LIST: $listlabel\n\n");
-        foreach let $k ($list->get_keys->@*) {
+        for k in list.get_keys() {
           let $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};
           out($target, $entry_string);
         }

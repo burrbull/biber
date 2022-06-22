@@ -20,11 +20,11 @@ use Unicode::UCD qw(num);
 // Hashes should not care about use* or sorting name key template etc. We want to generate hashes
 // unique to a name, not a particular representation of a name. So, always statically concatenate
 // nameparts from the data model list of valid nameparts
-fn _getnamehash(self, $citekey, $names, $dlist, $bib) {
+fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
-  let $bee = $be->get_field("entrytype");
+  let be = section.bibentry(citekey);
+  let bee = be.get_field("entrytype");
 
   let $hashkey = "";
   let $count = $names->count;
@@ -83,11 +83,11 @@ fn _getfullhash(self, $citekey, $names) {
 
 // Same as _getnamehash but takes account of uniquename setting for firstname
 // It's used for extra* tracking only
-fn _getnamehash_u(self, $citekey, $names, $dlist) {
+fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
-  let $bee = $be->get_field("entrytype");
+  let be = section.bibentry(citekey);
+  let bee = be.get_field("entrytype");
 
   let $hashkey = "";
   let $count = $names->count;
@@ -215,10 +215,10 @@ fn _dispatch_table_label(field, dm) {
 }
 
 // Main label loop
-fn _genlabel(self, $citekey, $dlist) {
+fn _genlabel(self, citekey: &str, $dlist) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
+  let be = section.bibentry(citekey);
   let $labelalphatemplate = crate::Config->getblxoption($secnum, "labelalphatemplate", $be->get_field("entrytype"));
   let $label;
   let $slabel;
@@ -258,7 +258,7 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
       let $f = $part->{content};
       // resolve labelname
       if ($f == "labelname") {
-        $f = ($be->get_labelname_info || "");
+        $f = (be.get_labelname_info() || "");
       }
       if ( first {$f == $_} $dm->get_fields_of_type("list", "name")->@*) {
         let $name = $be->get_field($f)
@@ -389,7 +389,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
   $lantname = crate::Config->getblxoption($secnum, "labelalphanametemplatename", undef, $citekey).unwrap_or($lantname);
 
   // Shortcut - if there is no labelname, don't do anything
-  if !defined($be->get_labelname_info) {
+  if be.get_labelname_info().is_none() {
     return ["",""];
   }
 
@@ -404,7 +404,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
   // as we need this to set the use* options below.
   let $realname;
   if ($namename == "labelname") {
-    $realname = $be->get_labelname_info;
+    $realname = be.get_labelname_info().unwrap();
   }
   else {
     $realname = $namename;
@@ -611,8 +611,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
 
           // Get the indices of each field (or namepart) we are dealing with
           let %indices;
-          foreach let $key (@citekeys) {
-            if (let $f = $section->bibentry($key)->get_field($field)) {
+          for key in &citekeys {
+            if (let $f = section.bibentry(key).get_field(field)) {
               if ($nameparts) { // name field
                 let $nlid = $f->get_id;
                 foreach let $n ($f->first_n_names($dlist->get_visible_alpha($nlid))->@*) {
@@ -686,7 +686,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
         else {
           // This retains the structure of the entries for the "l" list disambiguation
           // Have to be careful if field "$f" is not set for all entries
-          let $strings = [map {let $f = $section->bibentry($_)->get_field($field);
+          let $strings = [map {let $f = section.bibentry($_).get_field(field);
                               $f ? ($nameparts ? [map {let $n = $_;join("", map {$n->get_namepart($_)} $nameparts->@*)} $f->first_n_names($dlist->get_visible_alpha($f->get_id))->@*] : [$f]) : [""] }
                          @citekeys];
           let $lcache = _label_listdisambiguation($strings);
@@ -1083,11 +1083,11 @@ fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist,
 }
 
 // Conjunctive set of sorting sets
-fn _generatesortinfo(self, $citekey, $dlist) {
+fn _generatesortinfo(self, citekey: &str, $dlist) {
   let $sortingtemplate = $dlist->get_sortingtemplate;
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
+  let be = section.bibentry(citekey);
   let $sortobj;
   let $szero = 0;
 
@@ -1255,7 +1255,7 @@ fn _sort_labelalpha(self, $citekey, $secnum, $section, $be, $dlist, $sortelement
 
 fn _sort_labelname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
   // re-direct to the right sorting routine for the labelname
-  if (let $lni = $be->get_labelname_info) {
+  if (let $lni = be.get_labelname_info()) {
     // Don't process attributes as they will be processed in the real sub
     return $self->_dispatch_sorting($lni, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
   }
@@ -1441,11 +1441,11 @@ fn _process_sort_attributes(field_string, sortelementattributes) {
 }
 
 // This is used to generate sorting string for names
-fn _namestring(self, citekey, field, dlist) {
+fn _namestring(self, citekey: &str, field, dlist) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
-  let $bee = $be->get_field("entrytype");
+  let be = section.bibentry(citekey);
+  let bee = be.get_field("entrytype");
   let $names = $be->get_field($field);
   let $str = "";
   let $count = $names->count;
@@ -1578,15 +1578,15 @@ fn _namestring(self, citekey, field, dlist) {
 
 }
 
-fn _liststring(self, $citekey, $field, $verbatim) {
+fn _liststring(self, citekey: &str, $field, $verbatim) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
-  let $be = $section->bibentry($citekey);
-  let $bee = $be->get_field("entrytype");
-  let $f = $be->get_field($field); // _liststring is used in tests so there has to be
-  if !defined($f) {
-    return "";   // more error checking which will never be needed in normal use
-  }
+  let be = section.bibentry(citekey);
+  let bee = be.get_field("entrytype");
+  let f = match be.get_field(field) { // _liststring is used in tests so there has to be
+    None => return "",   // more error checking which will never be needed in normal use
+    Some(f) => f,
+  };
   let @items = $f->@*;
   let $str = "";
   let $truncated = 0;

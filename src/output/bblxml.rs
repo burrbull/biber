@@ -95,16 +95,16 @@ impl BblXML {
     let $xml_prefix = "https://sourceforge.net/projects/biblatex/bblxml";
     let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $key);
     let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $key);
-    let $nl = $be->get_field($be->get_labelname_info);
-    let $lni = $be->get_labelname_info;
+    let nl = be.get_field(be.get_labelname_info());
+    let lni = be.get_labelname_info();
 
     // Per-namelist uniquelist
-    if (defined($lni) && $nl->get_uniquelist) {
+    if (lni.is_some() && $nl->get_uniquelist) {
       $ul = $nl->get_uniquelist;
     }
 
     // Per-namelist uniquename
-    if (defined($lni) && $nl->get_uniquename) {
+    if (lni.is_some() && $nl->get_uniquename) {
       $un = $nl->get_uniquename;
     }
 
@@ -298,7 +298,7 @@ impl BblXML {
     }
 
     // Output extraname if there is a labelname
-    if ($be->get_labelname_info) {
+    if be.get_labelname_info() {
       $xml->dataElement("BDS", "EXTRANAME");
     }
 
@@ -691,7 +691,7 @@ impl BblXML {
         $xml->raw("\n");
 
         // The order of this array is the sorted order
-        foreach let $k ($list->get_keys->@*) {
+        for k in list.get_keys() {
             debug!("Writing entry for key '{}'", k);
 
           let $entry = $data->{ENTRIES}{$secnum}{index}{$k};
@@ -716,7 +716,7 @@ impl BblXML {
       }
 
       // alias citekeys are global to a section
-      foreach let $k ($section->get_citekey_aliases) {
+      for k in section.get_citekey_aliases() {
         let $realkey = $section->get_citekey_alias($k);
         $xml->dataElement([$xml_prefix, "keyalias"], _bblxml_norm($k), key => $realkey);
       }
@@ -764,10 +764,10 @@ impl BblXML {
     let section = crate::MASTER.sections().get_section(secnum);
 
     // We rely on the order of this array for the order of the .bbl
-    foreach let $k ($section.get_citekeys()) {
+    for k in section.get_citekeys() {
       // Regular entry
-      let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-      $self->set_output_entry($be, $section, crate::config::get_dm());
+      let be = section.bibentry(k) || biber_error("Cannot find entry with key '$k' to output");
+      $self->set_output_entry(be, section, crate::config::get_dm());
     }
 
     // Make sure the output object knows about the output section

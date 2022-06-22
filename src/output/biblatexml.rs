@@ -82,7 +82,7 @@ impl BibLaTeXML {
     $xml->startTag([$xml_prefix, "entry"], id => NFC($key), entrytype => NFC($bee));
 
     // Filter aliases which point to this key an insert them
-    if (let @ids = sort grep {$section->get_citekey_alias($_) == $key} $section->get_citekey_aliases) {
+    if (let @ids = sort grep {$section->get_citekey_alias($_) == $key} section.get_citekey_aliases()) {
       $xml->startTag([$xml_prefix, "ids"]);
       $xml->startTag([$xml_prefix, "list"]);
       foreach let $id (@ids) {
@@ -590,10 +590,10 @@ impl BibLaTeXML {
     let section = crate::MASTER.sections().get_section(secnum);
 
     // We rely on the order of this array for the order of the .bbl
-    foreach let $k ($section.get_citekeys()) {
+    for k in section.get_citekeys() {
       // Regular entry
-      let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-      $self->set_output_entry($be, $section, crate::config::get_dm());
+      let be = section.bibentry(k) || biber_error("Cannot find entry with key '$k' to output");
+      $self->set_output_entry(be, section, crate::config::get_dm());
     }
 
     // Make sure the output object knows about the output section

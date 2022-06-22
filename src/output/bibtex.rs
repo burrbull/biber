@@ -429,7 +429,7 @@ impl BibTeX {
                                                                   sortingnamekeytemplatename => "global",
                                                                   labelprefix => "",
                                                                   uniquenametemplatename => "global",
-                                                                  labelalphanametemplatename => "global")->[0]->get_keys->@*) {
+                                                                  labelalphanametemplatename => "global")->[0].get_keys()) {
       out($target, ${$data->{ENTRIES}{99999}{index}{$key}});
     }
 
@@ -454,10 +454,10 @@ impl BibTeX {
     let section = crate::MASTER.sections().get_section(secnum);
 
     // We rely on the order of this array for the order of the .bib
-    foreach let $k ($section.get_citekeys()) {
+    for k in section.get_citekeys() {
       // Regular entry
-      let $be = $section->bibentry($k) || biber_error("Cannot find entry with key '$k' to output");
-      $self->set_output_entry($be, $section, crate::config::get_dm());
+      let be = section.bibentry(k) || biber_error("Cannot find entry with key '$k' to output");
+      $self->set_output_entry(be, section, crate::config::get_dm());
     }
 
     // Create the comments output

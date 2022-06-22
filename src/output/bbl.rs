@@ -151,25 +151,25 @@ impl Bbl {
 
   /// Set the .bbl output for an entry. This is the meat of
   /// the .bbl output
-  fn set_output_entry(self, $be, $section, $dm) {
-    let $bee = $be->get_field("entrytype");
-    let $outtype = $dm->get_outcase($bee).unwrap_or($bee);
-    let $secnum = $section->number;
-    let $key = $be->get_field("citekey");
-    let $acc = "";
-    let $dmh = $dm->{helpers};
-    let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $key);
-    let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $key);
-    let $lni = $be->get_labelname_info;
-    let $nl = $be->get_field($lni);
+  fn set_output_entry(self, be: Entry, section: Section, dm: DataModel) {
+    let bee = be.get_field("entrytype");
+    let outtype = dm.get_outcase(bee).unwrap_or(bee);
+    let secnum = section.number();
+    let key = be.get_field("citekey");
+    let acc = String::new();
+    let dmh = dm.helpers;
+    let $un = crate::Config->getblxoption($secnum, "uniquename", bee, key);
+    let $ul = crate::Config->getblxoption($secnum, "uniquelist", bee, key);
+    let lni = be.get_labelname_info();
+    let nl = be.get_field(lni);
 
     // Per-namelist uniquelist
-    if (defined($lni) && $nl->get_uniquelist) {
+    if (lni.is_some() && $nl->get_uniquelist) {
       $ul = $nl->get_uniquelist;
     }
 
     // Per-namelist uniquename
-    if (defined($lni) && $nl->get_uniquename) {
+    if (lni.is_some() && $nl->get_uniquename) {
       $un = $nl->get_uniquename;
     }
 
@@ -656,7 +656,7 @@ impl Bbl {
         out($target, "  \\datalist[$listtype]{$listname}\n");
 
         // The order of this array is the sorted order
-        foreach let $k ($list->get_keys->@*) {
+        for k in list.get_keys() {
             debug!("Writing entry for key '{}'", k);
 
           let $entry = $data->{ENTRIES}{$secnum}{index}{$k};

@@ -312,7 +312,7 @@ impl DataModel {
                       };
     // Mapping of sorting fields to Sort::Key sort data types which are not "str"
     $self->{sortdataschema} = |f| {
-      if (first {$f == $_} ("citeorder", "citecount", $self->{helpers}{integers}->@*)) {
+      if (first {$f == $_} ("citeorder", "citecount", self.helpers{integers}->@*)) {
         return "int";
       }
       else {
@@ -1237,7 +1237,7 @@ impl DataModel {
 
   /// Generate a RelaxNG XML schema from the datamodel for bblXML output
   fn generate_bblxml_schema(dm, $outfile) {
-    let $dmh = $dm->{helpers};
+    let dmh = dm.helpers;
 
     // Set the .rng path to the output dir, if specified
     if (let $outdir = crate::Config->getoption("output_directory")) {

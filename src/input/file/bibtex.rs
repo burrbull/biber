@@ -214,8 +214,8 @@ fn extract_entries(filename, encoding, keys) {
           debug!("Found key '{}' in Text::BibTeX cache", wanted_key);
 
         // Skip creation if it's already been done, for example, via a citekey alias
-        if !($section->bibentries->entry_exists($wanted_key)) {
-          if !(create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys)) {
+        if !section.bibentries().entry_exists(wanted_key) {
+          if !create_entry($wanted_key, $entry, $filename, $smaps, \@rkeys) {
             // if create entry returns false, remove the key from the cache and section
             $section->del_citekey($wanted_key);
             $cache->{orig_key_order}{$filename}->@* = grep {$wanted_key != $_} $cache->{orig_key_order}{$filename}->@*;
@@ -234,7 +234,7 @@ fn extract_entries(filename, encoding, keys) {
         // is actually cited before adding to the section citekeys list in case this real
         // entry is only needed as an aliased Xref and shouldn't necessarily be in
         // the bibliography (minXrefs will take care of adding it there if necessary).
-        if !($section->bibentries->entry_exists($rk)) {
+        if !section.bibentries().entry_exists(rk) {
           if (let $entry = $cache->{data}{GLOBALDS}{$rk}) {// Look in cache of all datasource keys
             if !(create_entry($rk, $entry, $filename, $smaps, \@rkeys)) {
               // if create entry returns false, remove the key from the cache
@@ -243,7 +243,7 @@ fn extract_entries(filename, encoding, keys) {
             biber_warn("Entry with key '$rk' in section '$secnum' is cited and found but not created (likely due to sourcemap)");
             }
             if ($section->has_cited_citekey($wanted_key)) {
-              $section->add_citekeys($rk);
+              section.add_citekeys(rk);
             }
           }
         }
@@ -882,7 +882,7 @@ fn _create_entry(k, e) {
   $bibentry->set_field("entrytype", UniCase::new($entrytype));
   $bibentry->set_field("datatype", "bibtex");
     debug!("Adding entry with key '{}' to entry list", k);
-  $section->bibentries->add_entry($k, $bibentry);
+  section.bibentries().add_entry(k, bibentry);
   return 1;
 }
 

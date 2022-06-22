@@ -50,7 +50,7 @@ impl Entry {
   }
 
   /// Recursively create related entry clones starting with an entry
-  fn relclone(self) {
+  fn relclone(&mut self) {
     let $citekey = $self->get_field("citekey");
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
@@ -71,7 +71,7 @@ impl Entry {
         // We can record the related clone but don't create it again
         if (let $ck = $section->get_keytorelclone($relkey)) {
             debug!("Found RELATED key '{}' already has clone '{}'", relkey, ck);
-          push @clonekeys, $ck;
+          clonekeys.push(ck);
 
           // Save graph information if requested
           if (crate::Config->getoption("output_format") == "dot") {
@@ -79,11 +79,11 @@ impl Entry {
           }
         }
         else {
-          let $relentry = $section->bibentry($relkey);
+          let relentry = section.bibentry(relkey);
           // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
-          let $clonekey = md5_hex(encode_utf8($relkey));
-          push @clonekeys, $clonekey;
-          let $relclone = $relentry->clone($clonekey);
+          let clonekey = md5_hex(encode_utf8(relkey));
+          clonekeys.push(clonekey);
+          let $relclone = $relentry->clone(clonekey);
             debug!("Created new related clone for '{}' with clone key '{}'", relkey, clonekey);
 
           // Set related clone options
@@ -109,12 +109,12 @@ impl Entry {
             $relclone->set_datafield("options", $relopts);
           }
 
-          $section->bibentries->add_entry($clonekey, $relclone);
-          $section->keytorelclone($relkey, $clonekey);
+          section.bibentries().add_entry(clonekey, relclone);
+          section.keytorelclone(relkey, clonekey);
 
           // Save graph information if requested
           if (crate::Config->getoption("output_format") == "dot") {
-            crate::Config->set_graph("related", $clonekey, $relkey, $citekey);
+            crate::Config->set_graph("related", clonekey, relkey, citekey);
           }
 
           // recurse so we can do cascading related entries
@@ -277,7 +277,7 @@ impl Entry {
   /// Retrieve the labelname information. This is special
   /// meta-information so we have a separate method for this
   /// Returns a hash ref with the information.
-  fn get_labelname_info(&self) -> Unknown {
+  fn get_labelname_info(&self) -> Option<Unknown> {
     self.labelnameinfo
   }
 
@@ -351,10 +351,9 @@ impl Entry {
   }
 
   /// Delete a field in a crate::Entry object
-  fn del_field(self, $key) {
-    delete $self->{datafields}{$key};
-    delete $self->{derivedfields}{$key};
-    return;
+  fn del_field(&mut self, key: &str) {
+    self.datafields.remove(key);
+    self.derivedfields.remove(key);
   }
 
   /// Delete an original data source data field in a crate::Entry object
@@ -524,7 +523,8 @@ impl Entry {
 
     foreach let $xdatum ($xdata->@*) {
       foreach let $xdref ($xdatum->{xdataentries}->@*) {
-        if !(let $xdataentry = $section->bibentry($xdref)) {
+        let xdataentry = section.bibentry(xdref);
+        if !xdataentry {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
           $xdatum->{resolved} = 0;
           continue;
@@ -583,8 +583,8 @@ impl Entry {
               // Name lists
               if ($dm->field_is_type("list", "name", $reffield)) {
                 if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
-                  let $bibentries = $section->bibentries;
-                  let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
+                  let bibentries = section.bibentries();
+                  let be = bibentries.entry($xdatum->{xdataentries}[0]);
                   $self->get_field($reffield)->splice($xdataentry->get_field($xdatafield), $refposition);
                     debug!("Inserting at position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
@@ -603,8 +603,8 @@ impl Entry {
               // Non-name lists
               else if ($dm->field_is_fieldtype("list", $reffield)) {
                 if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
-                  let $bibentries = $section->bibentries;
-                  let $be = $bibentries->entry($xdatum->{xdataentries}[0]);
+                  let bibentries = section.bibentries();
+                  let be = bibentries.entry($xdatum->{xdataentries}[0]);
                   splice($self->get_field($reffield)->@*, $refposition-1, 1, $be->get_field($xdatum->{xdatafield})->@*);
                     debug!("Inserting at position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
@@ -658,8 +658,8 @@ impl Entry {
     // Detect crossref loops
     if !(crate::Config->is_inheritance_path("crossref", $target_key, $source_key)) {
       // cascading crossrefs
-      if (let $ppkey = $parent->get_field("crossref")) {
-        $parent->inherit_from($section->bibentry($ppkey));
+      if (let $ppkey = parent.get_field("crossref")) {
+        parent.inherit_from(section.bibentry(ppkey));
       }
     }
     else {
