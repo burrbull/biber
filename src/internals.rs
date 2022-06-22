@@ -21,8 +21,8 @@ use Unicode::UCD qw(num);
 // unique to a name, not a particular representation of a name. So, always statically concatenate
 // nameparts from the data model list of valid nameparts
 fn _getnamehash(self, $citekey, $names, $dlist, $bib) {
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
 
@@ -84,8 +84,8 @@ fn _getfullhash(self, $citekey, $names) {
 // Same as _getnamehash but takes account of uniquename setting for firstname
 // It's used for extra* tracking only
 fn _getnamehash_u(self, $citekey, $names, $dlist) {
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
 
@@ -216,8 +216,8 @@ fn _dispatch_table_label(field, dm) {
 
 // Main label loop
 fn _genlabel(self, $citekey, $dlist) {
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $labelalphatemplate = crate::Config->getblxoption($secnum, "labelalphatemplate", $be->get_field("entrytype"));
   let $label;
@@ -413,13 +413,11 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
   let $names = $be->get_field($realname);
 
   // Account for labelname set to short* when testing use* options
-  let $lnameopt;
-  if ( $realname =~ /\Ashort(\X+)\z/xms ) {
-    $lnameopt = $1;
-  }
-  else {
-    $lnameopt = $realname;
-  }
+  let lnameopt = if realname.len() > 5 && realname.starts_with("short") {
+    realname[5..].to_string()
+  } else {
+    realname.clone()
+  };
 
   if (crate::Config->getblxoption($secnum, "use$lnameopt", $bee, $citekey) &&
     $names) {
@@ -588,8 +586,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
     return join("", map {$_->[0]} $fieldstrings->@*);
   }
   let $rfield_string;
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let @citekeys = $section.get_citekeys();
   let $nindex = first_index {$_ == $citekey} @citekeys;
 
@@ -1086,8 +1084,8 @@ fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist,
 // Conjunctive set of sorting sets
 fn _generatesortinfo(self, $citekey, $dlist) {
   let $sortingtemplate = $dlist->get_sortingtemplate;
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $sortobj;
   let $szero = 0;
@@ -1439,8 +1437,8 @@ fn _process_sort_attributes(field_string, sortelementattributes) {
 
 // This is used to generate sorting string for names
 fn _namestring(self, citekey, field, dlist) {
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
   let $names = $be->get_field($field);
@@ -1576,8 +1574,8 @@ fn _namestring(self, citekey, field, dlist) {
 }
 
 fn _liststring(self, $citekey, $field, $verbatim) {
-  let $secnum = $self->get_current_section;
-  let $section = $self.sections()->get_section($secnum);
+  let secnum = self.get_current_section();
+  let section = self.sections().get_section(secnum);
   let $be = $section->bibentry($citekey);
   let $bee = $be->get_field("entrytype");
   let $f = $be->get_field($field); // _liststring is used in tests so there has to be

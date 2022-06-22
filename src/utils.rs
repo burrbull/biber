@@ -587,7 +587,7 @@ pub fn reduce_array($a, $b) {
 pub fn remove_outer(s: &str) -> (bool, String) {
   if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
     (false, s.into())
-  } else if s.starts_with('{') && s.ends_with('}') {
+  } else if s.len() > 2 && s.starts_with('{') && s.ends_with('}') {
     (true, s[1..s.len()-1].to_string())
   } else {
     (false, s.into())
@@ -599,7 +599,7 @@ pub fn has_outer(s: &str) -> bool {
   if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
     return false;
   }
-  s.starts_with('{') &&  s.ends_with('}')
+  s.len() > 2 && s.starts_with('{') &&  s.ends_with('}')
 }
 
 /// Add surrounding curly brackets:

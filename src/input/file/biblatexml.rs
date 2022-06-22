@@ -69,8 +69,8 @@ let $handlers = {
 /// array of keys it didn't find.
 fn extract_entries(filename, _encoding, keys) {
   // $encoding is ignored as it is always assumed to be UTF-8 for XML
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $bibentries = $section->bibentries;
 
   let @rkeys = $keys->@*;
@@ -253,8 +253,8 @@ fn extract_entries(filename, _encoding, keys) {
 
 /// Create a crate::Entry object from an entry found in a biblatexml data source
 fn create_entry(key, entry, datasource, smaps, rkeys) {
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
 
   let $dm = crate::config::get_dm();
   let $bibentries = $section->bibentries;
@@ -915,8 +915,8 @@ fn _range(bibentry, entry, f, key) {
 // NOTE - the biblatex options controlling era, approximate and uncertain meta-information
 // output are in the .bcf but biber does not used them as it always outputs this information
 fn _datetime(bibentry, entry, f, key) {
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($key);
 
   foreach let $node ($entry->findnodes("./$f")) {
@@ -1111,8 +1111,8 @@ fn _datetime(bibentry, entry, f, key) {
 
 // Name fields
 fn _name(bibentry, entry, f, key) {
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $bee = $bibentry->get_field("entrytype");
   let $node = $entry->findnodes("./$NS:names[\@type='$f']")->get_node(1);
   let $xdmi = crate::Config->getoption("xdatamarker");

@@ -52,8 +52,8 @@ impl Entry {
   /// Recursively create related entry clones starting with an entry
   fn relclone(self) {
     let $citekey = $self->get_field("citekey");
-    let $secnum = $crate::MASTER->get_current_section;
-    let $section = $crate::MASTER.sections()->get_section($secnum);
+    let secnum = crate::MASTER.get_current_section();
+    let section = crate::MASTER.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
     if (let $relkeys = $self->get_field("related")) {
         debug!("Found RELATED field in '{}' with contents {}", citekey, join(',', @$relkeys));
@@ -205,7 +205,7 @@ impl Entry {
         let ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
         if !($xf) { // There must be a field in a granular XDATA ref
           let $entry_key = $self->get_field("citekey");
-          let $secnum = $crate::MASTER->get_current_section;
+          let secnum = crate::MASTER.get_current_section();
           biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
           return 0;
         }
@@ -491,8 +491,8 @@ impl Entry {
   /// $entry->resolve_xdata($xdata);
   /// ```
   fn resolve_xdata(self, $xdata) {
-    let $secnum = $crate::MASTER->get_current_section;
-    let $section = $crate::MASTER.sections()->get_section($secnum);
+    let secnum = crate::MASTER.get_current_section();
+    let section = crate::MASTER.sections().get_section(secnum);
     let $entry_key = $self->get_field("citekey");
     let $dm = crate::config::get_dm();
 
@@ -645,8 +645,8 @@ impl Entry {
   fn inherit_from(self, $parent) {
     let $dmh = crate::config::get_dm_helpers();
 
-    let $secnum = $crate::MASTER->get_current_section;
-    let $section = $crate::MASTER.sections()->get_section($secnum);
+    let secnum = crate::MASTER.get_current_section();
+    let section = crate::MASTER.sections().get_section(secnum);
 
     let $target_key = $self->get_field("citekey"); // target/child key
     let $source_key = $parent->get_field("citekey"); // source/parent key

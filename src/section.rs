@@ -73,9 +73,9 @@ impl Section {
 
   /// Reset section caches which need it
   fn reset_caches(&mut self) {
-    self.labelcache_l = {};
-    self.labelcache_v = {};
-    self.bcfkeycache = {};
+    self.labelcache_l.clear();
+    self.labelcache_v.clear();
+    self.bcfkeycache.clear();
   }
 
   /// Check and record max namepart length. Needed to construct sort keys for names

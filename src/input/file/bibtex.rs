@@ -87,8 +87,8 @@ fn TBSIG(sig) {
 /// looks for the passed keys, creating entries when it finds them and
 /// passes out an array of keys it didn't find.
 fn extract_entries(filename, encoding, keys) {
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let @rkeys = $keys->@*;
 
     trace!("Entering extract_entries() in driver 'bibtex'");
@@ -313,8 +313,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
   // We have to pass in $rkeys so that the new/clone operations can remove the new/clone
   // key from the list of wanted keys because new/cloned entries will never appear to the normal
   // key search loop
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $crret = 1; // Return value from create_entry() is used to signal some things
 
   if ( $entry->metatype == BTE_REGULAR ) {
@@ -830,8 +830,8 @@ fn _create_entry(k, e) {
   if !($e) {
     return 1; // newentry might be undef
   }
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($k);
 
   let $bibentry = crate::Entry->new();
@@ -1086,8 +1086,8 @@ fn _range(bibentry, entry, field, key) {
 // Names
 fn _name(bibentry, entry, field, key) {
   let fc = UniCase::new($field); // Casefolded field which is what we need internally
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $value = $entry->get(encode("UTF-8", NFC($field)));
   let $xnamesep = crate::Config->getoption("xnamesep");
   let $bee = $bibentry->get_field("entrytype");
@@ -1192,8 +1192,8 @@ fn _name(bibentry, entry, field, key) {
 fn _datetime(bibentry, entry, field, key) {
   let $datetype = $field =~ s/date\z//xmsr;
   let $date = $entry->get(encode("UTF-8", NFC($field)));
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($key);
 
   let ($sdate, $edate, $sep, $unspec) = parse_date_range($bibentry, $datetype, $date);
@@ -1397,8 +1397,8 @@ fn _urilist(bibentry, entry, field) {
 /// Caches file data into T::B objects indexed by the original
 /// datasource key, decoded into UTF8
 fn cache_data(filename, encoding) {
-  let $secnum = $crate::MASTER->get_current_section;
-  let $section = $crate::MASTER.sections()->get_section($secnum);
+  let secnum = crate::MASTER.get_current_section();
+  let section = crate::MASTER.sections().get_section(secnum);
 
   // Initialise this
   $cache->{preamble}{$filename} = [];
