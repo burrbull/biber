@@ -22,6 +22,7 @@ use Regexp::Common qw( balanced );
 use List::AllUtils qw( first );
 use Log::Log4perl qw(:no_extra_logdie_message);
 use Scalar::Util qw(looks_like_number);
+use Text::Balanced qw(extract_bracketed);
 use Text::CSV;
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
@@ -536,7 +537,7 @@ pub fn normalise_string_hash($str) {
   }
   $str =~ s/\\(\p{L}+)\s*/$1:/g; // remove tex macros
   $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; // remove accent macros like \"a
-  $str =~ s/[\{\}~\.\s]+//g; // Remove brackes, ties, dots, spaces
+  $str =~ s/[\{\}~\.\s]+//g; // Remove braces, ties, dots, spaces
   return $str;
 }
 
@@ -598,9 +599,14 @@ pub fn reduce_array($a, $b) {
 ///
 /// Return (boolean if stripped, string)
 pub fn remove_outer(s: &str) -> (bool, String) {
-  if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
+  /*if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
     (false, s.into())
-  } else if s.len() > 2 && s.starts_with('{') && s.ends_with('}') {
+  }*/
+  let @check = extract_bracketed(s, "{}");
+  if (!defined($check[0]) or $check[0] != s) {// Not balanced outer braces, ignore
+    return (0, s);
+  }
+  if s.len() > 2 && s.starts_with('{') && s.ends_with('}') {
     (true, s[1..s.len()-1].to_string())
   } else {
     (false, s.into())
@@ -906,7 +912,6 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
 /// Convert booleans between strings and numbers. Because standard XML "boolean"
 /// datatype considers "true" and "1" the same etc.
 pub fn map_boolean($bn, $bv, $dir) {
-  let $b = lc($bv);
   // Ignore non-booleans
   if !exists($CONFIG_OPTTYPE_BIBLATEX{$bn}) {
     return $bv;
@@ -914,6 +919,8 @@ pub fn map_boolean($bn, $bv, $dir) {
   if $CONFIG_OPTTYPE_BIBLATEX{$bn} != "boolean" {
     return $bv;
   }
+
+  let $b = lc($bv);
 
   let %map = (true  => 1,
              false => 0,

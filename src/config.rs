@@ -56,6 +56,7 @@ $CONFIG->{state}{graph} = {};
 // Track the order of keys as cited. Keys cited in the same \cite*{} get the same order
 // Used for sorting schemes which use \citeorder
 $CONFIG->{state}{keyorder} = {};
+$CONFIG->{state}{internalkeyorder} = {};
 
 // Location of the control file
 $CONFIG->{state}{control_file_location} = "";
@@ -776,6 +777,9 @@ fn addtoblxoption(secnum, opt, val) {
 
 /// Set a biblatex option on the appropriate scope
 fn setblxoption(secnum, opt, val, scope, scopeval) {
+  // Map booleans to 1 and 0 for consistent testing
+  $val = Biber::Utils::map_boolean($opt, $val, "tonum");
+
   if (!defined($scope)) { // global is the default
     if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
@@ -911,15 +915,26 @@ fn is_inheritance_path(self, $type, $e1, $e2) -> bool {
   false
 }
 
-/// Set some key order information
+/// Set order information
 fn set_keyorder(section, key, keyorder) {
   $CONFIG->{state}{keyorder}{$section}{$key} = $keyorder;
+  return;
+}
+
+/// Set key order information for keys with the same order
+fn set_internal_keyorder(section, key, intkeyorder) {
+  $CONFIG->{state}{internalkeyorder}{$section}{$key} = $intkeyorder;
   return;
 }
 
 /// Get some key order information
 fn get_keyorder(section, key) {
   return $CONFIG->{state}{keyorder}{$section}{$key};
+}
+
+/// Get key order information for keys with the same order
+fn get_internal_keyorder(section, key) {
+  return $CONFIG->{state}{internalkeyorder}{$section}{$key};
 }
 
 /// Get maximum key order number for a section

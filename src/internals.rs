@@ -985,6 +985,7 @@ let %internal_dispatch_sorting = (
                                  "editorctype"     =>  [\&_sort_editort,       ["editorctype"]],
                                  "citeorder"       =>  [\&_sort_citeorder,     []],
                                  "citecount"       =>  [\&_sort_citecount,     []],
+                                 "intciteorder"    =>  [\&_sort_intciteorder,  []],
                                  "labelalpha"      =>  [\&_sort_labelalpha,    []],
                                  "labelname"       =>  [\&_sort_labelname,     []],
                                  "labeltitle"      =>  [\&_sort_labeltitle,    []],
@@ -1074,7 +1075,7 @@ fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist,
     $code_args_ref  = $d->[1];
   }
   else { // Unknown field
-    biber_warn("Unknown field '$sortfield' found in sorting template");
+    biber_warn("Field '$sortfield' in sorting template is not a sortable field");
     return undef;
   }
 
@@ -1241,6 +1242,10 @@ fn _sort_entrykey(self, $citekey, $secnum, $section, $be, $dlist, $sortelementat
 
 fn _sort_entrytype(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
   return _process_sort_attributes($be->get_field("entrytype"), $sortelementattributes);
+}
+
+fn _sort_intciteorder(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
+  return Biber::Config->get_internal_keyorder($secnum, $citekey);
 }
 
 fn _sort_labelalpha(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
