@@ -1,4 +1,5 @@
 //! Various utility subs used in Biber
+use unicode_normalization::UnicodeNormalization;
 
 use parent qw(Exporter);
 
@@ -25,6 +26,18 @@ use Text::CSV;
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
 use Unicode::GCString;
+
+pub fn NFC(s: &str) -> String {
+  s.nfc().collect()
+}
+
+pub fn NFD(s: &str) -> String {
+  s.nfd().collect()
+}
+
+pub fn NFKD(s: &str) -> String {
+  s.nfkd().collect()
+}
 
 /// Expands a data file glob to a list of filenames
 pub fn glob_data_file($source, $globflag) {
@@ -121,7 +134,7 @@ pub fn locate_data_file($source) {
           // we assume that the default CA file is in .../Mozilla/CA/cacert.pem
           (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
           $dir =~ s/\/$//;      // splitpath sometimes leaves a trailing '/'
-          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", 'cacert.pem');
+          $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", "cacert.pem");
         }
 
         // fallbacks for, e.g., linux
@@ -149,7 +162,7 @@ pub fn locate_data_file($source) {
           }
         }
 
-        if (defined(crate::Config->getoption('ssl-noverify-host'))) {
+        if (defined(crate::Config->getoption("ssl-noverify-host"))) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
         }
 
@@ -162,14 +175,14 @@ pub fn locate_data_file($source) {
       // by going out of scope
       let $tf = File::Temp->new(TEMPLATE => "biber_remote_data_source_XXXXX",
                                DIR => crate::MASTER.biber_tempdir(),
-                               SUFFIX => '.bib',
+                               SUFFIX => ".bib",
                                UNLINK => 0);
 
       // Pretend to be a browser otherwise some sites refuse the default LWP UA string
       let $ua = LWP::UserAgent->new;  // we create a global UserAgent object
-      $ua->agent('Mozilla/5.0');
+      $ua->agent("Mozilla/5.0");
       $ua->env_proxy;
-      let $request = HTTP::Request->new("GET", $source, ['Zotero-Allowed-Request' => '1']);
+      let $request = HTTP::Request->new("GET", $source, ["Zotero-Allowed-Request" => "1"]);
       let $response = $ua->request($request, $tf->filename);
 
       if !($response->is_success) {
@@ -1343,13 +1356,13 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
 
   // List pairs explicitly as we don't expect there to be to many of these ever
   if ($from == "iast" && $to == "devanagari") {
-    return new Lingua::Translit('IAST Devanagari');
+    return new Lingua::Translit("IAST Devanagari");
   }
   else if ($from == "russian" && $to == "ala-lc") {
-    return new Lingua::Translit('ALA-LC RUS');
+    return new Lingua::Translit("ALA-LC RUS");
   }
-  else if ($from == "russian" && $to == 'bgn/pcgn-standard') {
-    return new Lingua::Translit('BGN/PCGN RUS Standard');
+  else if ($from == "russian" && $to == "bgn/pcgn-standard") {
+    return new Lingua::Translit("BGN/PCGN RUS Standard");
   }
 
   return undef;

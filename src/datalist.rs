@@ -47,13 +47,13 @@ impl DataList {
 
   /// Resets all entryfield data in a list
   fn reset_entryfields(self) {
-    $self->{state}{fields} = {};
+    self.state.fields.clear();
     return;
   }
 
   /// Retrieves per-list datafield information for an entry
   fn get_entryfield(self, $citekey, $f) {
-    return $self->{state}{fields}{$citekey}{$f};
+    return self.state.fields{$citekey}{$f};
   }
 
   /// Records per-list datafield information for an entry
@@ -1047,7 +1047,7 @@ impl DataList {
         if !nl {
           continue;
         }
-        let $nlid = nl->get_id;
+        let nlid = nl->get_id;
         if let Some(ul) = self.get_uniquelist(nlid) {
           let s = format!("ul={ul}");
           entry_string = entry_string.replace(&format!("<BDS>UL-{nlid}</BDS>"), &s);

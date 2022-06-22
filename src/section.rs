@@ -29,7 +29,7 @@ impl Section {
       everykey_lc: HashMap::<String, String>::new(),
       bcfkeycache: {},
       labelcache_v: {},
-      dkeys: {},
+      dkeys: HashMap::<String, Vec<String>>::new(),
       keytods: HashMap::<String, PathBuf>::new(),
       orig_order_citekeys: Vec::<String>::new(),
       undef_citekeys: [],
@@ -38,7 +38,7 @@ impl Section {
       citekey_alias: HashMap::<String, String>::new(),
       static_keys: {},
       state: {},
-      seenkeys: {},
+      seenkeys: Hash::<String, u32>::new(),
       citecount: Hash::<String, u32>::new(),
     }
   }
@@ -61,14 +61,13 @@ impl Section {
   }
 
   /// Get the count of a key
-  fn get_seenkey(self, $key) {
-    return $self->{seenkeys}{$key};
+  fn get_seenkey(self, $key) -> Option<u32> {
+    self.seenkeys.get(key)
   }
 
   /// Increment the seen count of a key
-  fn incr_seenkey(self, $key) {
-    $self->{seenkeys}{$key}++;
-    return;
+  fn incr_seenkey(&mut self, key: &str) {
+    self.seenkeys.get_mut(key).unwrap() += 1;
   }
 
   /// Reset section caches which need it
@@ -352,7 +351,7 @@ impl Section {
   }
 
   /// Deletes all citekeys from a crate::Section object
-  fn del_citekeys(self) {
+  fn del_citekeys(&mut self) {
     self.citekeys.clear();
     self.citekeys_h.clear();
     self.orig_order_citekeys.clear();
@@ -414,14 +413,13 @@ impl Section {
   }
 
   /// Test if a key is a dynamic set
-  fn is_dynamic_set(self, dkey) {
-    return defined($self->{dkeys}{$dkey}) ? 1 : 0;
+  fn is_dynamic_set(&self, dkey: &str) -> bool {
+    self.dkeys.contains_key(dkey)
   }
 
   /// Record a mapping of dynamic key to member keys
-  fn set_dynamic_set(self, dkey, @members) {
-    $self->{dkeys}{$dkey} = \@members;
-    return;
+  fn set_dynamic_set<'a>(&mut self, dkey: &str, members: impl Iterator<Item=&'a str>) {
+    self.dkeys.insert(dkey.into(), members.map(|s| s.to_string()).collect())
   }
 
   /// Retrieve member keys for a dynamic set key

@@ -123,14 +123,13 @@ impl Biber {
   /// ```
   /// let sections = biber.sections()
   /// ```
-  fn sections(&self) -> Sections {
-    self.sections
+  fn sections(&self) -> &Sections {
+    &self.sections
   }
 
   /// Adds a crate::Sections object. Used externally from, e.g. biber
-  fn add_sections(self, $sections) {
-    $self->{sections} = $sections;
-    return;
+  fn add_sections(&mut self, sections: Sections) {
+    self.sections = sections;
   }
 
   /// Returns a crate::DataLists object describing the bibliography sorting lists
@@ -177,7 +176,7 @@ impl Biber {
 
   /// Fakes parts of the control file for tool mode
   fn tool_mode_setup(self) {
-    let $bib_sections = new crate::Sections;
+    let bib_sections = crate::Sections::new();
     // There are no sections in tool mode so create a pseudo-section
     let $bib_section = crate::Section::new(99999);
     let $ifs = [];
@@ -201,9 +200,9 @@ impl Biber {
     crate::Config->setblxoption(undef, "namestrunchandling", 0);
 
     // Add the crate::Sections object to the Biber object
-    $self->add_sections($bib_sections);
+    self.add_sections(bib_sections);
 
-    let $datalists = new crate::DataLists;
+    let datalists = crate::DataLists::new();
     let $seclist = crate::DataList->new(section => 99999,
                                       sortingtemplatename        => "tool",
                                       sortingnamekeytemplatename => "global",
@@ -215,8 +214,8 @@ impl Biber {
     // Locale just needs a default here - there is no biblatex option to take it from
     crate::Config->setblxoption(undef, "sortlocale", "en_US");
       debug!("Adding "entry" list "tool" for pseudo-section 99999");
-    $datalists->add_list($seclist);
-    $self->{datalists} = $datalists;
+    datalists.add_list(seclist);
+    self.datalists = datalists;
 
     // User maps are set in config file and need some massaging which normally
     // happens in parse_ctrlfile
@@ -782,7 +781,7 @@ impl Biber {
       exit EXIT_OK;
     }
 
-    let $key_flag = 0;
+    let key_flag = false;
     let bib_sections = crate::Sections::new();
 
   SECTION: foreach let $section ($bcfxml->{section}->@*) {
@@ -829,76 +828,76 @@ impl Biber {
       }
 
       // Loop over all section keys
-      foreach let $keyc (@prekeys) {
+      for keyc in &prekeys {
         let $key = NFD($keyc->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
         // Stop reading citekeys if we encounter "*" as a citation as this means
         // "all keys"
-        if ($key == '*') {
+        if key == '*' {
           $bib_section->set_allkeys(1);
           crate::Config->set_keyorder($secnum, $key, $keyc->{order});
           if ($keyc->{nocite}) {
             $bib_section->set_allkeys_nocite(1);
           }
-          $key_flag = 1; // There is at least one key, used for error reporting below
+          key_flag = true; // There is at least one key, used for error reporting below
         }
-        else if (!$bib_section->get_seenkey($key)) {
+        else if !bib_section.get_seenkey(key) {
           // Dynamic set definition
           // Save dynamic key -> member keys mapping for set entry auto creation later
           // We still need to find these even if allkeys is set
           if (exists($keyc->{type}) && $keyc->{type} == "set") {
-            $bib_section->set_dynamic_set($key, split /\s*,\s*/, $keyc->{members});
-            push @keys, $key;
-            $key_flag = 1; // There is at least one key, used for error reporting below
+            bib_section.set_dynamic_set(key, Regex::new("\s*,\s*").unwrap().split(&keyc.members));
+            keys.push(key);
+            key_flag = true; // There is at least one key, used for error reporting below
           }
           else {
             // Track cite/nocite - needed for sourcemapping logic
             if ($keyc->{nocite}) {
-              $bib_section->add_nocite($key);
+              bib_section.add_nocite(key);
             }
             else {
-              $bib_section->add_cite($key);
+              bib_section.add_cite(key);
             }
             // Set order information - there is no order on dynamic key defs above
             // as they are a definition, not a cite
-            crate::Config->set_keyorder($secnum, $key, $keyc->{order});
-            push @keys, $key;
-            $key_flag = 1; // There is at least one key, used for error reporting below
+            crate::config::set_keyorder($secnum, $key, $keyc->{order});
+            keys.push(key);
+            key_flag = true; // There is at least one key, used for error reporting below
           }
         }
-        $bib_section->incr_seenkey($key); // always increment
+        bib_section.incr_seenkey(key); // always increment
       }
 
       // Get citecounts if present
       foreach let $keycount ($section->{citekeycount}->@*) {
         let $key = NFD($keycount->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
-        $bib_section->set_citecount($key, $keycount->{count});
+        bib_section.set_citecount(key, $keycount->{count});
       }
 
       if bib_section.is_allkeys()) {
         // Normalise - when allkeys is true don't need citekeys - just in case someone
         // lists "*" and also some other citekeys
-        $bib_section->del_citekeys;
-        info!("Using all citekeys in bib section {}", $secnum);
+        bib_section.del_citekeys();
+        info!("Using all citekeys in bib section {}", secnum);
       }
       else {
-        info!("Found {} citekeys in bib section {}", $#keys+1, secnum);
+        info!("Found {} citekeys in bib section {}", keys.len(), secnum);
       }
 
       if !bib_section.is_allkeys() {
-          debug!("The citekeys for section {} are: {}\n", secnum, join(", ", sort @keys));
+          debug!("The citekeys for section {} are: {}\n", secnum, keys.join(", "));
       }
 
       if !bib_section.is_allkeys() {
-        $bib_section->add_citekeys(@keys);
+        bib_section.add_citekeys(keys);
       }
-      $bib_sections->add_section($bib_section);
+      bib_sections.add_section(bib_section);
     }
 
     // Add the crate::Sections object to the Biber object
     $self->{sections} = $bib_sections;
 
     // Read datalists
-    let $datalists = new crate::DataLists;
+    let datalists = crate::DataLists::new();
 
     foreach let $list ($bcfxml->{datalist}->@*) {
       let $ltype  = $list->{type};
@@ -955,7 +954,7 @@ impl Biber {
       $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(undef, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
 
         debug!("Adding datalist of type '{}' with sortingtemplate '{}', sortingnamekeytemplatename '{}', labelprefix '{}', uniquenametemplate '{}', labelalphanametemplate '{}' and name '{}' for section {}", ltype, lstn, lsnksn, lpn, luntn, llantn, lname, lsection);
-      $datalists->add_list($datalist);
+      datalists.add_list(datalist);
     }
 
     // Check to make sure that each section has an entry datalist for global sorting
@@ -980,7 +979,7 @@ impl Biber {
                                             labelalphanametemplatename => "global",
                                             labelprefix                => "",
                                             name                       => format!("{globalss}/global//global/global"));
-        $datalists->add_list($datalist);
+        datalists.add_list(datalist);
         // See comment above
 
         $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(undef, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
@@ -988,10 +987,10 @@ impl Biber {
     }
 
     // Add the crate::DataLists object to the Biber object
-    $self->{datalists} = $datalists;
+    self.datalists = datalists;
 
     // Warn if there are no citations in any section
-    if !($key_flag) {
+    if !key_flag {
       biber_warn("The file '$ctrl_file_path' does not contain any citations!");
     }
 
@@ -1023,7 +1022,7 @@ impl Biber {
         }
       }
 
-      $self.sections().add_section(bib_section);
+      self.sections().add_section(bib_section);
 
       let $datalist = crate::DataList->new(section => 99999,
                                           sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"),
@@ -1034,7 +1033,7 @@ impl Biber {
                                           name => crate::Config->getblxoption(undef, "sortingtemplatename") . "/global//global/global");
       $datalist->set_type("entry");
         debug!("Adding "entry" list "none" for pseudo-section 99999");
-      $self->{datalists}->add_list($datalist);
+      self.datalists.add_list(datalist);
     }
 
     return;
@@ -1070,7 +1069,7 @@ impl Biber {
                                             name => crate::Config->getblxoption(undef, "sortingtemplatename") . "/global//global/global");
         $datalist->set_type("entry");
         $datalist->set_section(secnum);
-        $self->datalists->add_list($datalist);
+        self.datalists.add_list(datalist);
         // See comment for same call in .bcf instantiation of datalists
         $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(undef, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
       }
@@ -1218,7 +1217,7 @@ impl Biber {
         push @realmems, $section->get_citekey_alias($mem).unwrap_or($mem);
       }
       @members = @realmems;
-      $section->set_dynamic_set($dset, @realmems);
+      section.set_dynamic_set(dset, realmems.iter().map(|s| s.as_str()));
 
       let $be = new crate::Entry;
       $be->set_field("entrytype", "set");
@@ -4312,8 +4311,8 @@ impl Biber {
 
     // remove from any dynamic keys
     if (let @dmems = $section->get_dynamic_set($citekey)){
-      if (first {$missing_key == $_} @dmems) {
-        $section->set_dynamic_set($citekey, grep {$_ != $missing_key} @dmems);
+      if dmems.contains(missing_key) {
+        section.set_dynamic_set(citekey, dmems.iter().filter(|s| s != missing_key).map(|s| s.as_str()));
           trace!("Removed dynamic set dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
         biber_warn("I didn't find a database entry for dynamic set member '$missing_key' - ignoring (section $secnum)");
       }

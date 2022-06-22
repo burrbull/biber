@@ -369,24 +369,25 @@ impl Entry {
   }
 
   /// Check whether any parts of a date field exist when passed a datepart field name
-  fn date_fields_exist(self, $field) {
-    let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
-    foreach let $dp ("year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone") {
-      if (exists($self->{datafields}{"$t$dp"}) || exists($self->{datafields}{"${t}end$dp"})) {
-        return 1;
+  fn date_fields_exist(&self, field: &str) -> bool {
+    let r = Regex::new("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$").unwrap();
+    let t = field.replace(field, "");
+    for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
+      if self.datafields.get(&format!("{t}{dp}")).is_some() || self.datafields.get(&format!("{t}end{dp}")).is_some() {
+        return true;
       }
     }
-    return 0;
+    return false;
   }
 
   /// Delete all parts of a date field when passed any datepart field name
-  fn delete_date_fields(self, $field) {
-    let $t = $field =~ s/(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$//r;
-    foreach let $dp ("year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone") {
-      delete($self->{datafields}{"$t$dp"});
-      delete($self->{datafields}{"${t}end$dp"});
+  fn delete_date_fields(&mut self, field: &str)
+    let r = Regex::new("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$").unwrap();
+    let t = field.replace(field, "");
+    for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
+      self.datafields.remove(&format!("{t}{dp}"));
+      self.datafields.remove(&format!("{t}end{dp}"));
     }
-    return 1;
   }
 
   /// Returns a sorted array of the fields which came from the data source
@@ -739,7 +740,7 @@ impl Entry {
 
     // Now process the rest of the (original data only) fields, if necessary
     if ($inherit_all == "true") {
-      let @fields = $parent->datafields;
+      let @fields = parent.datafields;
 
       // Special case: WITH NO override: If the child has any Xdate datepart,
       // don't inherit any Xdateparts from parent otherwise you can end up
@@ -753,42 +754,42 @@ impl Entry {
       // with inherited
       // ONLY DO THIS FOR ENTRIES WITH xDATE FIELDS - LEGACY YEAR/MONTH MESS THINGS UP
       // AND WE JUST IGNORE THEM FOR THIS PRE-PROCESSING STEP
-      let @filtered_fields;
-      let @removed_fields;
-      foreach let $field (@fields) {
-        if (first {$_ == $field} $dmh->{dateparts}->@*) {
-          if ($parent->get_field("datesplit") && $self->get_field("datesplit")) {
-            if ($self->date_fields_exist($field)) {
-              if ($override_target == "true") {
-                $self->delete_date_fields($field); // clear out all date field parts in target
-              }
-              else {
-                push @removed_fields, $field;
+      let filtered_fields = Vec::new();
+      let removed_fields = Vec::new();
+      for field in fields {
+        if dmh.dateparts.contains(field) {
+          if parent.get_field("datesplit") && self.get_field("datesplit") {
+            if self.date_fields_exist(field) {
+              if override_target == "true" {
+                self.delete_date_fields(field); // clear out all date field parts in target
+              } else {
+                removed_fields.push(field.to_string());
                 continue;
               }
             }
           }
         }
-        push @filtered_fields, $field;
+        filtered_fields.push(field.to_string());
       }
-      @fields = @filtered_fields;
+      let fields = filtered_fields;
 
       // copy derived date fields as these are technically data
-      foreach let $datefield ($dmh->{datefields}->@*) {
-        let $df = $datefield =~ s/date$//r;
+      for datefield in &dmh.datefields {
+        let df = datefield.strip_suffix("date");
         // Ignore derived date special fields from date fields which we have skipped
         // because they already exist in the child.
-        if first {$_ == $datefield} @removed_fields {
+        if removed_fields.contains(datefield) {
           continue;
         }
-        foreach let $dsf ("dateunspecified", "datesplit", "datejulian",
+        for dsf in ["dateunspecified", "datesplit", "datejulian",
                         "enddatejulian", "dateapproximate", "enddateapproximate",
                         "dateuncertain", "enddateuncertain", "yeardivision", "endyeardivision",
-                        "era", "endera") {
-          if (let $ds = $parent->{derivedfields}{"$df$dsf"}) {
+                        "era", "endera"] {
+          let f = format!("{df}{dsf}");
+          if let Some(ds) = parent.derivedfields.get(&f) {
             // Set unless the child has the *date datepart, otherwise you can
             // end up with rather broken dates in the child.
-            $self->{derivedfields}{"$df$dsf"} = $ds;
+            self.derivedfields.insert(f, ds);
           }
         }
       }
