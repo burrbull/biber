@@ -256,7 +256,7 @@ impl Base {
       let $section = $self->get_output_section($secnum);
       foreach let $list ($section->get_lists->@*) {
         let $listlabel = $list->get_label;
-        let $listtype = $list->get_type;
+        let listtype = list.get_type();
         out($target, "  LIST: $listlabel\n\n");
         for k in list.get_keys() {
           let $entry_string = $data->{ENTRIES}{$secnum}{index}{$k};

@@ -1557,13 +1557,13 @@ impl Biber {
     let $dmh = crate::config::get_dm_helpers();
       debug!("Processing names in entries in section {} to generate disambiguation data", secnum);
     // Use nameuniqueness template to construct uniqueness strings
-    let $untname = $dlist->get_uniquenametemplatename;
+    let mut untname = dlist.get_uniquenametemplatename();
 
     let be = section.bibentry(citekey);
     let bee = be.get_field("entrytype");
 
-    let $un = crate::Config->getblxoption(secnum, "uniquename", bee, citekey);
-    let $ul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
+    let mut un = crate::Config->getblxoption(secnum, "uniquename", bee, citekey);
+    let mut ul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
 
     // Can be per-entry
     $untname = crate::Config->getblxoption($secnum, "uniquenametemplatename", undef, $citekey).unwrap_or($untname);
@@ -1572,39 +1572,33 @@ impl Biber {
     // to use this method to get data without setting it in the list object (in uniqueprimaryauthor())
     let $namedis;
 
-  'MAIN:  foreach let $pn ($dmh->{namelistsall}->@*) {
-      let nl = $be->get_field($pn);
+  'MAIN:  for pn in &dmh.namelistsall {
+      let nl = be.get_field(pn);
       if !nl {
         continue;
       }
-      let $nlid = $nl->get_id;
+      let nlid = nl.get_id();
 
       // per-namelist uniquenametemplatename
-      if (defined($nl->get_uniquenametemplatename)) {
-        $untname = $nl->get_uniquenametemplatename;
-      }
+      untname = nl.get_uniquenametemplatename().or(untname);
 
       // per-namelist uniquelist
-      if (defined($nl->get_uniquelist)) {
-        $ul = $nl->get_uniquelist;
+      if let Spme(ulist) = nl.get_uniquelist() {
+        ul = ulist;
       }
 
       // per-namelist uniquename
-      if (defined($nl->get_uniquename)) {
-        $un = $nl->get_uniquename;
-      }
+      un = nl.get_uniquename().or(un);
 
-      foreach let $n ($nl->names->@*) {
-        let $nid = $n->get_id;
+      for n in nl.names() {
+        let nid = n.get_id();
 
-        let $namestring = "";
+        let namestring = String::new();
         let $namestrings = [];
         let $namedisschema = [];
 
         // per-name uniquenametemplatename
-        if (defined($n->get_uniquenametemplatename)) {
-          $untname = $n->get_uniquenametemplatename;
-        }
+        untname = n.get_uniquenametemplatename().or(untname);
 
         // Die if no uniquenametemplate found as this results in an infinite loop
         // in the disambiguation code
@@ -2697,8 +2691,8 @@ impl Biber {
 
     foreach let $list ($self->datalists->get_lists_for_section($secnum)->@*) {
       let $lattrs = $list->get_attrs;
-      let $ltype = $list->get_type;
-      let $lname = $list->get_name;
+      let ltype = list.get_type();
+      let lname = list.get_name();
 
       // sanitise state - essential in tests which call crate::prepare() multiple times
       $list->reset_state;
@@ -2707,8 +2701,8 @@ impl Biber {
       if !($list->get_sortingnamekeytemplatename) {
         $list->set_sortingnamekeytemplatename("global");
       }
-      if !($list->get_uniquenametemplatename) {
-        $list->set_uniquenametemplatename("global");
+      if list.get_uniquenametemplatename().skip_empty().is_none() {
+        list.set_uniquenametemplatename("global");
       }
       if !($list->get_labelalphanametemplatename) {
         $list->set_labelalphanametemplatename("global");
@@ -3733,8 +3727,8 @@ impl Biber {
     let $lsds  = $dlist->get_sortdataschema;
     let keys = dlist.get_keys();
     let $lstn = $dlist->get_sortingtemplatename;
-    let $ltype = $dlist->get_type;
-    let $lname = $dlist->get_name;
+    let ltype = dlist.get_type();
+    let lname = dlist.get_name();
     let $llocale = locale2bcp47($sortingtemplate->{locale} || crate::Config->getblxoption(undef, "sortlocale"));
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);

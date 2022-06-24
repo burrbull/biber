@@ -23,21 +23,18 @@ let $gopts = crate::Config->getoption("dot_include");
 let $linknode; // node to use to do cluster links
 
 impl Dot {
+  const HEAD: &str = r###"digraph Biberdata {
+  compound = true;
+  edge [ arrowhead=open ];
+  graph [ style=filled, rankdir=LR ];
+  node [
+    fontsize=10,
+    fillcolor=white,
+    style=filled,
+    shape=box ];
+  "###;
   fn new(obj) -> Self {
     let $self = $class->SUPER::new($obj);
-
-    $self->{output_data}{HEAD} = <<~EOF;
-      digraph Biberdata {
-        compound = true;
-        edge [ arrowhead=open ];
-        graph [ style=filled, rankdir=LR ];
-        node [
-          fontsize=10,
-          fillcolor=white,
-          style=filled,
-          shape=box ];
-
-      EOF
 
     return $self;
   }
@@ -63,7 +60,6 @@ impl Dot {
   /// Create a graph of the required things and save to .dot format
   fn output(self) {
     let $biber = $crate::MASTER;
-    let $data = $self->{output_data};
     let $target = $self->{output_target};
     let $target_string = "Target"; // Default
     if ($self->{output_target_file}) {
@@ -79,9 +75,9 @@ impl Dot {
 
     info!("Writing '{}' with encoding 'UTF-8'", target_string));
 
-    out($target, $data->{HEAD});
+    out($target, Self::HEAD);
 
-    let i_n = 2; // indentation
+    let mut i_n = 2; // indentation
     let i = ' '.to_string(); // starting indentation
 
     // Loop over sections, sort so we can run tests
@@ -101,10 +97,12 @@ impl Dot {
       }
 
       // First create nodes/groups for entries
-      for be in (sort {a.get_field("citekey") cmp b.get_field("citekey")} section.bibentries().entries()) {
+      let mut entries: Vec<_> = section.bibentries().entries().collect();
+      entries.sort_by_key(|e| e.get_field("citekey"));
+      for be in entries.into_iter() {
         let citekey = be.get_field("citekey");
-        $state->{$secnum}{"${secnum}/${citekey}"} = 1;
-        let $et = uc(be.get_field("entrytype"));
+        $state->{$secnum}{format!("{secnum}/{citekey}")} = 1;
+        let et = be.get_field("entrytype").to_uppercase();
 
         // colour depends on whether cited, uncited, dataonly or key alias
         let mut c = if section.has_citekey(citekey) {
@@ -117,7 +115,7 @@ impl Dot {
             c = "#fdffd9" ;
           }
         }
-        if $section->get_citekey_alias($citekey) {
+        if section.get_citekey_alias(citekey) {
           c = "#a1edec" ;
         }
 
@@ -127,14 +125,15 @@ impl Dot {
         // ID.
         if (let $sets = crate::Config->get_graph("set")) {
           if (let $set = $sets->{memtoset}{$citekey}) { // entry is a set member
-            $graph .= $i x $in . "subgraph \"cluster_${secnum}/set_${set}\" {\n";
-            $in += 2;
-            $graph .= $i x $in . "label=\"$set (SET)\";\n";
-            $graph .= $i x $in . "tooltip=\"$set (SET)\";\n";
-            $graph .= $i x $in . "fontsize=\"10\";\n";
-            $graph .= $i x $in . "fontname=serif;\n";
-            $graph .= $i x $in . "fillcolor=\"#e3dadc\";\n";
-            $graph .= "\n";
+            graph.push_str(&format!("{}subgraph \"cluster_{secnum}/set_{set}\" {{\n"), i.repeat(i_n));
+            i_n += 2;
+            let iin = i.repeat(i_n);
+            graph.push_str(&format!("{iin}label=\"{set} (SET)\";\n"));
+            graph.push_str(&format!("{iin}tooltip=\"{set} (SET)\";\n"));
+            graph.push_str(&format!("{iin}fontsize=\"10\";\n"));
+            graph.push_str(&format!("{iin}fontname=serif;\n"));
+            graph.push_str(&format!("{iin}fillcolor=\"#e3dadc\";\n"));
+            graph.push_str("\n");
           }
           if $sets->{settomem}{$citekey} { // Don't make normal nodes for sets
             continue;
@@ -151,22 +150,24 @@ impl Dot {
         }
 
         if ($gopts->{field}) { // If granularity is at the level of fields
-          $graph .= $i x $in . "subgraph \"cluster_section${secnum}/${citekey}\" {\n";
-          $in += 2;
-          $graph .= $i x $in . "fontsize=\"10\";\n";
-          $graph .= $i x $in . "label=\"$citekey ($et)$aliases\";\n";
-          $graph .= $i x $in . "tooltip=\"$citekey ($et)\";\n";
-          $graph .= $i x $in . "fillcolor=\"$c\";\n";
-          $graph .= "\n";
-          foreach let $field (sort $be->datafields) {
+          graph.push_str(&format!("{}subgraph \"cluster_section{secnum}/{citekey}\" {{\n"), i.repeat(i_n));
+          i_n += 2;
+          let iin = i.repeat(i_n);
+          graph.push_str(&format!("{iin}fontsize=\"10\";\n"));
+          graph.push_str(&format!("{iin}label=\"{citekey} ({et}){aliases}\";\n"));
+          graph.push_str(&format!("{iin}tooltip=\"{citekey} ({et})\";\n"));
+          graph.push_str(&format!("{iin}fillcolor=\"{c}\";\n"));
+          graph.push_str("\n");
+          // NOTE: already sorted
+          for field in be.datafields()) {
             $graph .= $i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . uc($field) . "\" ]\n";
           }
-          $in -= 2;
+          i_n -= 2;
           $graph .= $i x $in . "}\n\n";
 
           // link node for cluster->cluster links
-          let $middle = int($be->count_datafields / 2);
-          $state->{$secnum}{$citekey}{linknode} = ($be->datafields)[$middle];
+          let middle = be.count_datafields() / 2;
+          $state->{$secnum}{$citekey}{linknode} = be.datafields()[middle];
 
         }
         else { // Granularity is at the level of entries
@@ -179,7 +180,7 @@ impl Dot {
         if (let $sets = crate::Config->get_graph("set")) {
           if ($sets->{memtoset}{$citekey}) { // entry is a set member
             $graph .= $i x $in . "}\n\n";
-            $in -= 2;
+            i_n -= 2;
           }
         }
       }

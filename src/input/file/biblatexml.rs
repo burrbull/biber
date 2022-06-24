@@ -10,7 +10,6 @@ use crate::Sections;
 use crate::Section;
 use crate::Utils;
 use crate::Config;
-use Data::Uniqid qw ( suniqid );
 use Encode;
 use File::Spec;
 use File::Slurper;

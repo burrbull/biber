@@ -1,29 +1,32 @@
 //! `entry::Names` objects
 
-use parent qw(Class::Accessor);
-__PACKAGE__->follow_best_practice;
-no autovivification;
+//no autovivification;
 
-use Data::Dump;
-use Data::Uniqid qw (suniqid);
-use crate::Config;
-use Log::Log4perl qw( :no_extra_logdie_message );
-
-// Names of simple package accessor attributes for those not created automatically
-// by the option scope in the .bcf
-__PACKAGE__->mk_accessors(qw (
-                              id
-                              type
-                            ));
-
-pub struct Names;
+#[derive(Debug)]
+pub struct Names {
+  namelist: Vec<Name>,
+  id: String,
+  typ: String,
+  morenames: bool,
+}
 
 impl Names {
   /// Initialize a crate::Entry::Names object
-  fn new(%params) -> Self {
-    return bless {namelist => [],
-                  id       => suniqid,
-                  %params}, $class;
+  pub fn new(typ: &str) -> Self {
+    Self {
+      namelist: Vec::new(),
+      id: base62_uuid::base62_uuid(),
+      typ: typ.into(),
+      morenames: false,
+    }
+  }
+
+  pub fn get_id(&self) -> &String {
+    &self.id
+  }
+
+  pub fn get_type&self) -> &String {
+    &self.typ
   }
 
   // ///  Serialiser for JSON::XS::encode
@@ -35,37 +38,34 @@ impl Names {
   // }
 
   /// Test for an empty object
-  fn notnull(self) {
-    let @arr = $self->{namelist}->@*;
-    return $#arr > -1 ? 1 : 0;
+  fn notnull(&self) -> bool {
+    !self.namelist.is_empty()
   }
 
   /// Return ref to array of all crate::Entry::Name objects
   /// in object
-  fn names(self) {
-    return $self->{namelist};
+  fn names(self) -> &Vec<Name> {
+    &self.namelist
   }
 
   /// Add a crate::Entry::Name object to the crate::Entry::Names
   /// object
-  fn add_name(self, name_obj) {
-    push $self->{namelist}->@*, $name_obj;
-    $name_obj->set_index($#{$self->{namelist}} + 1);
-    return;
+  fn add_name(&mut self, name_obj: Name) {
+    self.namelist.push(name_obj);
+    name_obj.set_index(self.namelist.len());
   }
 
   /// Replace a crate::Entry::Name at a position (1-based)
   /// with a provided one
-  fn replace_name(self, $name_obj, $position) {
-    $name_obj->set_index($position-1);
-    $self->{namelist}->[$position-1] = $name_obj;
-    return;
+  fn replace_name(&mut self, name_obj: Name, position: usize) {
+    name_obj.set_index(position-1);
+    self.namelist[position-1] = name_obj;
   }
 
   /// Splice a crate::Entry::Names object into a crate::Entry::Names object at a
   /// position (1-based)
-  fn splice(self, $names, $position) {
-    splice($self->{namelist}->@*, $position-1, 1, $names->{namelist}->@*);
+  fn splice(&mut self, names: &Names, position: usize) {
+    splice($self->{namelist}->@*, $position-1, 1, names.namelist);
     // now re-index all names in list
     foreach (let $i=0;$i<$#{$self->{namelist}};$i++) {
       $self->{namelist}->[$i]->set_index($i);
@@ -74,60 +74,58 @@ impl Names {
   }
 
   /// Sets a flag to say that we had a "and others" in the data
-  fn set_morenames(self) {
-    $self->{morenames} = 1;
-    return;
+  fn set_morenames(&mut self) {
+    self.morenames = true;
   }
 
   /// Gets the morenames flag
-  fn get_morenames(self) {
-    return $self->{morenames} ? 1 : 0;
+  fn get_morenames(self) -> bool {
+    self.morenames
   }
 
   /// Returns the number of crate::Entry::Name objects in the object
   fn count(self) {
-    return scalar $self->{namelist}->@*;
+    self.namelist.len()
   }
 
   /// Returns boolean to say of there is an nth name
-  fn is_nth_name(self, $n) {
+  fn is_nth_name(self, n: usize) -> bool {
     // name n is 1-based, don't go into negative indices
     return $self->{namelist}[($n == 0) ? 0 : $n-1];
   }
 
   /// Returns the nth crate::Entry::Name object in the object or the last one
   /// if n > total names
-  fn nth_name(self, $n) {
-    let $size = $self->{namelist}->@*;
-    return $self->{namelist}[$n > $size ? $size-1 : $n-1];
+  fn nth_name(&self, n: usize) -> &Name {
+    let size = self.namelist.len();
+    &self.namelist[if n > size { size-1 } else {n-1}];
   }
 
   /// Returns an array ref of crate::Entry::Name objects containing only
   /// the first n crate::Entry::Name objects or all names if n > total names
-  fn first_n_names(self, n) {
-    let $size = $self->{namelist}->@*;
-    return [ $self->{namelist}->@[0 .. ($n > $size ? $size-1 : $n-1)] ];
+  fn first_n_names(&self, n: usize) -> &[Name] {
+    let size = self.namelist.len();
+    self.namelist[0 .. (if n > size {size-1} else {n-1})] ];
   }
 
   /// Deletes the last crate::Entry::Name object in the object
-  fn del_last_name(self) {
-    pop($self->{namelist}->@*); // Don't want the return value of this!
-    return;
+  fn del_last_name(&mut self) {
+    self.namelist.pop(); // Don't want the return value of this!
   }
 
   /// Returns the last crate::Entry::Name object in the object
-  fn last_name(self) {
-    return $self->{namelist}[-1];
+  fn last_name(&self) -> &Name {
+    self.namelist.last().unwrap()
   }
 
   /// Get any xdata reference information for a namelist
-  fn get_xdata(self) {
-    return $self->{xdata} || "";
+  fn get_xdata(&self) -> &str {
+    self.xdata.unwrap_or("")
   }
 
-  /// Dump a crate::Entry::Names object for debugging purposes
+  /*/// Dump a crate::Entry::Names object for debugging purposes
   fn dump(self) {
     dd($self);
     return;
-  }
+  }*/
 }

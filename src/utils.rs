@@ -17,7 +17,6 @@ use IPC::Run3; // This works with PAR::Packer and Windows. IPC::Run doesn't
 use crate::Constants;
 use crate::LaTeX::Recode;
 use crate::Entry::Name;
-use Data::Uniqid qw ( suniqid );
 use Regexp::Common qw( balanced );
 use List::AllUtils qw( first );
 use Log::Log4perl qw(:no_extra_logdie_message);
@@ -1338,7 +1337,7 @@ pub fn maploopreplace($string, $maploop) {
   $string =~ s/\$MAPLOOP/$maploop/g;
   $string =~ s/\$MAPUNIQVAL/$MAPUNIQVAL/g;
   if ($string =~ m/\$MAPUNIQ/) {
-    let $MAPUNIQ = suniqid;
+    let $MAPUNIQ = base62_uuid::base62_uuid();
     $string =~ s/\$MAPUNIQ/$MAPUNIQ/g;
     $MAPUNIQVAL = $MAPUNIQ;
   }

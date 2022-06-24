@@ -1,28 +1,15 @@
 ///! `crate::entry::Name` objects
 
-use parent qw(Class::Accessor);
-__PACKAGE__->follow_best_practice;
+// no autovivification;
 
 use Regexp::Common qw( balanced );
 use crate::Annotation;
 use crate::Config;
 use crate::Constants;
 use Data::Dump qw( pp );
-use Data::Uniqid qw (suniqid);
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 use Unicode::Normalize;
-no autovivification;
-
-// Names of simple package accessor attributes for those not created automatically
-// by the option scope in the .bcf
-__PACKAGE__->mk_accessors(qw (
-                               gender
-                               hash
-                               index
-                               id
-                               rawstring
-                            ));
 
 impl Name {
   /// Initialise a crate::Entry::Name object, optionally with key=>value arguments.
@@ -34,7 +21,7 @@ impl Name {
       // Name is an XDATA reference
       if (let $xdata = $params{xdata}) {
         $name->{xdata} = $xdata;
-        $name->{id} = suniqid;
+        $name->{id} = base62_uuid::base62_uuid(),
         return bless $name, $class;
       }
 
@@ -53,12 +40,40 @@ impl Name {
       }
       $name->{rawstring} = join("",
                                 map {$name->{nameparts}{$_}{string}.unwrap_or("")} keys $name->{nameparts}->%*);
-      $name->{id} = suniqid;
+      $name->{id} = base62_uuid::base62_uuid();
       return bless $name, $class;
     }
     else {
-      return bless {id => suniqid}, $class;
+      return bless {id => base62_uuid::base62_uuid()}, $class;
     }
+  }
+
+  fn get_gender(&self) -> Unknown {
+    &self.gender
+  }
+
+  pub fn get_hash(&self) -> Unknown {
+    &self.hash
+  }
+
+  pub fn set_hash(&mut self, hash: Unknown) {
+    self.hash = hash;
+  }
+
+  pub fn get_index(&self) -> usize {
+    self.index
+  }
+
+  pub fn set_index(&mut self, index: usize) {
+    self.index = index;
+  }
+
+  pub fn get_id(&self) -> &String {
+    &self.id
+  }
+
+  pub fn get_rawstring(&self) -> &String {
+    &self.rawstring
   }
 
   /// Serialiser for JSON::XS::encode
@@ -132,8 +147,8 @@ impl Name {
     }
 
     // gender
-    if (let $g = self.get_gender) {
-      push @attrs, ("gender" => $g);
+    if let Some(g) = self.get_gender().skip_empty() {
+      push @attrs, ("gender" => g);
     }
 
     // name scope annotation
@@ -368,8 +383,7 @@ impl Name {
     }
 
     // Name scope sortingnamekeytemplatename
-    if self.get_sortingnamekeytemplatename {
-      let snks = self.get_sortingnamekeytemplatename;
+    if let Some(snks) = self.get_sortingnamekeytemplatename().skip_empty() {
       namestring.push(format!("sortingnamekeytemplatename{xns}{snks}"));
     }
 

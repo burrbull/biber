@@ -281,7 +281,7 @@ impl DataList {
 
   /// Count the names in a string used to determine uniquelist.
   fn count_uniquelist(self, namelist) {
-    return $namelist->$#* + 1;
+    namelist.len()
   }
 
   /// Gets a uniquelist setting for a namelist
@@ -674,19 +674,18 @@ impl DataList {
   }
 
   /// Gets the sortingnamekeytemplatename of a data list
-  fn get_sortingnamekeytemplatename(self) {
-    return $self->{sortingnamekeytemplatename};
+  fn get_sortingnamekeytemplatename(&self) -> &Option<String> {
+    &self.sortingnamekeytemplatename()
   }
 
   /// Sets the uniquenametemplate name of a data list
-  fn set_uniquenametemplatename(self, untn) {
-    $self->{uniquenametemplatename} = lc($untn);
-    return;
+  fn set_uniquenametemplatename(&mut self, untn: &str) {
+    self.uniquenametemplatename = Some(untn.to_lowercase());
   }
 
   /// Gets the uniquenametemplate name of a data list
-  fn get_uniquenametemplatename(self) {
-    return $self->{uniquenametemplatename};
+  fn get_uniquenametemplatename(&self) -> &Option<String> {
+    &self.uniquenametemplatename;
   }
 
   /// Sets the labelalphanametemplate name of a data list
@@ -712,14 +711,13 @@ impl DataList {
   }
 
   /// Gets the labelprefix setting of a data list
-  fn get_labelprefix(self) {
-    return $self->{labelprefix};
+  fn get_labelprefix(&self) -> String {
+    &self.labelprefix
   }
 
   /// Sets the labelprefix setting of a data list
-  fn set_labelprefix(self, pn) {
-    $self->{labelprefix} = $pn;
-    return
+  fn set_labelprefix(&mut self, pn: &str) {
+    self.labelprefix = pn.into();
   }
 
   /// Sets the name of a data list
@@ -1172,7 +1170,7 @@ impl DataList {
       }
 
       // labelprefix
-      if (let $pn = $self->get_labelprefix($key)) {
+      if (let $pn = self.get_labelprefix(key)) {
         let $str = "\\field{labelprefix}{$pn}";
         $entry_string =~ s|<BDS>LABELPREFIX</BDS>|$str|gxms;
       }
@@ -1374,7 +1372,7 @@ impl DataList {
       }
 
       // labelprefix
-      if (let $pn = $self->get_labelprefix($key)) {
+      if (let $pn = self.get_labelprefix(key)) {
         let $str = "<bbl:field name=\"labelprefix\">$pn</bbl:field>";
         $entry_string =~ s|<BDS>LABELPREFIX</BDS>|$str|gxms;
       }

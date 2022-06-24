@@ -119,7 +119,7 @@ impl Entry {
 
           // recurse so we can do cascading related entries
             debug!("Recursing into RELATED entry '{}'", clonekey);
-          $relclone->relclone;
+          relclone.relclone();
         }
       }
       // point to clone keys and add to citekeys
@@ -390,14 +390,15 @@ impl Entry {
   }
 
   /// Returns a sorted array of the fields which came from the data source
-  fn datafields(self) {
-    use locale;
-    return sort keys %{$self->{datafields}};
+  fn datafields(&self) -> Vec<&String> {
+    let mut fields = self.datafields.keys().collect();
+    fields.sort();
+    fields
   }
 
   /// Returns the number of datafields
-  fn count_datafields(self) {
-    return keys %{$self->{datafields}};
+  fn count_datafields(self) -> usize {
+    self.datafields.len()
   }
 
   /// Returns a sorted array of the fields which were added during processing

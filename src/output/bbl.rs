@@ -630,7 +630,7 @@ impl Bbl {
       // but omit global sort lists so that we can add them last
       foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
         if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
-            $list->get_type == "entry") {
+            list.get_type() == "entry") {
           continue;
         }
         push @lists, $list;
@@ -644,12 +644,12 @@ impl Bbl {
                                                                 type    => "entry",
                                                                 sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"))->@*;
 
-      foreach let $list (@lists) {
+      for list in &lists {
         if !($list->count_keys) { // skip empty lists
           continue;
         }
-        let $listtype = $list->get_type;
-        let $listname = $list->get_name;
+        let listtype = list.get_type();
+        let listname = list.get_name();
 
           debug!("Writing entries in '{}' list of type '{}'", listname, listtype);
 

@@ -2,8 +2,50 @@ use core::fmt;
 
 pub struct Unknown;
 
+pub trait SkipEmpty {
+    fn skip_empty(self) -> Self;
+}
+impl<T> SkipEmpty for Option<T> where T: IsEmpty {
+    fn skip_empty(self) -> Self {
+        self.filter(|s| !s.is_empty())
+    }
+}
 
-#[derive(Clone, Copy, Debug)]
+pub trait IsEmpty {
+    fn is_empty(&self) -> bool;
+}
+impl<'a, T> IsEmpty for &'a T where T: IsEmpty {
+    fn is_empty(&self) -> bool {
+        <T as IsEmpty>::is_empty(self)
+    }
+}
+impl<'a, T> IsEmpty for &'a mut T where T: IsEmpty {
+    fn is_empty(&self) -> bool {
+        <T as IsEmpty>::is_empty(self)
+    }
+}
+impl IsEmpty for str {
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+}
+impl IsEmpty for String {
+    fn is_empty(&self) -> bool {
+        self.as_str().is_empty()
+    }
+}
+impl<T> IsEmpty for &[T] {
+    fn is_empty(&self) -> bool {
+        (*self).is_empty()
+    }
+}
+impl<T> IsEmpty for Vec<T> {
+    fn is_empty(&self) -> bool {
+        self.as_slice().is_empty()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Bool(pub bool);
 
 impl fmt::Display for Bool {
@@ -19,7 +61,7 @@ impl core::str::FromStr for Bool {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum InputFormat {
     BibTeX,
     BibLaTeXML,
@@ -51,7 +93,7 @@ impl core::str::FromStr for InputFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputFormat {
     Dot,
     BibTeX,
@@ -92,7 +134,7 @@ impl core::str::FromStr for OutputFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputFieldCase {
     Upper,
     Lower,
@@ -127,7 +169,7 @@ impl core::str::FromStr for OutputFieldCase {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputIndent {
     Spaces(u32),
     Tabs(u32),

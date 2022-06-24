@@ -659,9 +659,9 @@ impl BblXML {
       // but omit the global context list so that we can add this last
       foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
         if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
-            $list->get_sortingnamekeytemplatename == "global" &&
-            $list->get_labelprefix == "" &&
-            $list->get_type == "entry") {
+            list.get_sortingnamekeytemplatename() == "global" &&
+            list.get_labelprefix() == "" &&
+            list.get_type() == "entry") {
           continue;
         }
         push @lists, $list;
@@ -675,15 +675,15 @@ impl BblXML {
                                                                 type    => "entry",
                                                                 sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"))->@*;
 
-      foreach let $list (@lists) {
-        if !($list->count_keys) { // skip empty lists
+      for list in &lists {
+        if list.count_keys() == 0 { // skip empty lists
           continue;
         }
         let $listssn = $list->get_sortingtemplatename;
-        let $listsnksn = $list->get_sortingnamekeytemplatename;
-        let $listpn = $list->get_labelprefix;
-        let $listtype = $list->get_type;
-        let $listname = $list->get_name;
+        let listsnksn = list.get_sortingnamekeytemplatename();
+        let listpn = list.get_labelprefix();
+        let listtype = list.get_type();
+        let listname = list.get_name();
 
           debug!("Writing entries in '{}' list of type '{}' with sortingtemplatename '{}', sort name key scheme '{}' and labelprefix '{}'", listname, listtype, listssn, listsnksn, listpn);
 

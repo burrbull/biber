@@ -67,7 +67,7 @@ fn _getfullhash(self, $citekey, $names) {
   foreach let $n ($names->names->@*) {
     foreach let $nt (@nps) {// list type so returns list
       if (let $np = $n->get_namepart($nt)) {
-        $hashkey .= strip_nonamestring($np, $names->get_type);
+        $hashkey .= strip_nonamestring($np, names.get_type());
       }
     }
   }
@@ -1452,13 +1452,13 @@ fn _namestring(self, citekey: &str, field, dlist) {
   let $useprefix = crate::Config->getblxoption($secnum, "useprefix", $bee, $citekey);
 
   // Get the sorting name key template for this list context
-  let $snkname = $dlist->get_sortingnamekeytemplatename;
+  let snkname = $dlist->get_sortingnamekeytemplatename();
 
   // Override with any entry-specific sorting name key template option
-  $snkname = crate::Config->getblxoption($secnum, "sortingnamekeytemplatename", undef, $citekey).unwrap_or($snkname);
+  let snkname = crate::Config->getblxoption($secnum, "sortingnamekeytemplatename", undef, $citekey).unwrap_or(snkname);
 
   // Override with any namelist scope sorting name key template option
-  $snkname = $names->get_sortingnamekeytemplatename.unwrap_or($snkname);
+  let mut snkname = names.get_sortingnamekeytemplatename().unwrap_or(snkname);
 
   // Get the sorting namekey template determined so far now that we are down to the name list
   // scope since we need the visibility type now and this doesn't mean anything below the name list
@@ -1481,7 +1481,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
 
   let $trunc = "\x{10FFFD}";  // sort string for "et al" truncated name
 
-  foreach let $n ($names->first_n_names($visible)->@*) {
+  for n in &names.first_n_names(visible) {
 
     // Name scope useprefix option
     if (defined($n->get_useprefix)) {
@@ -1492,7 +1492,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
     // This won't override the visibility type selection already taken from higher-level
     // sorting namekey templates since this option only applies at name list level and higher
     // anyway and this is individual name scope
-    $snkname = $n->get_sortingnamekeytemplatename.unwrap_or($snkname);
+    snkname = n.get_sortingnamekeytemplatename.unwrap_or(snkname);
 
     // Now get the actual sorting name key template
     let $snk = crate::Config->getblxoption(undef, "sortingnamekeytemplate")->{$snkname};
