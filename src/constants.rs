@@ -1,3 +1,6 @@
+use phf::phf_map;
+
+/* TODO
 use Encode;
 use Encode::Alias;
 
@@ -103,8 +106,8 @@ our %MONTHS = ("jan" => "1",
                "jun" => "6",
                "jul" => "7",
                "aug" => "8",
-               "sep" => "9",
                "oct" => "10",
+               "sep" => "9",
                "nov" => "11",
                "dec" => "12");
 
@@ -281,7 +284,8 @@ our $CONFIG_DEFAULT_BIBER = {
   xdatamarker                                 => { content => "xdata" },
   xdatasep                                    => { content => "-" },
   xnamesep                                    => { content => "=" },
-  xsvsep                                      => { content => q/\s*,\s*/ },
+*///  xsvsep                                      => { content => q/\s*,\s*/ },
+/* TODO
 };
 
 // Set up some re-usable CSV parsers here for efficiency reasons
@@ -334,9 +338,9 @@ define_alias("x-nextstep"     => "MacRoman");
 define_alias("x-ascii"        => "ascii"); // Encode doesn't resolve this one by default
 define_alias("lutf8"          => "UTF-8"); // Luatex
 define_alias("utf8x"          => "UTF-8"); // UCS (old)
-
+*/
 // maps between bcp47 lang/locales and babel/polyglossia language names
-our %LOCALE_MAP = (
+pub static LOCALE_MAP: phf::Map<&'static str, &'static str> = phf_map! {
                    "acadian"         => "fr-CA",
                    "american"        => "en-US",
                    "australian"      => "en-AU",
@@ -450,9 +454,9 @@ our %LOCALE_MAP = (
                    "usorbian"        => "hsb-DE",
                    "vietnamese"      => "vi-VN",
                    "welsh"           => "cy-GB",
-                  );
+};
 
-our %LOCALE_MAP_R = (
+pub static LOCALE_MAP_R: phf::Map<&'static str, &'static str> = phf_map! {
                      "af"         => "afrikaans",
                      "af-ZA"      => "afrikaans",
                      "am"         => "ethiopia",
@@ -499,8 +503,8 @@ our %LOCALE_MAP_R = (
                      "en-UK"      => "UKenglish",
                      "en-GB"      => "british",
                      "en-NZ"      => "newzealand",
-                     "en-US"      => "USenglish",
-                     "en-US"      => "american",
+                     //"en-US"      => "USenglish", // duplicate key
+                     //"en-US"      => "american", // duplicate key
                      "en-US"      => "english",
                      "eo"         => "esperanto",
                      "eo-001"     => "esperanto",
@@ -515,7 +519,7 @@ our %LOCALE_MAP_R = (
                      "fi"         => "finnish",
                      "fi-FI"      => "finnish",
                      "fr"         => "french",
-                     "fr-CA"      => "acadian",
+                     //"fr-CA"      => "acadian", // duplicate key
                      "fr-CA"      => "canadien",
                      "fr-FR"      => "french",
                      "fur"        => "friulan",
@@ -617,8 +621,8 @@ our %LOCALE_MAP_R = (
                      "ur-IN"      => "urdu",
                      "vi"         => "vietnamese",
                      "vi-VN"      => "vietnamese",
-                    );
-
+};
+/* TODO
 // Holds the scope of each of the BibLaTeX configuration options from the .bcf
 our %CONFIG_OPTSCOPE_BIBLATEX;
 // Holds the options in a particular scope
@@ -628,3 +632,4 @@ our %CONFIG_OPTTYPE_BIBLATEX;
 // For per-entry, per-namelist and per-name options, what should be set when we find them and
 // should they be output to the .bbl for biblatex.
 our %CONFIG_BIBLATEX_OPTIONS;
+ */

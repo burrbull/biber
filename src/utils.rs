@@ -1,6 +1,6 @@
 //! Various utility subs used in Biber
 use unicode_normalization::UnicodeNormalization;
-
+/* TODO
 use parent qw(Exporter);
 
 use constant {
@@ -26,7 +26,7 @@ use Text::CSV;
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
 use Unicode::GCString;
-
+ */
 pub fn NFC(s: &str) -> String {
   s.nfc().collect()
 }
@@ -38,7 +38,7 @@ pub fn NFD(s: &str) -> String {
 pub fn NFKD(s: &str) -> String {
   s.nfkd().collect()
 }
-
+/* TODO
 /// Expands a data file glob to a list of filenames
 pub fn glob_data_file($source, $globflag) {
   let @sources;
@@ -533,11 +533,11 @@ fn normalise_string_common($str) {
 pub fn normalise_string_hash($str) {
   if !($str) {
     return ""; // Sanitise missing data
-  }
-  $str =~ s/\\(\p{L}+)\s*/$1:/g; // remove tex macros
-  $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; // remove accent macros like \"a
-  $str =~ s/[\{\}~\.\s]+//g; // Remove braces, ties, dots, spaces
-  return $str;
+  }*/
+ // $str =~ s/\\(\p{L}+)\s*/$1:/g; // remove tex macros
+//  $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; // remove accent macros like \"a
+//  $str =~ s/[\{\}~\.\s]+//g; // Remove braces, ties, dots, spaces
+/* TODO  return $str;
 }
 
 /// Like normalise_string, but also substitutes ~ and whitespace with underscore.
@@ -1190,25 +1190,25 @@ pub fn process_comment($comment) {
   }
   return $comment;
 }
-
+*/
 /// Map babel/polyglossia language options to a sensible CLDR (bcp47) locale default
 /// Return input string if there is no mapping
-pub fn locale2bcp47($localestr) {
-  if !($localestr) {
-    return $localestr;
+pub fn locale2bcp47<'a>(localestr: &'a str) -> &'a str {
+  if localestr.is_empty() {
+    return "";
   }
-  return $LOCALE_MAP{$localestr} || $localestr;
+  return crate::constants::LOCALE_MAP.get(localestr).copied().unwrap_or(localestr);
 }
 
 /// Map CLDR (bcp47) locale to a babel/polyglossia locale
 /// Return input string if there is no mapping
-pub fn bcp472locale($localestr) {
-  if !($localestr) {
-    return $localestr;
+pub fn bcp472locale<'a>(localestr: &'a str) -> &'a str {
+  if localestr.is_empty() {
+    return "";
   }
-  return $LOCALE_MAP_R{$localestr} || $localestr;
+  return crate::constants::LOCALE_MAP_R.get(localestr).copied().unwrap_or(localestr);
 }
-
+/* TODO
 /// Calculate the length of a range field
 /// Range fields are an array ref of two-element array refs [range_start, range_end]
 /// range_end can be be empty for open-ended range or undef
@@ -1477,13 +1477,13 @@ pub fn appendstrict_check($step, $orig, $val) {
 pub fn process_backendin($bin) {
   if !($bin) {
     return undef;
-  }
-  let $opts = [split(/\s*,\s*/, $bin)];
-  if (grep {/=/} $opts->@*) {
-    let $hopts;
-    foreach let $o ($opts->@*) {
-      let ($k, $v) = $o =~ m/\s*([^=]+)=(.+)\s*/;
-      $hopts->{$k} = $v;
+  } */
+//  let $opts = [split(/\s*,\s*/, $bin)];
+//  if (grep {/=/} $opts->@*) {
+//    let $hopts;
+//    foreach let $o ($opts->@*) {
+//      let ($k, $v) = $o =~ m/\s*([^=]+)=(.+)\s*/;
+/* TODO      $hopts->{$k} = $v;
     }
     return $hopts;
   }
@@ -1535,3 +1535,4 @@ fn _bool_norm($b) -> bool {
   }
   false;
 }
+*/
