@@ -106,44 +106,44 @@ fn init_sets(set_d, set_e) {
   // sets
 
   // Construct decode set
-  foreach let $type (@types) {
-    foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
+  for type in (@types) {
+    for maps in ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
       if !(first {$set_d == $_} @set) {
         continue;
       }
-      foreach let $map ($maps->findnodes("map")) {
+      for map in ($maps->findnodes("map")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
         $remap_d->{$type}{map}{NFD($from->textContent())} = NFD($to->textContent());
       }
     }
     // Things we don't want to change when decoding as this breaks some things
-    foreach let $d ($xpc->findnodes('/texmap/decode_exclude/char')) {
+    for d in ($xpc->findnodes('/texmap/decode_exclude/char')) {
       delete($remap_d->{$type}{map}{NFD($d->textContent())});
     }
   }
 
   // Construct encode set
-  foreach let $type (@types) {
-    foreach let $maps ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
+  for type in (@types) {
+    for maps in ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
       let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
       if !(first {$set_e == $_} @set) {
         continue;
       }
-      foreach let $map ($maps->findnodes("map")) {
+      for map in ($maps->findnodes("map")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
         $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // There are some duplicates in the data to handle preferred encodings.
-      foreach let $map ($maps->findnodes('map[from[@preferred]]')) {
+      for map in ($maps->findnodes('map[from[@preferred]]')) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
         $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // Some things might need to be inserted as is rather than wrapped in some macro/braces
-      foreach let $map ($maps->findnodes('map[from[@raw]]')) {
+      for map in ($maps->findnodes('map[from[@raw]]')) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
         $remap_e_raw->{NFD($to->textContent())} = 1;
@@ -151,7 +151,7 @@ fn init_sets(set_d, set_e) {
 
     }
     // Things we don't want to change when encoding as this would break LaTeX
-    foreach let $e ($xpc->findnodes('/texmap/encode_exclude/char')) {
+    for e in ($xpc->findnodes('/texmap/encode_exclude/char')) {
       delete($remap_e->{$type}{map}{NFD($e->textContent())});
     }
   }
@@ -159,7 +159,7 @@ fn init_sets(set_d, set_e) {
   // Populate the decode regexps
   // sort by descending length of macro name to avoid shorter macros which are substrings
   // of longer ones damaging the longer ones
-  foreach let $type (@types) {
+  for type in (@types) {
     if !(exists $remap_d->{$type}) {
       continue;
     }
@@ -168,7 +168,7 @@ fn init_sets(set_d, set_e) {
   }
 
   // Populate the encode regexps
-  foreach let $type (@types) {
+  for type in (@types) {
     if !(exists $remap_e->{$type}) {
       continue;
     }
@@ -200,7 +200,7 @@ fn latex_decode(text, %opts) {
     $text =~ s/(\\[a-zA-Z]+)\\(\s+)/$1\{\}$2/g;    // \foo\ bar -> \foo{} bar
     $text =~ s/([^{]\\\w)([;,.:%])/$1\{\}$2/g;     #} Aaaa\o,  -> Aaaa\o{},
 
-    foreach let $type ("greek", "dings", "punctuation", "symbols", "negatedsymbols", "superscripts", "cmdsuperscripts", "letters", "diacritics") {
+    for type in ["greek", "dings", "punctuation", "symbols", "negatedsymbols", "superscripts", "cmdsuperscripts", "letters", "diacritics"] {
       let $map = $remap_d->{$type}{map};
       let $re = $remap_d->{$type}{re};
       if !re { // Might not be present depending on set
@@ -325,7 +325,7 @@ fn latex_encode(text) {
     return $text;
   }
 
-  foreach let $type ("greek", "dings", "negatedsymbols", "superscripts", "cmdsuperscripts", "diacritics", "letters", "punctuation", "symbols") {
+  for type in ["greek", "dings", "negatedsymbols", "superscripts", "cmdsuperscripts", "diacritics", "letters", "punctuation", "symbols"] {
     let $map = $remap_e->{$type}{map};
     let $re = $remap_e->{$type}{re};
     if !re { // Might not be present depending on set

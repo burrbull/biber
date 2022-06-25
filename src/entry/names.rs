@@ -33,7 +33,7 @@ impl Names {
 
   // ///  Serialiser for JSON::XS::encode
   // fn TO_JSON(self) {
-  //   foreach let $n ($self->@*){
+  //   for n in ($self->@*){
   //     $json->{$k} = $v;
   //   }
   //   return [ map {$_} $self->@* ];
@@ -69,8 +69,8 @@ impl Names {
   fn splice(&mut self, names: &Names, position: usize) {
     splice($self->{namelist}->@*, $position-1, 1, names.namelist);
     // now re-index all names in list
-    foreach (let $i=0;$i<$#{$self->{namelist}};$i++) {
-      $self->{namelist}->[$i]->set_index($i);
+    for i in 0..self.namelist-1 {
+      self.namelist[i].set_index(i);
     }
     return;
   }
@@ -107,7 +107,7 @@ impl Names {
   /// the first n crate::Entry::Name objects or all names if n > total names
   fn first_n_names(&self, n: usize) -> &[Name] {
     let size = self.namelist.len();
-    self.namelist[0 .. (if n > size {size-1} else {n-1})] ];
+    self.namelist[0 .. (if n > size {size-1} else {n-1})];
   }
 
   /// Deletes the last crate::Entry::Name object in the object

@@ -1067,7 +1067,7 @@ impl DataList {
             $entry_string =~ s|<BDS>UNS-$nid</BDS>|$str|gxms;
             $str = "uniquepart=" . $self->get_unpart($nlid, $nid);
             $entry_string =~ s|<BDS>UNP-$nid</BDS>|$str|gxms;
-            foreach let $np ($n->get_nameparts) {
+            for np in ($n->get_nameparts) {
               if ($self->is_unbasepart($nlid, $nid, $np)) {
                 $entry_string =~ s|\s+<BDS>UNP-$np-$nid</BDS>,?||gxms;
               }
@@ -1079,7 +1079,7 @@ impl DataList {
           }
           else {
             $entry_string =~ s|<BDS>UN[SP]-$nid</BDS>,?||gxms;
-            foreach let $np ($n->get_nameparts) {
+            for np in ($n->get_nameparts) {
               $entry_string =~ s|\s+<BDS>UNP-$np-$nid</BDS>,?||gxms;
             }
           }
@@ -1099,7 +1099,7 @@ impl DataList {
       }
 
       // per-namelist bibnamehash and namehash
-      foreach let $namefield ($dmh->{namelists}->@*) {
+      for namefield in ($dmh->{namelists}->@*) {
 
         // per-namelist bibnamehash
         if (let $e = $self->get_entryfield($key, "${namefield}bibnamehash")) {
@@ -1128,7 +1128,7 @@ impl DataList {
       }
 
       // per-namehash
-      foreach let $pn ($dmh->{namelistsall}->@*) {
+      for pn in ($dmh->{namelistsall}->@*) {
         let nl = $be->get_field($pn);
         if !nl {
           continue;
@@ -1185,7 +1185,7 @@ impl DataList {
       // entryset
       if (let $es = $self->get_entryfield($key, "entryset")) {
         let $str = "<bbl:set>\n";
-        foreach let $m ($es->@*) {
+        for m in ($es->@*) {
           $str .= "    <bbl:member>$m</bbl:member>\n";
         }
         $str .= "  </bbl:set>";
@@ -1301,7 +1301,7 @@ impl DataList {
       }
 
       // per-namelist bibnamehash and namehash
-      foreach let $namefield ($dmh->{namelists}->@*) {
+      for namefield in ($dmh->{namelists}->@*) {
 
         // per-namelist bibnamehash
         if (let $e = $self->get_entryfield($key, "${namefield}bibnamehash")) {
@@ -1329,7 +1329,7 @@ impl DataList {
       }
 
       // per-namehash
-      foreach let $pn ($dmh->{namelistsall}->@*) {
+      for pn in ($dmh->{namelistsall}->@*) {
         let nl = $be->get_field($pn);
         if !nl {
           continue;
@@ -1408,7 +1408,7 @@ impl DataList {
   /// ```
   fn namelist_differs_index(self, @list) {
     let $index;
-    foreach let $l_s (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
+    for l_s in (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
       let @l = split("\x{10FFFD}", $l_s);
       if Compare(\@list, \@l) {// Ignore identical lists
         continue;

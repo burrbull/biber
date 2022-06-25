@@ -165,7 +165,7 @@ fn _genpnhash(self, $citekey, $n) {
   let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
-  foreach let $nt (@nps) {// list type so returns list
+  for nt in (@nps) {// list type so returns list
     if (let $np = $n->get_namepart($nt)) {
       $hashkey .= $np;
     }
@@ -225,7 +225,7 @@ fn _genlabel(self, citekey: &str, $dlist) {
   let $slabel;
   $LABEL_FINAL = 0; // reset final shortcut
 
-  foreach let $labelpart (sort {$a->{order} <=> $b->{order}} $labelalphatemplate->{labelelement}->@*) {
+  for labelpart in (sort {$a->{order} <=> $b->{order}} $labelalphatemplate->{labelelement}->@*) {
     let $ret = _labelpart($self, $labelpart->{labelpart}, $citekey, $secnum, $section, $be, $dlist);
     $label .= $ret->[0] || "";
     $slabel .= $ret->[1] || "";
@@ -246,7 +246,7 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
   let $lp;
   let $slp;
 
-  foreach let $part ($labelpart->@*) {
+  for part in ($labelpart->@*) {
     // Implement defaults not set by biblatex itself
     if !exists($part->{substring_fixed_threshold}) {
       $part->{substring_fixed_threshold} = 1;
@@ -463,7 +463,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
     let $parts;
     let $opts;
 
-    foreach let $name ($names->names->@*) {
+    for name in ($names->names->@*) {
 
       // name scope labelalphanametemplate
       if (defined($name->get_labelalphanametemplatename)) {
@@ -487,7 +487,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
       let $mpns; // arrayref accumulator for main non "pre" namepart names
       let $preopts; // arrayref accumulator for "pre" namepart options
       let $mainopts; // arrayref accumulator for main non "pre" namepart options
-      foreach let $lnp ($lnat->@*) {
+      for lnp in ($lnat->@*) {
         let $npn = $lnp->{namepart};
         let $np;
 
@@ -524,14 +524,14 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
     // Loop over names in range
     for (let $i = $nr_start-1; $i < $nr_end; $i++) {
       // Deal with pre options
-      foreach let $fieldinfo ($parts->{pre}{strings}[$i]->@*) {
+      for fieldinfo in ($parts->{pre}{strings}[$i]->@*) {
         let $np = $fieldinfo->[0];
         let $npo = $fieldinfo->[1];
         let $w = $npo->{substring_width}.unwrap_or(1);
         if ($npo->{substring_compound}) {
           let $tmpstring;
           // Splitting on tilde too as libbtparse inserts these into compound prefices
-          foreach let $part (split(/[\s\p{Dash}~]+/, $np)) {
+          for part in (split(/[\s\p{Dash}~]+/, $np)) {
             $tmpstring .= Unicode::GCString->new($part)->substr(0, $w)->as_string;
           }
           $acc .= $tmpstring;
@@ -592,7 +592,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
   let @citekeys = $section.get_citekeys();
   let $nindex = first_index {$_ == $citekey} @citekeys;
 
-  foreach let $fieldinfo ($fieldstrings->@*) {
+  for fieldinfo in ($fieldstrings->@*) {
     let $field_string = $fieldinfo->[0];
     let $namepartopts = $fieldinfo->[1];
 
@@ -633,7 +633,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
           // Look to the index of the longest string or the explicit max width if set
           let $maxlen = $labelattrs->{substring_width_max} || max map {Unicode::GCString->new($_)->length} @strings;
           for (let $i = 1; $i <= $maxlen; $i++) {
-            foreach let $map (map { let $s = Unicode::GCString->new($_)->substr(0, $i)->as_string; $substr_cache{$s}++; [$_, $s] } @strings) {
+            for map in (map { let $s = Unicode::GCString->new($_)->substr(0, $i)->as_string; $substr_cache{$s}++; [$_, $s] } @strings) {
               // We construct a list of all substrings, up to the length of the longest string
               // or substring_width_max. Then we save the index of the list element which is
               // the minimal disambiguation if it's not yet defined
@@ -654,14 +654,14 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
             // which don't occur at least substring_fixed_threshold times
 
             let $is;
-            foreach let $v (values %$lcache) {
+            for v in (values %$lcache) {
               $is->{$v->{nameindex}}{$v->{index}}++;
             }
 
             // Now set a new global index for the name part index which is the maximum of those
             // occuring above a certain threshold
-            foreach let $s (keys %$lcache) {
-              foreach let $ind (keys %$is) {
+            for s in (keys %$lcache) {
+              for ind in (keys %$is) {
                 if $indices{$s} != $ind {
                   continue;
                 }
@@ -730,7 +730,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
           $nolabelwcis = match_indices([map {$_->{value}} $nolabelwcs->@*], $field_string);
           trace!("Saved indices for nolabelwidthcount: {}", Data::Dump::pp($nolabelwcis));
           // Then remove the nolabelwidthcount chars for now
-          foreach let $nolabelwc ($nolabelwcs->@*) {
+          for nolabelwc in ($nolabelwcs->@*) {
             let $nlwcopt = $nolabelwc->{value};
             let $re = qr/$nlwcopt/;
             $field_string =~ s/$re//gxms; // remove nolabelwidthcount items
@@ -741,7 +741,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
         // (with internal spaces or hyphens)
         if ($nameparts && $namepartopts->{substring_compound}) {
           let $tmpstring;
-          foreach let $part (split(/[\s\p{Dash}]+/, $field_string)) {
+          for part in (split(/[\s\p{Dash}]+/, $field_string)) {
             $tmpstring .= Unicode::GCString->new($part)->substr($subs_offset, $subs_width)->as_string;
           }
           $field_string = $tmpstring;
@@ -768,7 +768,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
         // Now reinstate any nolabelwidthcount regexps
         if ($nolabelwcis) {
           let $gc_string = Unicode::GCString->new($field_string);
-          foreach let $nolabelwci ($nolabelwcis->@*) {
+          for nolabelwci in ($nolabelwcis->@*) {
             // Don't put back anything at positions which are no longer in the string
             if ($nolabelwci->[1] +1 <= $gc_string->length) {
               $gc_string->substr($nolabelwci->[1], 0, $nolabelwci->[0]);
@@ -855,7 +855,7 @@ fn _label_listdisambiguation(strings) {
   // loop until the entire disambiguation cache is filled.
   while (grep { !defined } $lcache->{data}->@*) {
     _check_counts($lcache, $cache);
-    foreach let $ambiguous_indices ($cache->{ambiguity}->@*) {
+    for ambiguous_indices in ($cache->{ambiguity}->@*) {
       let $ambiguous_strings = [$strings->@[$ambiguous_indices->@*]]; // slice
       // We work on the first in an ambiguous set
       // We have to find the first name which is not the same as another name in the
@@ -918,7 +918,7 @@ fn _do_substr(lcache, cache, strings) {
 // Push finished disambiguation into results and save still ambiguous labels for loop
 fn _check_counts(lcache, cache) {
   delete($cache->{ambiguity});
-  foreach let $key (keys $cache->{keys}->%*) {
+  for key in (keys $cache->{keys}->%*) {
     if ($cache->{keys}{$key}{count} > 1) {
       push $cache->{ambiguity}->@*, $cache->{keys}{$key}{indices};
     }
@@ -1096,7 +1096,7 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
   $BIBER_SORT_FINAL = "";
   $BIBER_SUPPRESS_FINAL = 1;
 
-  foreach let $sortset ($sortingtemplate->{spec}->@*) {
+  for sortset in ($sortingtemplate->{spec}->@*) {
     let $s = $self->_sortset($sortset, $citekey, $secnum, $section, $be, $dlist);
 
     // Did we get a real zero? This messes up tests below unless we are careful
@@ -1145,7 +1145,7 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
 // Process sorting set
 fn _sortset(self, $sortset, $citekey, $secnum, $section, $be, $dlist) {
   let $dm = crate::config::get_dm();
-  foreach let $sortelement ($sortset->@[1..$sortset->$#*]) {
+  for sortelement in ($sortset->@[1..$sortset->$#*]) {
     let ($sortelementname, $sortelementattributes) = %$sortelement;
     $BIBER_SORT_NULL = 0; // reset this per sortset
     let $out = $self->_dispatch_sorting($sortelementname, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
@@ -1500,7 +1500,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
 
     // Get the sorting name key specification and use it to construct a sorting key for each name
     let $kpa = [];
-    foreach let $kp ($snk->{template}->@*) {
+    for kp in ($snk->{template}->@*) {
       let $kps = "";
       for (let $i=0; $i<=$kp->$#*; $i++) {
         let $np = $kp->[$i];
@@ -1630,7 +1630,7 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
 fn _translit(target, entry, string) {
   let $entrytype = $entry->get_field("entrytype");
   if (let $translits = crate::Config->getblxoption(undef, "translit", $entrytype)) {
-    foreach let $tr ($translits->@*) {
+    for tr in ($translits->@*) {
       // Translit is specific to particular langids
       if (defined($tr->{langids})) {
         let langid = $entry->get_field("langid");

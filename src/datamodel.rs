@@ -36,7 +36,7 @@ impl DataModel {
       if (let $udm = $dms->[1]) {
 
         // Constants
-        foreach let $uc ($udm->{constants}{constant}->@*) {
+        for uc in ($udm->{constants}{constant}->@*) {
           let $uce = firstidx {unicase::eq($_->{name}, $uc->{name})} $dm->{constants}{constant}->@*;
           if ($uce >= 0) { // since constants are named, we can overwrite easily
             $dm->{constants}{constant}[$uce] = $uc;
@@ -47,12 +47,12 @@ impl DataModel {
         }
 
         // Constraints
-        foreach let $uc ($udm->{constraints}[0]{constraint}->@*) {
+        for uc in ($udm->{constraints}[0]{constraint}->@*) {
           push $dm->{constraints}[0]{constraint}->@*, $uc;
         }
 
         // Entryfields
-        foreach let $uef ($udm->{entryfields}->@*) {
+        for uef in ($udm->{entryfields}->@*) {
           if (let $et = $uef->{entrytype}) {
             let $ef = firstidx {$_->{entrytype}[0]{content} && (unicase::eq($_->{entrytype}[0]{content}, $et->[0]{content}))} $dm->{entryfields}->@*;
             if ($ef >= 0) {       // Push fields onto existing type
@@ -71,12 +71,12 @@ impl DataModel {
         }
 
         // Entrytypes
-        foreach let $et ($udm->{entrytypes}{entrytype}->@*) {
+        for et in ($udm->{entrytypes}{entrytype}->@*) {
           push $dm->{entrytypes}{entrytype}->@*, $et;
         }
 
         // Fields
-        foreach let $f ($udm->{fields}{field}->@*) {
+        for f in ($udm->{fields}{field}->@*) {
           let $df = firstidx {unicase::eq($_->{content}, $f->{content}) } $dm->{fields}{field}->@*;
           if ($df >= 0) {
             $dm->{fields}{field}->[$df] = $f;
@@ -96,18 +96,18 @@ impl DataModel {
     // First, we normalise all entrytypes and fields to case-folded form for internal
     // comparisons but we save a map of case-folded variants to actual names
     // so that we can recover the information later for output
-    foreach let $et ($dm->{entrytypes}{entrytype}->@*) {
+    for et in ($dm->{entrytypes}{entrytype}->@*) {
       $self->{casemap}{foldtoorig}{UniCase::new($et->{content})} = $et->{content};
       $et->{content} = UniCase::new($et->{content});
     }
-    foreach let $f ($dm->{fields}{field}->@*) {
+    for f in ($dm->{fields}{field}->@*) {
       $self->{casemap}{foldtoorig}{UniCase::new($f->{content})} = $f->{content};
       $f->{content} = UniCase::new($f->{content});
     }
 
     // Early check for fatal datamodel errors
     // Make sure dates are named *date. A lot of code relies on this.
-    foreach let $date (grep {$_->{datatype} == "date"} $dm->{fields}{field}->@*) {
+    for date in (grep {$_->{datatype} == "date"} $dm->{fields}{field}->@*) {
       if !($date->{content} =~ m/date$/) {
         biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
       }
@@ -120,7 +120,7 @@ impl DataModel {
 
     // Pull out legal entrytypes, fields and constraints and make lookup hash
     // for quick tests later
-    foreach let $f ($dm->{fields}{field}->@*) {
+    for f in ($dm->{fields}{field}->@*) {
 
       // In case of conflicts, we need to remove the previous definitions since
       // later overrides earlier
@@ -158,12 +158,12 @@ impl DataModel {
     }
 
     let $constants;
-    foreach let $constant ($dm->{constants}{constant}->@*) {
+    for constant in ($dm->{constants}{constant}->@*) {
       $self->{constants}{$constant->{name}}{type} = $constant->{type};
       $self->{constants}{$constant->{name}}{value} = $constant->{content};
     }
 
-    foreach let $et ($dm->{entrytypes}{entrytype}->@*) {
+    for et in ($dm->{entrytypes}{entrytype}->@*) {
       let $es = $et->{content};
 
       // Skip output flag for certain entrytypes
@@ -171,32 +171,32 @@ impl DataModel {
         $self->{entrytypesbyname}->{$es}{skipout} = 1;
       }
       // fields for entrytypes
-      foreach let $ef ($dm->{entryfields}->@*) {
+      for ef in ($dm->{entryfields}->@*) {
         // Found a section describing legal fields for entrytype
         if (!exists($ef->{entrytype}) ||
             grep {$_->{content} == $es} $ef->{entrytype}->@*) {
-          foreach let $f ($ef->{field}->@*) {
+          for f in ($ef->{field}->@*) {
             $self->{entrytypesbyname}{$es}{legal_fields}{$f->{content}} = 1;
           }
         }
       }
 
       // constraints
-      foreach let $cd ($dm->{constraints}->@*) {
+      for cd in ($dm->{constraints}->@*) {
         // Found a section describing constraints for entrytype
         if (!exists($cd->{entrytype}) ||
             grep {$_->{content} == $es} $cd->{entrytype}->@*) {
-          foreach let $c ($cd->{constraint}->@*) {
+          for c in ($cd->{constraint}->@*) {
             if ($c->{type} == "mandatory") {
               // field
-              foreach let $f ($c->{field}->@*) {
+              for f in ($c->{field}->@*) {
                 push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $f->{content};
               }
               // xor set of fields
               // [ XOR, field1, field2, ... , fieldn ]
-              foreach let $fxor ($c->{fieldxor}->@*) {
+              for fxor in ($c->{fieldxor}->@*) {
                 let $xorset;
-                foreach let $f ($fxor->{field}->@*) {
+                for f in ($fxor->{field}->@*) {
                   push $xorset->@*, $f->{content};
                 }
                 unshift $xorset->@*, "XOR";
@@ -204,9 +204,9 @@ impl DataModel {
               }
               // or set of fields
               // [ OR, field1, field2, ... , fieldn ]
-              foreach let $for ($c->{fieldor}->@*) {
+              for for in ($c->{fieldor}->@*) {
                 let $orset;
-                foreach let $f ($for->{field}->@*) {
+                for f in ($for->{field}->@*) {
                   push $orset->@*, $f->{content};
                 }
                 unshift $orset->@*, "OR";
@@ -830,15 +830,15 @@ impl DataModel {
     $writer->emptyTag("attribute", "name" => "id");
     $writer->startTag("attribute", "name" => "entrytype");
     $writer->startTag("choice");
-    foreach let $entrytype ($dm->entrytypes->@*) {
+    for entrytype in ($dm->entrytypes->@*) {
       $writer->dataElement("value", $entrytype);
     }
     $writer->endTag();// choice
     $writer->endTag();// attribute
     $writer->startTag("interleave");
 
-    foreach let $ft ($dm->fieldtypes->@*) {
-      foreach let $dt ($dm->datatypes->@*) {
+    for ft in ($dm->fieldtypes->@*) {
+      for dt in ($dm->datatypes->@*) {
         if ($dm->is_fields_of_type($ft, $dt)) {
           if $dt == "datepart" { // not legal in input, only output
             continue;
@@ -858,8 +858,8 @@ impl DataModel {
     $writer->endTag();// entries element
     $writer->endTag();// start
 
-    foreach let $ft ($dm->fieldtypes->@*) {
-      foreach let $dt ($dm->datatypes->@*) {
+    for ft in ($dm->fieldtypes->@*) {
+      for dt in ($dm->datatypes->@*) {
         if ($dm->is_fields_of_type($ft, $dt)) {
           if $dt == "datepart" { // not legal in input, only output
             continue;
@@ -898,7 +898,7 @@ impl DataModel {
             $writer->comment("types of names elements");
             $writer->startTag("attribute", "name" => "type");
             $writer->startTag("choice");
-            foreach let $name ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for name in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->dataElement("value", $name);
             }
             $writer->endTag();    // choice
@@ -943,7 +943,7 @@ impl DataModel {
             $writer->startTag("element", "name" => format!("{bltx}:namepart"));
             $writer->startTag("attribute", "name" => "type");
             $writer->startTag("choice");
-            foreach let $np ($dm->get_constant_value("nameparts")) {// list type so returns list
+            for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
               $writer->dataElement("value", $np);
             }
 
@@ -979,7 +979,7 @@ impl DataModel {
             // lists element definition
             // ========================
             $writer->startTag("interleave");
-            foreach let $list ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for list in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:$list"));
               $writer->startTag("choice");
@@ -1008,7 +1008,7 @@ impl DataModel {
             // uri field element definition
             // ============================
             $writer->startTag("interleave");
-            foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
               $writer->startTag("choice");
@@ -1025,7 +1025,7 @@ impl DataModel {
             // range field element definition
             // ==============================
             $writer->startTag("interleave");
-            foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
 
@@ -1066,7 +1066,7 @@ impl DataModel {
             // entrykey field element definition
             // =================================
             $writer->startTag("interleave");
-            foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->startTag("optional");
               // related field is special
               if ($field == "related") {
@@ -1122,7 +1122,7 @@ impl DataModel {
             $writer->startTag("optional");
             $writer->startTag("attribute", "name" => "type");
             $writer->startTag("choice");
-            foreach let $datetype(@types) {
+            for datetype in(@types) {
               if !($datetype) {
                 continue;
               }
@@ -1155,7 +1155,7 @@ impl DataModel {
             // field element definition
             // ========================
             $writer->startTag("interleave");
-            foreach let $field ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
               $writer->startTag("choice");
@@ -1192,7 +1192,7 @@ impl DataModel {
     $writer->startTag("optional");
     $writer->startTag("attribute", "name" => "gender");
     $writer->startTag("choice");
-    foreach let $gender ($dm->get_constant_value("gender")) {// list type so returns list
+    for gender in ($dm->get_constant_value("gender")) {// list type so returns list
       $writer->dataElement("value", $gender);
     }
     $writer->endTag();// choice
@@ -1317,7 +1317,7 @@ impl DataModel {
     $writer->emptyTag("attribute", "name" => "key");
     $writer->startTag("attribute", "name" => "type");
     $writer->startTag("choice");
-    foreach let $et ($dm->entrytypes->@*) {
+    for et in ($dm->entrytypes->@*) {
       $writer->dataElement("value", $et);
     }
     $writer->endTag();    // choice
@@ -1399,7 +1399,7 @@ impl DataModel {
     $writer->startTag("element", "name" => format!("{bbl}:names"));
     $writer->startTag("attribute", "name" => "type");
     $writer->startTag("choice");
-    foreach let $name (@names) {
+    for name in (@names) {
       $writer->dataElement("value", $name);
     }
     $writer->endTag();    // choice
@@ -1473,7 +1473,7 @@ impl DataModel {
     $writer->startTag("element", "name" => format!("{bbl}:list"));
     $writer->startTag("attribute", "name" => "name");
     $writer->startTag("choice");
-    foreach let $list (@lists) {
+    for list in (@lists) {
       $writer->dataElement("value", $list);
     }
     $writer->endTag();          // choice
@@ -1543,7 +1543,7 @@ impl DataModel {
     $writer->startTag("attribute", "name" => "name");
 
     $writer->startTag("choice");
-    foreach let $f (@fs1, @fs2, @fs3, @fs4) {
+    for f in (@fs1, @fs2, @fs3, @fs4) {
       $writer->dataElement("value", $f);
     }
     $writer->endTag();    // choice
@@ -1553,7 +1553,7 @@ impl DataModel {
     $writer->startTag("attribute", "name" => "name");
 
     $writer->startTag("choice");
-    foreach let $dp ($dm->get_fields_of_type("field", "datepart")->@*) {
+    for dp in ($dm->get_fields_of_type("field", "datepart")->@*) {
       $writer->dataElement("value", $dp);
     }
     $writer->endTag();    // choice
@@ -1648,7 +1648,7 @@ impl DataModel {
     $writer->startTag("element", "name" => format!("{bbl}:range"));
     $writer->startTag("attribute", "name" => "name");
     $writer->startTag("choice");
-    foreach let $r (@ranges) {
+    for r in (@ranges) {
       $writer->dataElement("value", $r);
     }
     $writer->endTag();    // choice
@@ -1677,7 +1677,7 @@ impl DataModel {
       $writer->startTag("element", "name" => format!("{bbl}:list"));
       $writer->startTag("attribute", "name" => "name");
       $writer->startTag("choice");
-      foreach let $u (@uril) {
+      for u in (@uril) {
         $writer->dataElement("value", $u);
       }
       $writer->endTag();          // choice
@@ -1717,7 +1717,7 @@ impl DataModel {
     $writer->startTag("element", "name" => format!("{bbl}:annotation"));
     $writer->startTag("attribute", "name" => "scope");
     $writer->startTag("choice");
-    foreach let $s ("field", "list", "names", "item", "name", "namepart") {
+    for s in ("field", "list", "names", "item", "name", "namepart") {
       $writer->dataElement("value", $s);
     }
     $writer->endTag();// choice
@@ -1727,7 +1727,7 @@ impl DataModel {
     $writer->emptyTag("attribute", "name" => "value");
     $writer->startTag("attribute", "name" => "literal");
     $writer->startTag("choice");
-    foreach let $s ('1', '0') {
+    for s in ["1", "0"] {
       $writer->dataElement("value", $s);
     }
     $writer->endTag();// choice

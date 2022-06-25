@@ -126,19 +126,19 @@ fn _initopts(opts) {
   // Set hard-coded biblatex option defaults
   // This has to go after _config_file_set() as this is what defines option scope
   // in tool mode (from the .conf file)
-  foreach (keys %CONFIG_DEFAULT_BIBLATEX) {
+  for k in CONFIG_DEFAULT_BIBLATEX.keys() {
     crate::Config->setblxoption(0, $_, $CONFIG_DEFAULT_BIBLATEX{$_});
   }
 
   // Command-line overrides everything else
-  foreach let $copt (keys $opts->%*) {
+  for copt in (keys $opts->%*) {
     // This is a tricky option as we need to keep non-overriden defaults
     // If we don't we can get errors when contructing the sorting call to eval() later
     if (lc($copt) == "collate_options") {
       let $collopts = crate::Config->getoption("collate_options");
       let $copt_h = (eval "{ $opts->{$copt} }").expect("Bad command-line collation options");
       // Override defaults with any cmdline settings
-      foreach let $co (keys $copt_h->%*) {
+      for co in (keys $copt_h->%*) {
         $collopts->{$co} = $copt_h->{$co};
       }
       crate::Config->setconfigfileoption("collate_options", $collopts);
@@ -190,7 +190,7 @@ fn _initopts(opts) {
 
   // Parse output-field-replace into something easier to use
   if (let $ofrs = crate::Config->getoption("output_field_replace")) {
-    foreach let $ofr (split(/\s*,\s*/, $ofrs)) {
+    for ofr in (split(/\s*,\s*/, $ofrs)) {
       let ($f, $fr) = $ofr =~ m/^([^:]+):([^:]+)$/;
       $CONFIG_OUTPUT_FIELDREPLACE{$f} = $fr;
     }
@@ -352,9 +352,9 @@ fn _config_file_set(conf) {
                                            "KeyAttr" => []).expect(format!("Failed to read biber config file '{}'\n {}", conf, $@));
   }
   // Option scope has to be set first
-  foreach let $bcfscopeopts ($userconf->{optionscope}->@*) {
+  for bcfscopeopts in ($userconf->{optionscope}->@*) {
     let $scope = $bcfscopeopts->{type};
-    foreach let $bcfscopeopt ($bcfscopeopts->{option}->@*) {
+    for bcfscopeopt in ($bcfscopeopts->{option}->@*) {
       let $opt = $bcfscopeopt->{content};
       $CONFIG_BIBLATEX_OPTIONS{$scope}{$opt}{OUTPUT} = $bcfscopeopt->{backendout} || 0;
       if (let $bin = crate::Utils::process_backendin($bcfscopeopt->{backendin})) {
@@ -366,12 +366,12 @@ fn _config_file_set(conf) {
   }
 
   // Now we have the per-namelist options, make the accessors for them in the Names package
-  foreach let $nso (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+  for nso in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
     crate::Entry::Names->follow_best_practice;
     crate::Entry::Names->mk_accessors($nso);
   }
   // Now we have the per-name options, make the accessors for them in the Name package
-  foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+  for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
     crate::Entry::Name->follow_best_practice;
     crate::Entry::Name->mk_accessors($no);
   }
@@ -381,9 +381,9 @@ fn _config_file_set(conf) {
   // DATAFIELD SETS
   // Since we have to use the datamodel to resolve some members, just record the settings
   // here for processing after the datamodel is parsed
-  foreach let $s ($userconf->{datafieldset}->@*) {
+  for s in ($userconf->{datafieldset}->@*) {
     let $name = $s->{name};
-    foreach let $m ($s->{member}->@*) {
+    for m in ($s->{member}->@*) {
       if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
         push $DATAFIELD_SETS{$name}->@*, $field;
       }
@@ -400,7 +400,7 @@ fn _config_file_set(conf) {
     // Has to be an array ref and so must come before
     // the later options tests which assume hash refs
     if (lc($k) == "labelalphatemplate") {
-      foreach let $t ($v->@*) {
+      for t in ($v->@*) {
         let $latype = $t->{type};
         if ($latype == "global") {
           crate::Config->setblxoption(0, "labelalphatemplate", $t);
@@ -414,10 +414,10 @@ fn _config_file_set(conf) {
       }
     }
     else if (lc($k) == "labelalphanametemplate") {
-      foreach let $t ($v->@*) {
+      for t in ($v->@*) {
         let $lants;
         let $lant;
-        foreach let $np (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
+        for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
           push $lant->@*, {namepart           => $np->{content},
                            use                => $np->{use},
                            pre                => $np->{pre},
@@ -432,9 +432,9 @@ fn _config_file_set(conf) {
     }
     else if (lc($k) == "uniquenametemplate") {
       let $unts;
-      foreach let $unt ($v->@*) {
+      for unt in ($v->@*) {
         let $untval = [];
-        foreach let $np (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
+        for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
           push $untval->@*, {namepart        => $np->{content},
                              use             => $np->{use},
                              disambiguation  => $np->{disambiguation},
@@ -446,11 +446,11 @@ fn _config_file_set(conf) {
     }
     else if (lc($k) == "sortingnamekeytemplate") {
       let $snss;
-      foreach let $sns ($v->@*) {
+      for sns in ($v->@*) {
         let $snkps;
-        foreach let $snkp (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
+        for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
           let $snps;
-          foreach let $snp (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
+          for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
             let $np;
             if ($snp->{type} == "namepart") {
               $np = { type => "namepart", value => $snp->{content} };
@@ -474,7 +474,7 @@ fn _config_file_set(conf) {
       crate::Config->setblxoption(0, "sortingnamekeytemplate", $snss);
     }
     else if (lc($k) == "transliteration") {
-      foreach let $tr ($v->@*) {
+      for tr in ($v->@*) {
         if ($tr->{entrytype}[0] == '*') { // already array forced for another option
           crate::Config->setblxoption(0, "translit", $tr->{translit});
         }
@@ -498,14 +498,14 @@ fn _config_file_set(conf) {
     else if (lc($k) == "collate_options") {
       let $collopts = crate::Config->getoption("collate_options");
       // Override defaults with any user settings
-      foreach let $co ($v->{option}->@*) {
+      for co in ($v->{option}->@*) {
         $collopts->{$co->{name}} = $co->{value};
       }
       crate::Config->setconfigfileoption($k, $collopts);
     }
     else if (lc($k) == "sourcemap") {
       let $sms;
-      foreach let $sm ($v->{maps}->@*) {
+      for sm in ($v->{maps}->@*) {
         if (defined($sm->{level}) && $sm->{level} == "driver") {
           carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
         }
@@ -522,9 +522,9 @@ fn _config_file_set(conf) {
       crate::Config->setblxoption(0, $k, $v);
     }
     else if (lc($k) == "sortexclusion") {// This is a biblatex option
-      foreach let $sex ($v->@*) {
+      for sex in ($v->@*) {
         let $excludes;
-        foreach let $ex ($sex->{exclusion}->@*) {
+        for ex in ($sex->{exclusion}->@*) {
           $excludes->{$ex->{content}} = 1;
         }
         crate::Config->setblxoption(0, "sortexclusion",
@@ -534,10 +534,10 @@ fn _config_file_set(conf) {
       }
     }
     else if (lc($k) == "sortinclusion") {// This is a biblatex option
-      foreach let $sin ($v->@*) {
+      for sin in ($v->@*) {
         let $includes;
-        foreach let $in ($sin->{inclusion}->@*) {
-          $includes->{$in->{content}} = 1;
+        for i_n in ($sin->{inclusion}->@*) {
+          $includes->{i_n->{content}} = 1;
         }
         crate::Config->setblxoption(0, "sortinclusion",
                                     $includes,
@@ -547,7 +547,7 @@ fn _config_file_set(conf) {
     }
     else if (lc($k) == "presort") {// This is a biblatex option
       // presort defaults
-      foreach let $presort ($v->@*) {
+      for presort in ($v->@*) {
         // Global presort default
         if !(exists($presort->{type})) {
           crate::Config->setblxoption(0, "presort", $presort->{content});
@@ -563,7 +563,7 @@ fn _config_file_set(conf) {
     }
     else if (lc($k) == "sortingtemplate") {// This is a biblatex option
       let $sorttemplates;
-      foreach let $ss ($v->@*) {
+      for ss in ($v->@*) {
         $sorttemplates->{$ss->{name}} = crate::_parse_sort($ss);
       }
       crate::Config->setblxoption(0, "sortingtemplate", $sorttemplates);
@@ -653,7 +653,7 @@ fn add_uniq_ignore(key, field, uniqs) {
   if !($uniqs) {
     return ;
   }
-  foreach let $u (split(/\s*,\s*/, $uniqs)) {
+  for u in (split(/\s*,\s*/, $uniqs)) {
     push $CONFIG->{state}{uniqignore}{$key}{$u}->@*, $field;
   }
   return;
@@ -672,7 +672,7 @@ fn postprocess_biber_opts() {
   // They are not booleans on the command-line/config file so that they
   // mirror biblatex option syntax for users, for example
 
-  foreach let $opt ("sortcase", "sortupper") {
+  for opt in ("sortcase", "sortupper") {
     if (exists($CONFIG->{options}{biber}{$opt})) {
       if ($CONFIG->{options}{biber}{$opt} == "true") {
         $CONFIG->{options}{biber}{$opt} = 1;
@@ -904,7 +904,7 @@ fn get_inheritance(type, source, target) {
 ///];
 /// ```
 fn is_inheritance_path(self, $type, $e1, $e2) -> bool {
-  foreach let $dps (grep {$_->{s} == $e1} $CONFIG->{state}{$type}->@*) {
+  for dps in (grep {$_->{s} == $e1} $CONFIG->{state}{$type}->@*) {
     if $dps->{t} == $e2 {
       return true;
     }

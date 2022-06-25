@@ -864,7 +864,7 @@ if (exists($opts->{dot_include}) and (not exists($opts->{output_format})
 if (exists($opts->{dot_include})) {
   $opts->{dot_include} = {map {lc($_) => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
   let @suboptions = ( 'section', 'field', 'crossref', 'xref', 'xdata', 'related' );
-  foreach let $g (keys $opts->{dot_include}->%*) {
+  for g in (keys $opts->{dot_include}->%*) {
     unless (first {$_ eq lc($g)} @suboptions) {
       say STDERR "Biber: '$g' is an invalid output type for DOT output";
       exit EXIT_ERROR;

@@ -143,7 +143,7 @@ pub fn locate_data_file($source) {
 
         // fallbacks for, e.g., linux
         if !(exists($ENV{PERL_LWP_SSL_CA_FILE})) {
-          foreach let $ca_bundle (qw{
+          for ca_bundle in (qw{
                                      /etc/ssl/certs/ca-certificates.crt
                                      /etc/pki/tls/certs/ca-bundle.crt
                                      /etc/ssl/ca-bundle.pem
@@ -154,7 +154,7 @@ pub fn locate_data_file($source) {
             $ENV{PERL_LWP_SSL_CA_FILE} = $ca_bundle;
             break;
           }
-          foreach let $ca_path (qw{
+          for ca_path in (qw{
                                    /etc/ssl/certs/
                                    /etc/pki/tls/
                                }) {
@@ -343,7 +343,7 @@ pub fn biber_error($error, nodie: bool) {
 /// concatenation of all of the full name strings.
 pub fn makenamesid($names) {
   let @namestrings;
-  foreach let $name ($names->names->@*) {
+  for name in ($names->names->@*) {
     push @namestrings, $name->get_namestring;
   }
   let $tmp = namestrings.join(" ");
@@ -370,7 +370,7 @@ pub fn strip_noinit(string) {
   if !(let $noinit = crate::Config->getoption("noinit")) {
     return $string;
   }
-  foreach let $opt ($noinit->@*) {
+  for opt in ($noinit->@*) {
     let $re = $opt->{value};
     $string =~ s/$re//gxms;
   }
@@ -392,7 +392,7 @@ pub fn strip_nosort(string, fieldname) {
 
   let $restrings;
 
-  foreach let $nsopt ($nosort->@*) {
+  for nsopt in ($nosort->@*) {
     // Specific fieldnames override sets
     if (unicase::eq($nsopt->{name}, fieldname)) {
       push $restrings->@*, $nsopt->{value};
@@ -409,7 +409,7 @@ pub fn strip_nosort(string, fieldname) {
     return $string;
   }
 
-  foreach let $re ($restrings->@*) {
+  for re in ($restrings->@*) {
     $string =~ s/$re//gxms;
   }
   return $string;
@@ -432,7 +432,7 @@ pub fn strip_nonamestring(string, fieldname) {
 
   let $restrings;
 
-  foreach let $nnopt ($nonamestring->@*) {
+  for nnopt in ($nonamestring->@*) {
     // Specific fieldnames override sets
     if (unicase::eq($nnopt->{name}, fieldname)) {
       push $restrings->@*, $nnopt->{value};
@@ -448,7 +448,7 @@ pub fn strip_nonamestring(string, fieldname) {
     return $string;
   }
 
-  foreach let $re ($restrings->@*) {
+  for re in ($restrings->@*) {
     $string =~ s/$re//gxms;
   }
   return $string;
@@ -464,7 +464,7 @@ pub fn normalise_string_label($str) {
   $str =~ s/\\[A-Za-z]+//g;    // remove latex macros (assuming they have only ASCII letters)
   // Replace ties with spaces or they will be lost
   $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
-  foreach let $nolabel ($nolabels->@*) {
+  for nolabel in ($nolabels->@*) {
     let $re = $nolabel->{value};
     $str =~ s/$re//gxms;           // remove nolabel items
   }
@@ -604,11 +604,11 @@ pub fn unescape_label(s: &str) -> String {
 /// reduce_array(\@a, \@b) returns all elements in @a that are not in @b
 pub fn reduce_array($a, $b) {
   let %countb = ();
-  foreach let $elem ($b->@*) {
+  for elem in ($b->@*) {
     $countb{$elem}++;
   }
   let @result;
-  foreach let $elem ($a->@*) {
+  for elem in ($a->@*) {
     if !($countb{$elem}) {
       push @result, $elem;
     }
@@ -810,7 +810,7 @@ pub fn filter_entry_options($secnum, $be) {
   let $citekey = $be->get_field("citekey");
   let $roptions = [];
 
-  foreach let $opt (sort crate::Config->getblxentryoptions($secnum, $citekey)) {
+  for opt in (sort crate::Config->getblxentryoptions($secnum, $citekey)) {
 
     let $val = crate::Config->getblxoption($secnum, $opt, undef, $citekey);
     let $cfopt = $CONFIG_BIBLATEX_OPTIONS{ENTRY}{$opt}{OUTPUT};
@@ -965,7 +965,7 @@ pub fn process_entry_options($citekey, $options, $secnum) {
     let $val = $2.unwrap_or(1); // bare options are just boolean numerals
     let $oo = expand_option_input($1, $val, $CONFIG_BIBLATEX_OPTIONS{ENTRY}{lc($1)}{INPUT});
 
-    foreach let $o ($oo->@*) {
+    for o in ($oo->@*) {
       crate::Config->setblxoption($secnum, $o->[0], $o->[1], "ENTRY", $citekey);
     }
   }
@@ -983,10 +983,10 @@ pub fn merge_entry_options($opts, $overrideopts) {
   let $merged = [];
   let $used_overrides = [];
 
-  foreach let $ov ($opts->@*) {
+  for ov in ($opts->@*) {
     let $or = 0;
     let ($o, $e, $v) = $ov =~ m/^([^=]+)(=?)(.*)$/;
-    foreach let $oov ($overrideopts->@*) {
+    for oov in ($overrideopts->@*) {
       let ($oo, $eo, $vo) = $oov =~ m/^([^=]+)(=?)(.*)$/;
       if ($o == $oo) {
         $or = 1;
@@ -1002,7 +1002,7 @@ pub fn merge_entry_options($opts, $overrideopts) {
   }
 
   // Now push anything in the overrides array which had no conflicts
-  foreach let $oov ($overrideopts->@*) {
+  for oov in ($overrideopts->@*) {
     if !(first {$_ == $oov} $used_overrides->@*) {
       push $merged->@*, $oov;
     }
@@ -1024,14 +1024,14 @@ pub fn expand_option_input($opt, $val, $cfopt) {
   }
   // Set all split options
   else if (ref($cfopt) == "ARRAY") {
-    foreach let $k ($cfopt->@*) {
+    for k in ($cfopt->@*) {
       push $outopts->@*, [$k, $val];
     }
   }
   // ASSUMPTION - only biblatex booleans resolve to hashes (currently, only dataonly)
   // Specify values per all splits
   else if (ref($cfopt) == "HASH") {
-    foreach let $k (keys $cfopt->%*) {
+    for k in (keys $cfopt->%*) {
       let $subval = map_boolean($k, $cfopt->{$k}, "tonum");
 
       // meta-opt $val is 0/false - invert any boolean sub-options and ignore others
@@ -1236,7 +1236,7 @@ pub fn bcp472locale<'a>(localestr: &'a str) -> &'a str {
 /// -   -> ["", undef]
 pub fn rangelen($rf) {
   let $rl = 0;
-  foreach let $f ($rf->@*) {
+  for f in ($rf->@*) {
     let $m = $f->[0];
     let $n = $f->[1];
     // m is something that's just numerals (decimal Unicode roman or ASCII roman)
@@ -1292,7 +1292,7 @@ pub fn rangelen($rf) {
 pub fn match_indices($regexes, $string) {
   let @ret;
   let $relen = 0;
-  foreach let $regex ($regexes->@*) {
+  for regex in ($regexes->@*) {
     let $len = 0;
     while ($string =~ /$regex/g) {
       let $gcs = Unicode::GCString->new($string)->substr($-[0], $+[0]-$-[0]);
@@ -1404,7 +1404,7 @@ pub fn call_transliterator($target, $from, $to, $text) {
 /// Passed an array of strings, returns an array of initials
 pub fn gen_initials(@strings) {
   let @strings_out;
-  foreach let $str (@strings) {
+  for str in (@strings) {
     // Deal with hyphenated name parts and normalise to a '-' character for easy
     // replacement with macro later
     // Dont' split a name part if it's brace-wrapped

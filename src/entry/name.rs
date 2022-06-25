@@ -27,7 +27,7 @@ impl Name {
         return bless $name, $class;
       }
 
-      foreach let $attr (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*,
+      for attr in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*,
                         "gender",
                         "useprefix",
                         "strip") {
@@ -35,7 +35,7 @@ impl Name {
           $name->{$attr} = $params{$attr};
         }
       }
-      foreach let $np ($dm->get_constant_value("nameparts")) {
+      for np in ($dm->get_constant_value("nameparts")) {
         if (exists $params{$np}) {
           $name->{nameparts}{$np} = $params{$np};
         }
@@ -138,7 +138,7 @@ impl Name {
 
 
     // Add per-name options
-    foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
@@ -160,7 +160,7 @@ impl Name {
 
     $xml->startTag([$xml_prefix, "name"], @attrs);
 
-    foreach let $np ($dm->get_constant_value("nameparts")) {// list type so returns list
+    for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
       self.name_part_to_bltxml($xml, $xml_prefix, $key, $namefield, $np, $count);
     }
 
@@ -215,7 +215,7 @@ impl Name {
     let @namestrings;
     let $nid = self.{id};
 
-    foreach let $np ($dm->get_constant_value("nameparts")) {// list type so returns list
+    for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
       let $npc;
       let $npci;
       if ($npc = self.get_namepart($np)) {
@@ -253,7 +253,7 @@ impl Name {
     }
 
     // Add per-name options
-    foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
@@ -281,7 +281,7 @@ impl Name {
     let %names;
     let $nid = self.{id};
 
-    foreach let $np ($dm->get_constant_value("nameparts")) {// list type so returns list
+    for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
       let $npc;
       let $npci;
 
@@ -307,7 +307,7 @@ impl Name {
     }
 
     // Add per-name options
-    foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
@@ -321,7 +321,7 @@ impl Name {
     $pno{hash} = "[BDS]${nid}-PERNAMEHASH[/BDS]";
 
     $xml->startTag([$xml_prefix, "name"], map {$_ => $pno{$_}} sort keys %pno);
-    foreach let $key (sort keys %names) {
+    for key in (sort keys %names) {
       let $value = $names{$key};
       let %un;
       if ($un != "false") {

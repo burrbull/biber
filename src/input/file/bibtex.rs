@@ -204,7 +204,7 @@ fn extract_entries(filename, encoding, keys) {
     // loop over all keys we're looking for and create objects
       debug!("Text::BibTeX cache keys: {}", join(', ', keys $cache->{data}{$filename}->%*));
       debug!("Wanted keys: {}", join(', ', $keys->@*));
-    foreach let $wanted_key ($keys->@*) {
+    for wanted_key in ($keys->@*) {
         debug!("Looking for key '{}' in Text::BibTeX cache", wanted_key);
 
       // Record a key->datasource name mapping for error reporting
@@ -326,11 +326,11 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
     $entry = $entry->clone;
 
     // Datasource mapping applied in $smap order (USER->STYLE->DRIVER)
-    foreach let $smap ($smaps->@*) {
+    for smap in ($smaps->@*) {
       $smap->{map_overwrite} = $smap->{map_overwrite}.unwrap_or(0); // default
       let $level = $smap->{level};
 
-      foreach let $map ($smap->{map}->@*) {
+      for map in ($smap->{map}->@*) {
 
         // Skip if this map element specifies a particular refsection and it is not this one
         if (exists($map->{refsection})) {
@@ -388,10 +388,10 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
           }
         }
 
-      'MAP: foreach let $maploop (@maploop) {
+      'MAP: for maploop in (@maploop) {
           let $MAPUNIQVAL;
           // loop over mapping steps
-          foreach let $step ($map->{map_step}->@*) {
+          for step in ($map->{map_step}->@*) {
 
             // entry deletion. Really only useful with allkeys or tool mode
             if ($step->{map_entry_null}) {
@@ -846,7 +846,7 @@ fn _create_entry(k, e) {
 
   // We put all the fields we find modulo field aliases into the object
   // validation happens later and is not datasource dependent
-  foreach let $f ($e->fieldlist) {
+  for f in ($e->fieldlist) {
     let fc = UniCase::new($f);
 
     // We have to process local options as early as possible in order
@@ -902,7 +902,7 @@ fn _annotation(bibentry, entry, field, key) {
   }
   $fc =~ s/$ann$//;
 
-  foreach let $a (split(/\s*;\s*/, $value)) {
+  for a in (split(/\s*;\s*/, $value)) {
     let ($count, $part, $annotations) = $a =~ /^\s*(\d+)?:?([^=]+)?=(.+)/;
     // Is the annotations a literal annotation?
     let $literal = 0;
@@ -1053,7 +1053,7 @@ fn _range(bibentry, entry, field, key) {
   let @values = split(/\s*[;,]\s*/, $value);
   // If there is a range sep, then we set the end of the range even if it's null
   // If no range sep, then the end of the range is undef
-  foreach let $value (@values) {
+  for value in (@values) {
     let $ovalue = $value;
     $value =~ s/~/ /g; // Some normalisation for malformed fields
     $value =~ m/\A\s*(\P{Pd}+)\s*\z/xms ||// Simple value without range
@@ -1118,7 +1118,7 @@ fn _name(bibentry, entry, field, key) {
       if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}{$nlo})) {
         let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
-        foreach let $o ($oo->@*) {
+        for o in ($oo->@*) {
           let $method = "set_" . $o->[0];
           $names->$method($o->[1]);
         }
@@ -1429,7 +1429,7 @@ fn cache_data(filename, encoding) {
 
     // Record macros in T::B so we can output then properly in tool mode
     if ($entry->metatype == BTE_MACRODEF) {
-      foreach let $f ($entry->fieldlist) {
+      for f in ($entry->fieldlist) {
         $RSTRINGS{$entry->get($f)} = $f;
       }
       continue;
@@ -1463,7 +1463,7 @@ fn cache_data(filename, encoding) {
     if (let $ids = $entry->get("ids")) {
       let $Srx = crate::Config->getoption("xsvsep");
       let $S = qr/$Srx/;
-      foreach let $id (split(/$S/, $ids)) {
+      for id in (split(/$S/, $ids)) {
 
         // Skip aliases which are this very key (deep recursion ...)
         if ($id == $key) {
@@ -1593,7 +1593,7 @@ fn parse_decode(ufilename) {
   while ( let $entry = Text::BibTeX::Entry->new($bib) ) {
   if ( $entry->metatype == BTE_REGULAR ) {
       $lbuf .= '@' . $entry->type . '{' . $entry->key . ',' . "\n";
-      foreach let $f ($entry->fieldlist) {
+      for f in ($entry->fieldlist) {
         let $fv = $entry->get(encode("UTF-8", NFC($f))); // NFC boundary: $f is "output" to Text::BibTeX
 
         // Don't decode verbatim fields
@@ -1616,7 +1616,7 @@ fn parse_decode(ufilename) {
     }
     else if ($entry->metatype == BTE_MACRODEF) {
       $lbuf .= '@STRING{';
-      foreach let $f ($entry->fieldlist) {
+      for f in ($entry->fieldlist) {
         $lbuf .= $f . ' = {' . $entry->get(encode("UTF-8", NFC($f))) . '}';
       }
       $lbuf .= "}\n";
@@ -1628,7 +1628,7 @@ fn parse_decode(ufilename) {
 
   // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
   if !(crate::Config->getoption("nostdmacros")) {
-    foreach let $mon (keys %MONTHS) {
+    for mon in (keys %MONTHS) {
       Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
     }
   }
@@ -1693,7 +1693,7 @@ fn parsename(section, namestr, fieldname) {
   // chars and diacritics in general
 
   // basic bibtex names have a fixed data model
-  foreach let $np ("prefix", "family", "given", "suffix") {
+  for np in ("prefix", "family", "given", "suffix") {
     if ($namec{$np}) {
       ($namec{"${np}-strippedflag"}, $namec{"${np}-stripped"}) = remove_outer($namec{$np});
 
@@ -1713,7 +1713,7 @@ fn parsename(section, namestr, fieldname) {
 
   let %nameparts;
   let $strip;
-  foreach let $np ("prefix", "family", "given", "suffix") {
+  for np in ("prefix", "family", "given", "suffix") {
     $nameparts{$np} = {string  => $namec{"${np}-stripped"}.unwrap_or(undef),
                        initial => $namec{$np} ? $namec{"${np}-i"} : undef};
     $strip->{$np} = $namec{"${np}-strippedflag"};
@@ -1753,7 +1753,7 @@ fn parsename_x(section, namestr, fieldname, key) {
 
   let %namec;
   let %pernameopts;
-  foreach let $np (split_xsv($namestr)) {// Can have x inside records so use Text::CSV
+  for np in (split_xsv($namestr)) {// Can have x inside records so use Text::CSV
     let ($npn, $npv) = $np =~ m/^(.+)\s*$xnamesep\s*(.+)$/x;
     $npn = lc($npn);
 
@@ -1761,7 +1761,7 @@ fn parsename_x(section, namestr, fieldname, key) {
     if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAME}{$npn})) {
       let $oo = expand_option_input($npn, $npv, $CONFIG_BIBLATEX_OPTIONS{NAME}{$npn}{INPUT});
 
-      foreach let $o ($oo->@*) {
+      for o in ($oo->@*) {
         $pernameopts{$o->[0]} = $o->[1];
       }
       continue;
@@ -1786,7 +1786,7 @@ fn parsename_x(section, namestr, fieldname, key) {
     }
   }
 
-  foreach let $np (keys %nps) {
+  for np in (keys %nps) {
     if (exists($namec{$np})) {
       // Generate any stripped information
       (let $s, $namec{$np}) = remove_outer($namec{$np});
@@ -1808,7 +1808,7 @@ fn parsename_x(section, namestr, fieldname, key) {
   }
 
   let %nameparts;
-  foreach let $np (keys %nps) {
+  for np in (keys %nps) {
     $nameparts{$np} = {string  => $namec{$np}.unwrap_or(undef),
                        initial => exists($namec{$np}) ? $namec{"${np}-i"} : undef};
 
@@ -1869,7 +1869,7 @@ fn _split_initials(npv) {
   let $ci = 0;
   let $acc;
 
-  foreach let $c (split(/\b{gcb}/, $npv)) {
+  for c in (split(/\b{gcb}/, $npv)) {
     // entering compound initial
     if ($c == '{') {
       $ci = 1;

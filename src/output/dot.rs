@@ -231,9 +231,9 @@ impl Dot {
     if (let $gr = crate::Config->get_graph("related")) {
 
       // related links
-      foreach let $f_entry (sort keys $gr->{clonetotarget}->%*) {
+      for f_entry in (sort keys $gr->{clonetotarget}->%*) {
         let $m = $gr->{clonetotarget}{$f_entry};
-        foreach let $t_entry (sort keys $m->%*) {
+        for t_entry in (sort keys $m->%*) {
           if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
             continue;
           }
@@ -253,9 +253,9 @@ impl Dot {
       }
 
       // clone links
-      foreach let $f_entry (sort keys $gr->{reltoclone}->%*) {
+      for f_entry in (sort keys $gr->{reltoclone}->%*) {
         let $m = $gr->{reltoclone}{$f_entry};
-        foreach let $t_entry (sort keys $m->%*) {
+        for t_entry in (sort keys $m->%*) {
           if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
             continue;
           }
@@ -279,7 +279,7 @@ impl Dot {
   // Graph xrefs
   fn _graph_xref(secnum) {
     if (let $gr = crate::Config->get_graph("xref")) {
-      foreach let $f_entry (sort keys $gr->%*) {
+      for f_entry in (sort keys $gr->%*) {
         let $t_entry = $gr->{$f_entry};
         if !($state->{$secnum}{"${secnum}/${f_entry}"}) {
           continue;
@@ -314,12 +314,12 @@ impl Dot {
     if (let $gr = crate::Config->get_graph($type)) {
       // Show fields
       if ($gopts->{field}) {
-        foreach let $f_entry (sort keys $gr->%*) {
+        for f_entry in (sort keys $gr->%*) {
           let $v = $gr->{$f_entry};
-          foreach let $f_field (sort keys $v->%*) {
+          for f_field in (sort keys $v->%*) {
             let $w = $v->{$f_field};
-            foreach let $t_entry (sort keys $w->%*) {
-              foreach let $t_field ($w->{$t_entry}->@*) {
+            for t_entry in (sort keys $w->%*) {
+              for t_field in ($w->{$t_entry}->@*) {
                 if !$state->{$secnum}{"${secnum}/${f_entry}"} {
                   continue;
                 }
@@ -334,10 +334,10 @@ impl Dot {
       }
       // Just show the entries, no fields
       else {
-        foreach let $f_entry (sort keys $gr->%*) {
+        for f_entry in (sort keys $gr->%*) {
           let $v = $gr->{$f_entry};
-          foreach let $w (sort values $v->%*) {
-            foreach let $t_entry (sort keys $w->%*) {
+          for w in (sort values $v->%*) {
+            for t_entry in (sort keys $w->%*) {
               if !$state->{$secnum}{"${secnum}/${f_entry}"} {
                 continue;
               }

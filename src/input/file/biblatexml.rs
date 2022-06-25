@@ -114,7 +114,7 @@ fn extract_entries(filename, _encoding, keys) {
   if section.is_allkeys()) {
       debug!("All citekeys will be used for section '{}'", secnum);
     // Loop over all entries, creating objects
-    foreach let $entry ($xpc->findnodes("/$NS:entries/$NS:entry")) {
+    for entry in ($xpc->findnodes("/$NS:entries/$NS:entry")) {
         debug!('Parsing BibLaTeXML entry object {}', $entry->nodePath);
 
       // If an entry has no key, ignore it and warn
@@ -136,7 +136,7 @@ fn extract_entries(filename, _encoding, keys) {
       // We can't do this with a driver entry for the IDS field as this needs
       // an entry object creating first and the whole point of aliases is that
       // there is no entry object
-      foreach let $id ($entry->findnodes("./$NS:ids/$NS:key")) {
+      for id in ($entry->findnodes("./$NS:ids/$NS:key")) {
         let $idstr = $id->textContent();
 
         // Skip aliases which are also real entry keys
@@ -197,7 +197,7 @@ fn extract_entries(filename, _encoding, keys) {
   else {
     // loop over all keys we're looking for and create objects
       debug!("Wanted keys: {}", join(', ', $keys->@*));
-    foreach let $wanted_key ($keys->@*) {
+    for wanted_key in ($keys->@*) {
 
         debug!("Looking for key '{}' in BibLaTeXML file '{}'", wanted_key, filename);
       if (let @entries = $xpc->findnodes("/$NS:entries/$NS:entry[\@id='$wanted_key']")) {
@@ -260,11 +260,11 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
   let %newentries; // In case we create a new entry in a map
 
   // Datasource mapping applied in $smap order (USER->STYLE->DRIVER)
-  foreach let $smap ($smaps->@*) {
+  for smap in ($smaps->@*) {
     $smap->{map_overwrite} = $smap->{map_overwrite}.unwrap_or(0); // default
     let $level = $smap->{level};
 
-  'MAP:    foreach let $map (@{$smap->{map}}) {
+  'MAP:    for map in (@{$smap->{map}}) {
 
       // Skip if this map element specifies a particular refsection and it is not this one
       if (exists($map->{refsection})) {
@@ -317,10 +317,10 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
         }
       }
 
-      foreach let $maploop (@maploop) {
+      for maploop in (@maploop) {
         let $MAPUNIQVAL;
         // loop over mapping steps
-        foreach let $step (@{$map->{map_step}}) {
+        for step in (@{$map->{map_step}}) {
 
           // entry deletion. Really only useful with allkeys or tool mode
           if ($step->{map_entry_null}) {
@@ -716,7 +716,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
   }
 
   // Need to also instantiate fields in any new entries created by map
-  foreach let $e ($entry, values %newentries) {
+  for e in ($entry, values %newentries) {
     if !e {             // newentry might be undef
       continue;
     }
@@ -728,7 +728,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
     // We put all the fields we find modulo field aliases into the object.
     // Validation happens later and is not datasource dependent
-    foreach let $f (uniq map { if (_norm($_->nodeName) == "names") { $_->getAttribute("type") }
+    for f in (uniq map { if (_norm($_->nodeName) == "names") { $_->getAttribute("type") }
                               else { $_->nodeName()} }  $e->findnodes('*')) {
 
       // We have to process local options as early as possible in order
@@ -755,7 +755,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
 // Annotations are special - there is a literal field and also more complex annotations
 fn _annotation(bibentry, entry, f, key) {
-  foreach let $node ($entry->findnodes("./$f")) {
+  for node in ($entry->findnodes("./$f")) {
     let $field = $node->getAttribute("field");
     let $name = $node->getAttribute("name") || "default";
     let $literal = $node->getAttribute("literal") || '0';
@@ -785,7 +785,7 @@ fn _related(bibentry, entry, f, key) {
   let $Srx = crate::Config->getoption("xsvsep");
   let $S = qr/$Srx/;
   let $node = $entry->findnodes("./$f")->get_node(1);
-  foreach let $item ($node->findnodes("./$NS:list/$NS:item")) {
+  for item in ($node->findnodes("./$NS:list/$NS:item")) {
     $bibentry->set_datafield("related", [ split(/$S/, $item->getAttribute("ids")) ]);
     $bibentry->set_datafield("relatedtype", $item->getAttribute("type"));
     if (let $string = $item->getAttribute("string")) {
@@ -900,7 +900,7 @@ fn _range(bibentry, entry, f, key) {
   // List of ranges/values
   if (let @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
     let $rl;
-    foreach let $range (@rangelist) {
+    for range in (@rangelist) {
       push $rl->@*, _parse_range_list($range);
     }
     $bibentry->set_datafield(_norm($f), $rl);
@@ -917,7 +917,7 @@ fn _datetime(bibentry, entry, f, key) {
   let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($key);
 
-  foreach let $node ($entry->findnodes("./$f")) {
+  for node in ($entry->findnodes("./$f")) {
 
     let $datetype = $node->getAttribute("type").unwrap_or("");
 
@@ -1119,12 +1119,12 @@ fn _name(bibentry, entry, f, key) {
   let $names = crate::Entry::Names->new("type" => $f);
 
   // per-namelist options
-  foreach let $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+  for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
     if ($node->hasAttribute($nlo)) {
       let $nlov = $node->getAttribute($nlo);
       let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
-      foreach let $o ($oo->@*) {
+      for o in ($oo->@*) {
         let $method = "set_" . $o->[0];
         $names->$method($o->[1]);
       }
@@ -1181,7 +1181,7 @@ fn parsename(section, node, fieldname, key, count) {
 
   let %namec;
 
-  foreach let $n ($dm->get_constant_value("nameparts")) { // list type so returns list
+  for n in ($dm->get_constant_value("nameparts")) { // list type so returns list
     // If there is a namepart node for this component ...
     if (let $npnode = $node->findnodes("./$NS:namepart[\@type='$n']")->get_node(1)) {
 
@@ -1191,7 +1191,7 @@ fn parsename(section, node, fieldname, key, count) {
         $namec{$n} = join_name_parts(\@parts);
           debug!("Found namepart '{}': {}", n, $namec{$n});
         let @partinits;
-        foreach let $part (@npnodes) {
+        for part in (@npnodes) {
           if (let $pi = $part->getAttribute("initial")) {
             push @partinits, $pi;
           }
@@ -1216,7 +1216,7 @@ fn parsename(section, node, fieldname, key, count) {
   }
 
   let %nameparts;
-  foreach let $np ($dm->get_constant_value("nameparts")) { // list type so returns list
+  for np in ($dm->get_constant_value("nameparts")) { // list type so returns list
     $nameparts{$np} = {string  => $namec{$np}.unwrap_or(undef),
                        initial => namec.get(np).map(|_| namec[&format!("{np}-i")])};
 
@@ -1233,12 +1233,12 @@ fn parsename(section, node, fieldname, key, count) {
                                        );
 
   // per-name options
-  foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+  for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
     if ($node->hasAttribute($no)) {
       let $nov = $node->getAttribute($no);
       let $oo = expand_option_input($no, $nov, $CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{INPUT});
 
-      foreach let $o ($oo->@*) {
+      for o in ($oo->@*) {
         let $method = "set_" . $o->[0];
         $newname->$method($o->[1]);
       }
@@ -1344,7 +1344,7 @@ fn _changenode(e, xp_target_s, value, error) {
       // if value is a node, remove target child nodes and replace with value child nodes
       if ($nodeval) {
         $n->removeChildNodes();
-        foreach let $cn ($value->childNodes) {
+        for cn in ($value->childNodes) {
           $n->appendChild($cn);
         }
       }
@@ -1386,7 +1386,7 @@ fn _changenode(e, xp_target_s, value, error) {
             $newnode->setAttribute("type", $f);
             if ($i == $#nodes) { // terminal node
               if ($nodeval) {
-                foreach let $cn ($value->childNodes) {
+                for cn in ($value->childNodes) {
                   $newnode->appendChild($cn);
                 }
               }

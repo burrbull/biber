@@ -58,7 +58,7 @@ impl Entry {
     if (let $relkeys = $self->get_field("related")) {
         debug!("Found RELATED field in '{}' with contents {}", citekey, join(',', @$relkeys));
       let @clonekeys;
-      foreach let $relkey (@$relkeys) {
+      for relkey in (@$relkeys) {
         // Resolve any alias
         let $nrelkey = $section->get_citekey_alias($relkey).unwrap_or($relkey);
           if $relkey != $nrelkey {
@@ -234,7 +234,7 @@ impl Entry {
 
   /// Get a specific XDATA reference
   fn get_xdata_ref(self, $field, $pos) {
-    foreach let $xdatum ($self->{xdatarefs}->@*) {
+    for xdatum in ($self->{xdatarefs}->@*) {
       if ($xdatum->{reffield} == $field) {
         if ($pos) {
           if ($xdatum->{refposition} == $pos) {
@@ -252,7 +252,7 @@ impl Entry {
   /// Checks if an XDATA reference was resolved. Returns false also for
   /// "no such reference".
   fn is_xdata_resolved(self, $field, $pos) {
-    foreach let $xdatum ($self->{xdatarefs}->@*) {
+    for xdatum in ($self->{xdatarefs}->@*) {
       if ($xdatum->{reffield} == $field) {
         if ($pos) {
           if ($xdatum->{refposition} == $pos) {
@@ -458,7 +458,7 @@ impl Entry {
     let $dmh = crate::config::get_dm_helpers();
 
     // Data source fields
-    foreach let $field ($parent->datafields) {
+    for field in ($parent->datafields) {
       if $self->field_exists($field) { // Don't overwrite existing fields
         continue;
       }
@@ -476,7 +476,7 @@ impl Entry {
 
     // Datesplit is a special non datafield and needs to be inherited for any
     // validation checks which may occur later
-    foreach let $df ($dmh->{datefields}->@*) {
+    for df in ($dmh->{datefields}->@*) {
       $df =~ s/date$//;
       if (let $ds = $parent->get_field("${df}datesplit")) {
         $self->set_field("${df}datesplit", $ds);
@@ -522,8 +522,8 @@ impl Entry {
     //  }
     // ]
 
-    foreach let $xdatum ($xdata->@*) {
-      foreach let $xdref ($xdatum->{xdataentries}->@*) {
+    for xdatum in ($xdata->@*) {
+      for xdref in ($xdatum->{xdataentries}->@*) {
         let xdataentry = section.bibentry(xdref);
         if !xdataentry {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
@@ -547,7 +547,7 @@ impl Entry {
 
             // Whole entry XDATA reference so inherit all fields
             if (!defined($xdatum->{xdatafield})) {
-              foreach let $field ($xdataentry->datafields()) { // set fields
+              for field in ($xdataentry->datafields()) { // set fields
                 if $field == "ids" { // Never inherit aliases
                   continue;
                 }
@@ -679,7 +679,7 @@ impl Entry {
     let $dignore = $defaults->{ignore};
 
     // override with type_pair specific defaults if they exist ...
-    foreach let $type_pair ($defaults->{type_pair}->@*) {
+    for type_pair in ($defaults->{type_pair}->@*) {
       if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
           ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
         if $type_pair->{inherit_all} {
@@ -695,12 +695,12 @@ impl Entry {
     }
 
     // First process any fields that have special treatment
-    foreach let $inherit ($inheritance->{inherit}->@*) {
+    for inherit in ($inheritance->{inherit}->@*) {
       // Match for this combination of entry and crossref parent?
-      foreach let $type_pair ($inherit->{type_pair}->@*) {
+      for type_pair in ($inherit->{type_pair}->@*) {
         if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
             ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
-          foreach let $field ($inherit->{field}->@*) {
+          for field in ($inherit->{field}->@*) {
             // Skip for fields in the per-entry noinerit datafield set
             if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key) &&
               exists($field->{target})) {
@@ -795,7 +795,7 @@ impl Entry {
         }
       }
 
-      foreach let $field (@fields) {
+      for field in (@fields) {
         // Skip for fields in the per-entry noinherit datafield set
         if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key)) {
           if (first {$field == $_} $DATAFIELD_SETS{$niset}->@*) {
@@ -824,7 +824,7 @@ impl Entry {
     }
     // Datesplit is a special non datafield and needs to be inherited for any
     // validation checks which may occur later
-    foreach let $df ($dmh->{datefields}->@*) {
+    for df in ($dmh->{datefields}->@*) {
       $df =~ s/date$//;
       if (let $ds = $parent->get_field("${df}datesplit")) {
         $self->set_field("${df}datesplit", $ds);

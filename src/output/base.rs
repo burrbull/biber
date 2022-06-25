@@ -213,7 +213,7 @@ impl Base {
 
     // undef citekeys are global to a section
     // Missing citekeys
-    foreach let $k ($section->get_undef_citekeys) {
+    for k in ($section->get_undef_citekeys) {
       $self->set_output_undefkey($k, $section);
     }
 
@@ -251,10 +251,10 @@ impl Base {
 
     out($target, $data->{HEAD});
 
-    foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
+    for secnum in (sort keys $data->{ENTRIES}->%*) {
       out($target, "SECTION: $secnum\n\n");
       let $section = $self->get_output_section($secnum);
-      foreach let $list ($section->get_lists->@*) {
+      for list in ($section->get_lists->@*) {
         let $listlabel = $list->get_label;
         let listtype = list.get_type();
         out($target, "  LIST: $listlabel\n\n");

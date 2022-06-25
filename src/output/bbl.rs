@@ -255,7 +255,7 @@ impl Bbl {
           }
 
           // Add per-namelist options
-          foreach let $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+          for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
             if (defined($nf->${\"get_$nlo"})) {
               let $nlov = $nf->${\"get_$nlo"};
 
@@ -269,7 +269,7 @@ impl Bbl {
         }
 
         $acc .= "      \\name{$namefield}{$total}{$nfv}{%\n";
-        foreach let $n ($nf->names->@*) {
+        for n in ($nf->names->@*) {
           $acc .= $n->name_to_bbl($un);
         }
         $acc .= "      }\n";
@@ -277,7 +277,7 @@ impl Bbl {
     }
 
     // Output list fields
-    foreach let $listfield ($dmh->{lists}->@*) {
+    for listfield in ($dmh->{lists}->@*) {
       // Performance - as little as possible here - loop over DM fields for every entry
       if (let $lf = $be->get_field($listfield)) {
         if ( lc($lf->[-1]) == crate::Config->getoption("others_string") ) {
@@ -286,7 +286,7 @@ impl Bbl {
         }
         let $total = $lf->$#* + 1;
         $acc .= "      \\list{$listfield}{$total}{%\n";
-        foreach let $f ($lf->@*) {
+        for f in ($lf->@*) {
           $acc .= "        {$f}%\n";
         }
         $acc .= "      }\n";
@@ -303,7 +303,7 @@ impl Bbl {
 
 
     // Output namelist hashes
-    foreach let $namefield ($dmh->{namelists}->@*) {
+    for namefield in ($dmh->{namelists}->@*) {
       if !($be->get_field($namefield)) {
         continue;
       }
@@ -386,7 +386,7 @@ impl Bbl {
       $acc .= "      \\field{clonesourcekey}{$ck}\n";
     }
 
-    foreach let $field ($dmh->{fields}->@*) {
+    for field in ($dmh->{fields}->@*) {
       // Performance - as little as possible here - loop over DM fields for every entry
       let $val = $be->get_field($field);
 
@@ -410,7 +410,7 @@ impl Bbl {
     }
 
     // Date meta-information
-    foreach let $d ($dmh->{datefields}->@*) {
+    for d in ($dmh->{datefields}->@*) {
       $d =~ s/date$//;
 
       // Unspecified granularity
@@ -470,7 +470,7 @@ impl Bbl {
     }
 
     // XSV fields
-    foreach let $field ($dmh->{xsv}->@*) {
+    for field in ($dmh->{xsv}->@*) {
       // keywords is by default field/xsv/keyword but it is in fact
       // output with its own special macro below
       if $field == "keywords" {
@@ -486,13 +486,13 @@ impl Bbl {
       $acc .= "      \\true{nocite}\n";
     }
 
-    foreach let $rfield ($dmh->{ranges}->@*) {
+    for rfield in ($dmh->{ranges}->@*) {
       // Performance - as little as possible here - loop over DM fields for every entry
       if ( let $rf = $be->get_field($rfield) ) {
         // range fields are an array ref of two-element array refs [range_start, range_end]
         // range_end can be be empty for open-ended range or undef
         let @pr;
-        foreach let $f ($rf->@*) {
+        for f in ($rf->@*) {
           if (defined($f->[1])) {
             push @pr, $f->[0] . '\bibrangedash' . ($f->[1] ? ' ' . $f->[1] : "");
           }
@@ -507,7 +507,7 @@ impl Bbl {
     }
 
     // verbatim fields
-    foreach let $vfield ($dmh->{vfields}->@*) {
+    for vfield in ($dmh->{vfields}->@*) {
       // Performance - as little as possible here - loop over DM fields for every entry
       if ( let $vf = $be->get_field($vfield) ) {
         if ($vfield == "url") {
@@ -522,7 +522,7 @@ impl Bbl {
     }
 
     // verbatim lists
-    foreach let $vlist ($dmh->{vlists}->@*) {
+    for vlist in ($dmh->{vlists}->@*) {
       if ( let $vlf = $be->get_field($vlist) ) {
         if ( lc($vlf->[-1]) == crate::Config->getoption("others_string") ) {
           $acc .= "      \\true{more$vlist}\n";
@@ -530,7 +530,7 @@ impl Bbl {
         }
         let $total = $vlf->$#* + 1;
         $acc .= "      \\lverb{$vlist}{$total}\n";
-        foreach let $f ($vlf->@*) {
+        for f in ($vlf->@*) {
           if ($vlist == "urls") {
             // Unicode NFC boundary (before hex encoding)
             $f = URI->new(NFC($f))->as_string;
@@ -547,17 +547,17 @@ impl Bbl {
     }
 
     // Output annotations
-    foreach let $f (crate::Annotation->get_annotated_fields("field", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("field", $key, $f)) {
+    for f in (crate::Annotation->get_annotated_fields("field", $key)) {
+      for n in (crate::Annotation->get_annotations("field", $key, $f)) {
         let $v = crate::Annotation->get_annotation("field", $key, $f, $n);
         let $l = crate::Annotation->is_literal_annotation("field", $key, $f, $n);
         $acc .= "      \\annotation{field}{$f}{$n}{}{}{$l}{$v}\n";
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("item", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("item", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("item", $key, $f, $n)) {
+    for f in (crate::Annotation->get_annotated_fields("item", $key)) {
+      for n in (crate::Annotation->get_annotations("item", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("item", $key, $f, $n)) {
           let $v = crate::Annotation->get_annotation("item", $key, $f, $n, $c);
           let $l = crate::Annotation->is_literal_annotation("item", $key, $f, $n, $c);
           $acc .= "      \\annotation{item}{$f}{$n}{$c}{}{$l}{$v}\n";
@@ -565,10 +565,10 @@ impl Bbl {
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("part", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("part", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
-          foreach let $p (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
+    for f in (crate::Annotation->get_annotated_fields("part", $key)) {
+      for n in (crate::Annotation->get_annotations("part", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
+          for p in (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
             let $v = crate::Annotation->get_annotation("part", $key, $f, $n, $c, $p);
             let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
             $acc .= "      \\annotation{part}{$f}{$n}{$c}{$p}{$l}{$v}\n";
@@ -579,7 +579,7 @@ impl Bbl {
 
     // Append any warnings to the entry, if any
     if (let $w = $be->get_field("warnings")) {
-      foreach let $warning ($w->@*) {
+      for warning in ($w->@*) {
         $acc .= "      \\warn{\\item $warning}\n";
       }
     }
@@ -620,7 +620,7 @@ impl Bbl {
 
     out($target, $data->{HEAD});
 
-    foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
+    for secnum in (sort keys $data->{ENTRIES}->%*) {
         debug!("Writing entries for section {}", secnum);
 
       out($target, "\n\\refsection{$secnum}\n");
@@ -630,7 +630,7 @@ impl Bbl {
 
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit global sort lists so that we can add them last
-      foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
+      for list in (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
         if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
             list.get_type() == "entry") {
           continue;
@@ -699,13 +699,13 @@ impl Bbl {
 
       // Aliases
       // Use sort to guarantee deterministic order for things like latexmk
-      foreach let $ks (sort keys $data->{ALIAS_ENTRIES}{$secnum}{index}->%*) {
+      for ks in (sort keys $data->{ALIAS_ENTRIES}{$secnum}{index}->%*) {
         out($target, $data->{ALIAS_ENTRIES}{$secnum}{index}{$ks}->$*);
       }
 
       // Missing keys
       // Use sort to guarantee deterministic order for things like latexmk
-      foreach let $ks (sort keys $data->{MISSING_ENTRIES}{$secnum}{index}->%*) {
+      for ks in (sort keys $data->{MISSING_ENTRIES}{$secnum}{index}->%*) {
         out($target, $data->{MISSING_ENTRIES}{$secnum}{index}{$ks}->$*);
       }
 

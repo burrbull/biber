@@ -96,7 +96,7 @@ impl Biber {
     }
 
     if ($self->{warnings}) {
-      foreach let $w ($self->{warnings}->@*) {
+      for w in ($self->{warnings}->@*) {
         $logger->warn($w);
       }
       info!("WARNINGS: {}", scalar($self->{warnings}->@*));
@@ -179,7 +179,7 @@ impl Biber {
     // There are no sections in tool mode so create a pseudo-section
     let $bib_section = crate::Section::new(99999);
     let $ifs = [];
-    foreach let $if (@ARGV) {
+    for if in (@ARGV) {
       push $ifs->@*, {type => "file",
                       name => $if,
                       datatype => crate::Config->getoption("input_format"),
@@ -380,9 +380,9 @@ impl Biber {
     }
 
     // Option scope
-    foreach let $bcfscopeopts ($bcfxml->{optionscope}->@*) {
+    for bcfscopeopts in ($bcfxml->{optionscope}->@*) {
       let $scope = $bcfscopeopts->{type};
-      foreach let $bcfscopeopt ($bcfscopeopts->{option}->@*) {
+      for bcfscopeopt in ($bcfscopeopts->{option}->@*) {
         let $opt = $bcfscopeopt->{content};
         $CONFIG_BIBLATEX_OPTIONS{$scope}{$opt}{OUTPUT} = $bcfscopeopt->{backendout} || 0;
         if (let $bin = process_backendin($bcfscopeopt->{backendin})) {
@@ -400,25 +400,25 @@ impl Biber {
       }
     }
     // Now we have the per-namelist options, make the accessors for them in the Names package
-    foreach let $nso (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+    for nso in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
       crate::Entry::Names->follow_best_practice;
       crate::Entry::Names->mk_accessors($nso);
     }
     // Now we have the per-name options, make the accessors for them in the Name package
-    foreach let $no (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
       crate::Entry::Name->follow_best_practice;
       crate::Entry::Name->mk_accessors($no);
     }
 
     // OPTIONS
-    foreach let $bcfopts ($bcfxml->{options}->@*) {
+    for bcfopts in ($bcfxml->{options}->@*) {
 
       // Biber options
       if ($bcfopts->{component} == "biber") {
 
         // Global options
         if ($bcfopts->{type} == "global") {
-          foreach let $bcfopt ($bcfopts->{option}->@*) {
+          for bcfopt in ($bcfopts->{option}->@*) {
             // unless already explicitly set from cmdline/config file
             if !(crate::Config->isexplicitoption($bcfopt->{key}{content})) {
               if ($bcfopt->{type} == "singlevalued") {
@@ -438,7 +438,7 @@ impl Biber {
 
         // Global options
         if ($bcfopts->{type} == "global") {
-          foreach let $bcfopt ($bcfopts->{option}->@*) {
+          for bcfopt in ($bcfopts->{option}->@*) {
             if ($bcfopt->{type} == "singlevalued") {
               crate::Config->setblxoption(undef, $bcfopt->{key}{content}, $bcfopt->{value}[0]{content});
             }
@@ -453,7 +453,7 @@ impl Biber {
         // Entrytype options
         else {
           let $entrytype = $bcfopts->{type};
-          foreach let $bcfopt ($bcfopts->{option}->@*) {
+          for bcfopt in ($bcfopts->{option}->@*) {
             if ($bcfopt->{type} == "singlevalued") {
               crate::Config->setblxoption(undef, $bcfopt->{key}{content}, $bcfopt->{value}[0]{content}, "ENTRYTYPE", $entrytype);
             }
@@ -472,9 +472,9 @@ impl Biber {
     // DATAFIELD SETS
     // Since we have to use the datamodel to resolve some members, just record the settings
     // here for processing after the datamodel is parsed
-    foreach let $s ($bcfxml->{datafieldset}->@*) {
+    for s in ($bcfxml->{datafieldset}->@*) {
       let $name = lc($s->{name});
-      foreach let $m ($s->{member}->@*) {
+      for m in ($s->{member}->@*) {
         if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
           push $DATAFIELD_SETS{$name}->@*, $field;
         }
@@ -526,9 +526,9 @@ impl Biber {
 
     // LABELALPHA NAME TEMPLATE
     let $lants;
-    foreach let $t ($bcfxml->{labelalphanametemplate}->@*) {
+    for t in ($bcfxml->{labelalphanametemplate}->@*) {
       let $lant;
-      foreach let $np (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
+      for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
         push $lant->@*, {namepart           => $np->{content},
                         use                => $np->{use},
                         pre                => $np->{pre},
@@ -541,7 +541,7 @@ impl Biber {
     crate::Config->setblxoption(undef, "labelalphanametemplate", $lants);
 
     // LABELALPHA TEMPLATE
-    foreach let $t ($bcfxml->{labelalphatemplate}->@*) {
+    for t in ($bcfxml->{labelalphatemplate}->@*) {
       let $latype = $t->{type};
       if ($latype == "global") {
         crate::Config->setblxoption(undef, "labelalphatemplate", $t);
@@ -556,9 +556,9 @@ impl Biber {
 
     // EXTRADATE specification
     let $ed;
-    foreach let $scope ($bcfxml->{extradatespec}->{scope}->@*) {
+    for scope in ($bcfxml->{extradatespec}->{scope}->@*) {
       let $fields;
-      foreach let $field (sort {$a->{order} <=> $b->{order}} $scope->{field}->@*) {
+      for field in (sort {$a->{order} <=> $b->{order}} $scope->{field}->@*) {
         push $fields->@*, $field->{content};
       }
       push $ed->@*, $fields;
@@ -573,7 +573,7 @@ impl Biber {
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
     let $noinit;
-    foreach let $ni ($bcfxml->{noinits}{noinit}->@*) {
+    for ni in ($bcfxml->{noinits}{noinit}->@*) {
       push $noinit->@*, { value => $ni->{value}[0]};
     }
     // There is a default so don't set this option if nothing is in the .bcf
@@ -586,7 +586,7 @@ impl Biber {
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
     let $nolabel;
-    foreach let $nl ($bcfxml->{nolabels}{nolabel}->@*) {
+    for nl in ($bcfxml->{nolabels}{nolabel}->@*) {
       push $nolabel->@*, { value => $nl->{value}[0]};
     }
     // There is a default so don't set this option if nothing is in the .bcf
@@ -599,7 +599,7 @@ impl Biber {
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
     let $nolabelwidthcount;
-    foreach let $nlwc ($bcfxml->{nolabelwidthcounts}{nolabelwidthcount}->@*) {
+    for nlwc in ($bcfxml->{nolabelwidthcounts}{nolabelwidthcount}->@*) {
       push $nolabelwidthcount->@*, { value => $nlwc->{value}[0]};
     }
     // There is a default so don't set this option if nothing is in the .bcf
@@ -612,7 +612,7 @@ impl Biber {
     // "field" and "value" are forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
     let $nosort;
-    foreach let $ns ($bcfxml->{nosorts}{nosort}->@*) {
+    for ns in ($bcfxml->{nosorts}{nosort}->@*) {
       push $nosort->@*, {name => $ns->{field}[0], value => $ns->{value}[0]};
     }
     // There is a default so don't set this option if nothing is in the .bcf
@@ -625,7 +625,7 @@ impl Biber {
     // "field" and "value" are forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
     let $nonamestring;
-    foreach let $ns ($bcfxml->{nonamestrings}{nonamestring}->@*) {
+    for ns in ($bcfxml->{nonamestrings}{nonamestring}->@*) {
       push $nonamestring->@*, {name => $ns->{field}[0], value => $ns->{value}[0]};
     }
     if $nonamestring {
@@ -635,9 +635,9 @@ impl Biber {
     // UNIQUENAME TEMPLATE
     let $unts;
     let mut checkbase = false;
-    foreach let $unt ($bcfxml->{uniquenametemplate}->@*) {
+    for unt in ($bcfxml->{uniquenametemplate}->@*) {
       let $untval = [];
-      foreach let $np (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
+      for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
         if $np->{base} {
           checkbase = true;
         }
@@ -661,11 +661,11 @@ impl Biber {
     // Use the order attributes to make sure things are in right order and create a data structure
     // we can use later
     let $snss;
-    foreach let $sns ($bcfxml->{sortingnamekeytemplate}->@*) {
+    for sns in ($bcfxml->{sortingnamekeytemplate}->@*) {
       let $snkps;
-      foreach let $snkp (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
+      for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
         let $snps;
-        foreach let $snp (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
+        for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
           let $np;
           if ($snp->{type} == "namepart") {
             $np = { type => "namepart", value => $snp->{content} };
@@ -691,7 +691,7 @@ impl Biber {
     // SORTING
 
     // transliterations
-    foreach let $tr ($bcfxml->{transliteration}->@*) {
+    for tr in ($bcfxml->{transliteration}->@*) {
       if ($tr->{entrytype}[0] == '*') { // already array forced for another option
         crate::Config->setblxoption(undef, "translit", $tr->{translit});
       }
@@ -704,9 +704,9 @@ impl Biber {
     }
 
     // sorting excludes
-    foreach let $sex ($bcfxml->{sortexclusion}->@*) {
+    for sex in ($bcfxml->{sortexclusion}->@*) {
       let $excludes;
-      foreach let $ex ($sex->{exclusion}->@*) {
+      for ex in ($sex->{exclusion}->@*) {
         $excludes->{$ex->{content}} = 1;
       }
       crate::Config->setblxoption(undef, "sortexclusion",
@@ -716,9 +716,9 @@ impl Biber {
     }
 
     // sorting includes
-    foreach let $sin ($bcfxml->{sortinclusion}->@*) {
+    for sin in ($bcfxml->{sortinclusion}->@*) {
       let $includes;
-      foreach let $in ($sin->{inclusion}->@*) {
+      for in in ($sin->{inclusion}->@*) {
         $includes->{$in->{content}} = 1;
       }
       crate::Config->setblxoption(undef, "sortinclusion",
@@ -728,7 +728,7 @@ impl Biber {
     }
 
     // presort defaults
-    foreach let $presort ($bcfxml->{presort}->@*) {
+    for presort in ($bcfxml->{presort}->@*) {
       // Global presort default
       if ($presort->{type}).is_none() {
         crate::Config->setblxoption(undef, "presort", $presort->{content});
@@ -743,7 +743,7 @@ impl Biber {
     }
 
     let $sortingtemplates;
-    foreach let $ss ($bcfxml->{sortingtemplate}->@*) {
+    for ss in ($bcfxml->{sortingtemplate}->@*) {
       $sortingtemplates->{$ss->{name}} = _parse_sort($ss);
     }
     crate::Config->setblxoption(undef, "sortingtemplate", $sortingtemplates);
@@ -760,8 +760,8 @@ impl Biber {
 
     // Data sources
     let %bibdatasources = ();
-    foreach let $data ($bcfxml->{bibdata}->@*) {
-      foreach let $datasource ($data->{datasource}->@*) {
+    for data in ($bcfxml->{bibdata}->@*) {
+      for datasource in ($data->{datasource}->@*) {
         if !(first {$_->{type} == $datasource->{type} &&
               $_->{datatype} == $datasource->{datatype} &&
                 $_->{name} == $datasource->{content}} $bibdatasources{$data->{section}[0]}->@*) {
@@ -783,7 +783,7 @@ impl Biber {
     let key_flag = false;
     let bib_sections = crate::Sections::new();
 
-  SECTION: foreach let $section ($bcfxml->{section}->@*) {
+  SECTION: for section in ($bcfxml->{section}->@*) {
       let secnum = section.number();
       // Can be multiple section 0 entries and so re-use that section object if it exists
       let existing_section = bib_sections.get_section(secnum);
@@ -804,7 +804,7 @@ impl Biber {
       let @keys = ();
       // Pre-process to deal with situation where key is both \nocite'd and \cited
       // \cite'd takes priority
-      foreach let $keyc ($section->{citekey}->@*) {
+      for keyc in ($section->{citekey}->@*) {
         let $key = NFD($keyc->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
 
         if ($keyc->{nocite}) {// \nocite'd
@@ -871,7 +871,7 @@ impl Biber {
       }
 
       // Get citecounts if present
-      foreach let $keycount ($section->{citekeycount}->@*) {
+      for keycount in ($section->{citekeycount}->@*) {
         let $key = NFD($keycount->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
         bib_section.set_citecount(key, $keycount->{count});
       }
@@ -902,7 +902,7 @@ impl Biber {
     // Read datalists
     let datalists = crate::DataLists::new();
 
-    foreach let $list ($bcfxml->{datalist}->@*) {
+    for list in ($bcfxml->{datalist}->@*) {
       let $ltype  = $list->{type};
       let $lstn = $list->{sortingtemplatename};
       let $lsnksn = $list->{sortingnamekeytemplatename};
@@ -933,14 +933,14 @@ impl Biber {
                                           name                       => $lname);
       $datalist->set_type($ltype || "entry"); // lists are entry lists by default
       $datalist->set_name($lname || format!("{lstn}/{lsnksn}/{lpn}/{luntn}/{llantn}")); // default to ss+snkss+pn+untn+lantn
-      foreach let $filter ($list->{filter}->@*) {
+      for filter in ($list->{filter}->@*) {
         $datalist->add_filter({"type"  => $filter->{type},
                               "value" => $filter->{content}});
       }
       // disjunctive filters are an array ref of filter hashes
-      foreach let $orfilter ($list->{filteror}->@*) {
+      for orfilter in ($list->{filteror}->@*) {
         let $orfilts = [];
-        foreach let $filter ($orfilter->{filter}->@*) {
+        for filter in ($orfilter->{filter}->@*) {
           push $orfilts->@*, {type  => $filter->{type},
                               value => $filter->{content}};
         }
@@ -962,7 +962,7 @@ impl Biber {
 
     // Check to make sure that each section has an entry datalist for global sorting
     // We have to make sure in case sortcites is used which uses the global order.
-    foreach let $section ($bcfxml->{section}->@*) {
+    for section in ($bcfxml->{section}->@*) {
       let $globalss = crate::Config->getblxoption(undef, "sortingtemplatename");
       let $secnum = $section->{number};
 
@@ -1020,7 +1020,7 @@ impl Biber {
         else {
           bib_section->add_citekeys($section.get_citekeys());
         }
-        foreach let $ds (section->get_datasources->@*) {
+        for ds in (section->get_datasources->@*) {
           bib_section->add_datasource($ds);
         }
       }
@@ -1113,7 +1113,7 @@ impl Biber {
     let $dm = crate::config::get_dm();
     while (let ($key, $value) = each %DATAFIELD_SETS) {
       let $fs;
-      foreach let $m ($value->@*) {
+      for m in ($value->@*) {
         if (ref $m == "HASH") {
           if ($m->{fieldtype} && $m->{datatype}) {
             push $fs->@*, $dm->get_fields_of_type($m->{fieldtype}, $m->{datatype})->@*;
@@ -1168,9 +1168,9 @@ impl Biber {
       // XDATA
       if (let $xdata = $be->get_xdata_refs) {
         let $resolved_keys;
-        foreach let $xdataref ($xdata->@*) {
+        for xdataref in ($xdata->@*) {
           if (!defined($xdataref->{xdatafield})) { // XDATA ref to whole entry
-            foreach let $refkey ($xdataref->{xdataentries}->@*) { // whole entry XDATA can be xsv
+            for refkey in ($xdataref->{xdataentries}->@*) { // whole entry XDATA can be xsv
               $refkey = $section->get_citekey_alias($refkey).unwrap_or($refkey);
               push $resolved_keys->@*, $refkey;
             }
@@ -1191,7 +1191,7 @@ impl Biber {
   fn process_citekey_aliases(self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       if (let $a = $section->get_citekey_alias($citekey)) {
           debug!("Pruning citekey alias '{}' from citekeys", citekey);
         $section->del_citekey($citekey);
@@ -1211,12 +1211,12 @@ impl Biber {
       debug!("Creating dynamic entries (sets/related) for section {}", secnum);
 
     // Instantiate any dynamic set entries before we do anything else
-    foreach let $dset ($section->dynamic_set_keys->@*) {
+    for dset in ($section->dynamic_set_keys->@*) {
       let @members = $section->get_dynamic_set($dset);
 
       // Resolve any aliases in the members
       let @realmems;
-      foreach let $mem (@members) {
+      for mem in (@members) {
         push @realmems, $section->get_citekey_alias($mem).unwrap_or($mem);
       }
       @members = @realmems;
@@ -1230,7 +1230,7 @@ impl Biber {
       section.bibentries().add_entry(dset, be);
         debug!("Created dynamic set entry '{}' in section {}", dset, secnum);
 
-      foreach let $m (@members) {
+      for m in (@members) {
       // Save graph information if requested
         if (crate::Config->getoption("output_format") == "dot") {
           crate::Config->set_graph("set", $dset, $m);
@@ -1242,7 +1242,7 @@ impl Biber {
     }
 
     // Instantiate any related entry clones we need from regular entries
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       section.bibentry(citekey).relclone();
     }
 
@@ -1288,7 +1288,7 @@ impl Biber {
 
       debug!("Adding set members to citekeys for section {}", secnum);
 
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       let be = section.bibentry(citekey);
 
       // promote indirectly cited inset set members to fully cited entries
@@ -1303,13 +1303,13 @@ impl Biber {
         }
 
         let $realmems;
-        foreach let $mem ($inset_keys->@*) {
+        for mem in ($inset_keys->@*) {
           push $realmems->@*, $section->get_citekey_alias($mem).unwrap_or($mem);
         }
         $inset_keys = $realmems;
         $be->set_datafield("entryset", $inset_keys);
 
-        foreach let $inset_key ($inset_keys->@*) {
+        for inset_key in ($inset_keys->@*) {
             debug!("Adding set member '{}' to the citekeys (section {})", inset_key, secnum);
           $section->add_citekeys($inset_key);
 
@@ -1350,7 +1350,7 @@ impl Biber {
 
       debug!("Recording set information");
 
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       let be = section.bibentry(citekey);
 
       // Record set information
@@ -1362,7 +1362,7 @@ impl Biber {
           biber_warn("Set entry '$citekey' has no entryset field, ignoring", $be);
           continue;
         }
-        foreach let $member ($entrysetkeys->@*) {
+        for member in ($entrysetkeys->@*) {
           $section->set_set_pc($citekey, $member);
           $section->set_set_cp($member, $citekey);
 
@@ -1385,7 +1385,7 @@ impl Biber {
 
       debug!("Calculating explicit and implicit xref/crossrefs for section {}", secnum);
 
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       let be = section.bibentry(citekey);
 
       // Loop over cited keys and count the cross/xrefs
@@ -1462,7 +1462,7 @@ impl Biber {
 
     // This must come after doing implicit inclusion based on minref/mincrossref
     // otherwise cascading xref->crossref wont' work
-    foreach let $citekey ($section.get_citekeys()) {
+    for citekey in ($section.get_citekeys()) {
       let be = section.bibentry(citekey);
 
       // Do crossref inheritance
@@ -1515,7 +1515,7 @@ impl Biber {
         // * Valid field for the specific entrytype OR
         // * Valid because entrytype allows "ALL" fields
         if !($et == "xdata" || $et == "set") { // XDATA/SET are generic containers for any field
-          foreach let $ef ($be->datafields) {
+          for ef in ($be->datafields) {
             if !($dm->is_field_for_entrytype($et, $ef)) {
               $dmwe->("Datamodel: Entry '$citekey' ($ds): Invalid field '$ef' for entrytype '$et'", $be);
             }
@@ -1523,23 +1523,23 @@ impl Biber {
         }
 
         // Mandatory constraints
-        foreach let $warning ($dm->check_mandatory_constraints($be)) {
+        for warning in ($dm->check_mandatory_constraints($be)) {
           $dmwe->($warning, $be);
         }
 
         // Conditional constraints
-        foreach let $warning ($dm->check_conditional_constraints($be)) {
+        for warning in ($dm->check_conditional_constraints($be)) {
           $dmwe->($warning, $be);
         }
 
         // Datamodel datatypes
         // This is a check on the datatypes of all fields in the datamodel
-        foreach let $warning ($dm->check_datatypes($be)) {
+        for warning in ($dm->check_datatypes($be)) {
           $dmwe->($warning, $be);
         }
 
         // Data constraints
-        foreach let $warning ($dm->check_data_constraints($be)) {
+        for warning in ($dm->check_data_constraints($be)) {
           $dmwe->($warning, $be);
         }
       }
@@ -1614,7 +1614,7 @@ impl Biber {
         let $base = ""; // Might not be any base parts at all so make sure it's not undefined
         let $baseparts;
 
-        foreach let $np (crate::Config->getblxoption(undef, "uniquenametemplate")->{$untname}->@*) {
+        for np in (crate::Config->getblxoption(undef, "uniquenametemplate")->{$untname}->@*) {
           if !$np->{base} {
             continue;
           }
@@ -1650,7 +1650,7 @@ impl Biber {
         }
 
         // ... then add non-base parts by incrementally adding to the last disambiguation level
-        foreach let $np (crate::Config->getblxoption(undef, "uniquenametemplate")->{$untname}->@*) {
+        for np in (crate::Config->getblxoption(undef, "uniquenametemplate")->{$untname}->@*) {
           if $np->{base} {
             continue;
           }
@@ -1725,7 +1725,7 @@ impl Biber {
   fn postprocess_sets(self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    foreach let $citekey ( $section.get_citekeys() ) {
+    for citekey in ( $section.get_citekeys() ) {
 
       // process set entries
       $self->process_sets($citekey);
@@ -1740,7 +1740,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Processing static entry information in section {}", secnum);
-    foreach let $citekey ( $section.get_citekeys() ) {
+    for citekey in ( $section.get_citekeys() ) {
 
       // generate nocite information
       $self->process_nocite($citekey);
@@ -1769,15 +1769,15 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Processing entries in section {} (before uniqueness)", secnum);
-    foreach let $citekey ( $section.get_citekeys() ) {
+    for citekey in ( $section.get_citekeys() ) {
 
       let be = section.bibentry(citekey);
 
       // process name disambiguation schemata
       let $namedis = $self->process_namedis($citekey, $dlist);
 
-      foreach let $nlid (keys $namedis->%*) {
-        foreach let $nid (keys $namedis->{$nlid}->%*) {
+      for nlid in (keys $namedis->%*) {
+        for nid in (keys $namedis->{$nlid}->%*) {
           // process_namedis() has to record uniquelist/uniquename as it has access to
           // namelist-scope and name-scope uniquelist/uniquename and makes this visible
           // here so that they can be checked
@@ -1808,7 +1808,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Postprocessing entries in section {} (after uniqueness)", secnum);
-    foreach let $citekey ( $section.get_citekeys() ) {
+    for citekey in ( $section.get_citekeys() ) {
 
       // generate labelalpha information
       $self->process_labelalpha($citekey, $dlist);
@@ -1852,7 +1852,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Final processing for entries in section {}", secnum);
-    foreach let $citekey ( $section.get_citekeys() ) {
+    for citekey in ( $section.get_citekeys() ) {
 
       // Generate singletitle field if requested
       $self->generate_singletitle($citekey, $dlist);
@@ -2006,9 +2006,9 @@ impl Biber {
       let $edspec = crate::Config->getblxoption(undef, "extradatespec");
       let $edscope;
       // Look in each scope
-      foreach let $scope ($edspec->@*) {
+      for scope in ($edspec->@*) {
         // Use the first field in the scope which we find and ignore the rest
-        foreach let $field ($scope->@*) {
+        for field in ($scope->@*) {
           if (defined($be->get_field($field))) {
             $datestring .= $be->get_field($field);
             $edscope = $field;
@@ -2147,7 +2147,7 @@ impl Biber {
     if (let @entrysetkeys = $section->get_set_children($citekey)) {
       // Enforce Biber parts of virtual "dataonly" options for set members
       // Also automatically create an "entryset" field for the members
-      foreach let $member (@entrysetkeys) {
+      for member in (@entrysetkeys) {
         let me = section.bibentry(member);
         process_entry_options($member, [ "skipbib", "skiplab", "skipbiblist", "uniquename=false", "uniquelist=false" ], secnum);
 
@@ -2226,7 +2226,7 @@ impl Biber {
     // Then we loop again to set the labelname name for the fullhash generation code
     // This is because fullhash generation ignores SHORT* fields (section 4.2.4.1, BibLaTeX
     // manual)
-    foreach let $h_ln ($lnamespec->@*) {
+    for h_ln in ($lnamespec->@*) {
       let $ln = $h_ln->{content};
       if ( $ln =~ /\Ashort(.+)\z/xms ) {
         continue;
@@ -2264,7 +2264,7 @@ impl Biber {
 
     if (crate::Config->getblxoption(undef, "labeldateparts", bee, citekey)) {
       let $ldatespec = crate::Config->getblxoption(undef, "labeldatespec", bee);
-      foreach let $lds ($ldatespec->@*) {
+      for lds in ($ldatespec->@*) {
         let pseudodate = false;
         let $ld = $lds->{content};
         if ($lds->{"type"} == "field") { // labeldate field
@@ -2425,7 +2425,7 @@ impl Biber {
 
     let $ltitlespec = crate::Config->getblxoption(undef, "labeltitlespec", bee);
 
-    foreach let $h_ltn ($ltitlespec->@*) {
+    for h_ltn in ($ltitlespec->@*) {
       let $ltn = $h_ltn->{content};
       if (let $lt = $be->get_field($ltn)) {
         $be->set_labeltitle_info($ltn);
@@ -2454,7 +2454,7 @@ impl Biber {
     }
 
     // Generate fullhash for all other name fields
-    foreach let $n ($dmh->{namelistsall}->@*) {
+    for n in ($dmh->{namelistsall}->@*) {
       let nv = $be->get_field($n);
       if !nv {
         continue;
@@ -2483,7 +2483,7 @@ impl Biber {
     }
 
     // Generate namehash for all other name fields
-    foreach let $n ($dmh->{namelistsall}->@*) {
+    for n in ($dmh->{namelistsall}->@*) {
       let nv = $be->get_field($n);
       if !nv {
         continue;
@@ -2502,12 +2502,12 @@ impl Biber {
     let be = section.bibentry(citekey);
     let $dmh = crate::config::get_dm_helpers();
 
-    foreach let $pn ($dmh->{namelistsall}->@*) {
+    for pn in ($dmh->{namelistsall}->@*) {
       let nl = $be->get_field($pn);
       if !nl {
         continue;
       }
-      foreach let $n ($nl->names->@*) {
+      for n in ($nl->names->@*) {
         let $pnhash = $self->_genpnhash($citekey, $n);
         n.set_hash($pnhash);
         dlist.set_namehash(nl.get_id(), n.get_id(), pnhash);
@@ -2685,7 +2685,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
 
-    foreach let $list ($self->datalists->get_lists_for_section($secnum)->@*) {
+    for list in ($self->datalists->get_lists_for_section($secnum)->@*) {
       let $lattrs = $list->get_attrs;
       let ltype = list.get_type();
       let lname = list.get_name();
@@ -2878,7 +2878,7 @@ impl Biber {
 
     $list->set_sortingtemplate($schema); // link the sort schema into the list
 
-    foreach let $sort ($schema->{spec}->@*) {
+    for sort in ($schema->{spec}->@*) {
       // Assume here that every item in a sorting spec section is the same datatype
       // See header for data structure
       let $direction = "";
@@ -3727,7 +3727,7 @@ impl Biber {
         debug!("Sorting is by default case-INSENSITIVE");
       }
       debug!("Keys before sort:\n");
-      foreach let $k (@keys) {
+      for k in (@keys) {
         debug!("{} => {}", k,  $dlist->get_sortdata_for_key($k)->[0]);
       }
 
@@ -3778,7 +3778,7 @@ impl Biber {
     let $cache;
 
     // Construct data needed for sort key extractor
-    foreach let $sortset ($sortingtemplate->{spec}->@*) {
+    for sortset in ($sortingtemplate->{spec}->@*) {
       let $fc = "";
       let @fc;
 
@@ -3859,7 +3859,7 @@ impl Biber {
     @keys = map {$keys[$_]} &$sorter($extract, 0..$#keys);
 
       debug!("Keys after sort:\n");
-      foreach let $k (@keys) {
+      for k in (@keys) {
         debug!("{} => {}", k, $dlist->get_sortdata_for_key($k)->[0]);
       }
 
@@ -3874,7 +3874,7 @@ impl Biber {
 
     // nosort - compile regexps
     if (let $nosort = crate::Config->getoption("nosort")) {
-      foreach let $nsopt ($nosort->@*) {
+      for nsopt in ($nosort->@*) {
         let $re = $nsopt->{value};
         $nsopt->{value} = qr/$re/;
       }
@@ -3882,7 +3882,7 @@ impl Biber {
 
     // nonamestring - compile regexps
     if (let $nonamestring = crate::Config->getoption("nonamestring")) {
-      foreach let $nnopt ($nonamestring->@*) {
+      for nnopt in ($nonamestring->@*) {
         let $re = $nnopt->{value};
         $nnopt->{value} = qr/$re/;
       }
@@ -3890,7 +3890,7 @@ impl Biber {
 
     // nolabel - compile regexps
     if (let $nolabel = crate::Config->getoption("nolabel")) {
-      foreach let $nsopt ($nolabel->@*) {
+      for nsopt in ($nolabel->@*) {
         let $re = $nsopt->{value};
         $nsopt->{value} = qr/$re/;
       }
@@ -3898,7 +3898,7 @@ impl Biber {
 
     // noinit - compile regexps
     if (let $noinit = crate::Config->getoption("noinit")) {
-      foreach let $nsopt ($noinit->@*) {
+      for nsopt in ($noinit->@*) {
         let $re = $nsopt->{value};
         $nsopt->{value} = qr/$re/;
       }
@@ -4013,7 +4013,7 @@ impl Biber {
 
     // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
     if !(crate::Config->getoption("nostdmacros")) {
-      foreach let $mon (keys %MONTHS) {
+      for mon in (keys %MONTHS) {
         Text::BibTeX::delete_macro($mon);
         Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
       }
@@ -4025,11 +4025,11 @@ impl Biber {
 
     // Process datasource globs
     let $ds;
-    foreach let $datasource ($section->get_datasources->@*) {
+    for datasource in ($section->get_datasources->@*) {
       if !($datasource->{type} == "file") {
         push $ds->@*, $datasource;
       }
-      foreach let $gds (glob_data_file($datasource->{name}, $datasource->{glob})) {
+      for gds in (glob_data_file($datasource->{name}, $datasource->{glob})) {
         push $ds->@*, { type     => $datasource->{type},
                         name     => $gds,
                         datatype => $datasource->{datatype},
@@ -4039,7 +4039,7 @@ impl Biber {
     $section->set_datasources($ds);
 
     // Now actually fetch data with expanded list of data sources
-    foreach let $datasource ($section->get_datasources->@*) {
+    for datasource in ($section->get_datasources->@*) {
       // shortcut if we have found all the keys now
       if !(@remaining_keys || section.is_allkeys()) {
         bleak;
@@ -4081,9 +4081,9 @@ impl Biber {
         }
 
         let @vts;
-        foreach let $t (glob("$vol$dir/Biber/Input/*")) {
+        for t in (glob("$vol$dir/Biber/Input/*")) {
           let (undef, undef, $tleaf) = File::Spec->splitpath($t);
-          foreach let $dt (map {s/\.pm$//r} glob("$vol$dir/Biber/Input/$tleaf/*.pm")) {
+          for dt in (map {s/\.pm$//r} glob("$vol$dir/Biber/Input/$tleaf/*.pm")) {
             let (undef, undef, $dtleaf) = File::Spec->splitpath($dt);
             push @vts, "$tleaf/$dtleaf";
           }
@@ -4107,7 +4107,7 @@ impl Biber {
     // error reporting
       debug!("Directly cited keys not found for section '{}': {}", secnum, join(',', @remaining_keys));
 
-    foreach let $citekey (@remaining_keys) {
+    for citekey in (@remaining_keys) {
       biber_warn("I didn't find a database entry for '$citekey' (section $secnum)");
       $section->del_citekey($citekey);
       $section->add_undef_citekey($citekey);
@@ -4137,7 +4137,7 @@ impl Biber {
 
     no strict "refs"; // symbolic references below ...
 
-    foreach let $citekey ($keys->@*) {
+    for citekey in ($keys->@*) {
       // aliases need resolving here and are treated as dependents
       if (let $real = $section->get_citekey_alias($citekey)) {
           debug!("Alias '{}' requires real key '{}'", citekey, real);
@@ -4149,7 +4149,7 @@ impl Biber {
       // Dynamic sets don't exist yet but their members do
       else if (let @dmems = $section->get_dynamic_set($citekey)) {
         // skip looking for dependent if it's already there
-        foreach let $dm (@dmems) {
+        for dm in (@dmems) {
           if !section.bibentry($dm) {
             push $new_deps->@*, $dm;
             if !(first {$citekey == $_} $keyswithdeps->@*) {
@@ -4165,8 +4165,8 @@ impl Biber {
 
         // xdata
         if (let $xdata = $be->get_xdata_refs) {
-          foreach let $xdatum ($xdata->@*) {
-            foreach let $xdref ($xdatum->{xdataentries}->@*) {
+          for xdatum in ($xdata->@*) {
+            for xdref in ($xdatum->{xdataentries}->@*) {
               // skip looking for dependent if it's already there (loop suppression)
               if !section.bibentry(xdref) {
                 push $new_deps->@*, $xdref;
@@ -4207,7 +4207,7 @@ impl Biber {
         if ($be->get_field("entrytype") == "set") {
           let $smems = $be->get_field("entryset");
           // skip looking for dependent if it's already there (loop suppression)
-          foreach let $sm ($smems->@*) {
+          for sm in ($smems->@*) {
             if !section.has_citekey(sm) {
               push $new_deps->@*, $sm;
               if !(first {$citekey == $_} $keyswithdeps->@*) {
@@ -4221,7 +4221,7 @@ impl Biber {
         // Related entries
         if (let $relkeys = $be->get_field("related")) {
           // skip looking for dependent if it's already there (loop suppression)
-          foreach let $rm ($relkeys->@*) {
+          for rm in ($relkeys->@*) {
             if !(section.has_citekey(rm) || section.is_related(rm)) {
               // record that $rm is used as a related entry key
               $section->add_related($rm);
@@ -4246,7 +4246,7 @@ impl Biber {
       // No need to go back to the datasource if allkeys, just see if the keys
       // are in section
       if section.is_allkeys() {
-        foreach let $dk ($new_deps->@*) {
+        for dk in ($new_deps->@*) {
           if !section.has_citekey(dk) {
             push $missing->@*, $dk;
           }
@@ -4254,7 +4254,7 @@ impl Biber {
       }
       else {
         $missing->@* = $new_deps->@*;
-        foreach let $datasource ($section->get_datasources->@*) {
+        for datasource in ($section->get_datasources->@*) {
           // shortcut if we have found all the keys now
           if !($missing->@*) {
             break;
@@ -4271,7 +4271,7 @@ impl Biber {
       }
 
         debug!("Dependent keys not found for section '{}': {}", secnum, join(', ', $missing->@*));
-      foreach let $missing_key ($missing->@*) {
+      for missing_key in ($missing->@*) {
         // Remove the missing key from the list to recurse with
         $new_deps->@* = grep { $_ != $missing_key } $new_deps->@*;
       }
@@ -4287,8 +4287,8 @@ impl Biber {
     // Now remove any missing entries from various places in all entries we have flagged
     // as having dependendents. If we don't do this, many things fail later like clone creation
     // for related entries etc.
-    foreach let $keywithdeps ($keyswithdeps->@*) {
-      foreach let $missing_key ($missing->@*) {
+    for keywithdeps in ($keyswithdeps->@*) {
+      for missing_key in ($missing->@*) {
         $self->remove_undef_dependent($keywithdeps, $missing_key);
       }
     }
@@ -4381,11 +4381,11 @@ impl Biber {
   fn _parse_sort(root_obj) {
     let $sorting;
 
-    foreach let $sort (sort {$a->{order} <=> $b->{order}} $root_obj->{sort}->@*) {
+    for sort in (sort {$a->{order} <=> $b->{order}} $root_obj->{sort}->@*) {
       let $sortingitems;
 
       // Generate sorting pass structures
-      foreach let $sortitem (sort {$a->{order} <=> $b->{order}} $sort->{sortitem}->@*) {
+      for sortitem in (sort {$a->{order} <=> $b->{order}} $sort->{sortitem}->@*) {
         let $sortitemattributes = {};
         if (defined($sortitem->{substring_side})) { // Found sorting substring side attribute
           $sortitemattributes->{substring_side} = $sortitem->{substring_side};

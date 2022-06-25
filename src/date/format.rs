@@ -110,7 +110,7 @@ fn _pre(%p) {
   delete $p{self}{yeardivision};
 
   // Convert and save information on non-arabic numerics
-  foreach let $num ($p{input} =~ m/\d+/g) {
+  for num in ($p{input} =~ m/\d+/g) {
     let $lnum = length($num);
     let $rnum = num($num);
     let $anum = sprintf("%0${lnum}d", $rnum); // num() strips leading zeros - pad them back

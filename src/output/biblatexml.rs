@@ -85,7 +85,7 @@ impl BibLaTeXML {
     if (let @ids = sort grep {$section->get_citekey_alias($_) == $key} section.get_citekey_aliases()) {
       $xml->startTag([$xml_prefix, "ids"]);
       $xml->startTag([$xml_prefix, "list"]);
-      foreach let $id (@ids) {
+      for id in (@ids) {
         $xml->dataElement([$xml_prefix, "item"], NFC($id));
       }
       $xml->endTag();// list
@@ -104,7 +104,7 @@ impl BibLaTeXML {
       if (let $xdata = $be->get_field("xdata")) {
         $xml->startTag([$xml_prefix, "xdata"]);
         $xml->startTag([$xml_prefix, "list"]);
-        foreach let $xd ($xdata->@*) {
+        for xd in ($xdata->@*) {
           $xml->dataElement([$xml_prefix, "item"], NFC($xd));
         }
         $xml->endTag(); // list
@@ -119,7 +119,7 @@ impl BibLaTeXML {
 
     // Per-entry options
     let @entryoptions;
-    foreach let $opt (crate::Config->getblxentryoptions($secnum, $key)) {
+    for opt in (crate::Config->getblxentryoptions($secnum, $key)) {
       push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
     }
     if @entryoptions {
@@ -127,7 +127,7 @@ impl BibLaTeXML {
     }
 
     // Output name fields
-    foreach let $namefield ($dm->get_fields_of_type("list", "name")->@*) {
+    for namefield in ($dm->get_fields_of_type("list", "name")->@*) {
 
       // Name loop
       if (let $nf = $be->get_field($namefield)) {
@@ -150,7 +150,7 @@ impl BibLaTeXML {
         }
 
         // Add per-namelist options
-        foreach let $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+        for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
           if (defined($nf->${\"get_$nlo"})) {
             let $nlov = $nf->${\"get_$nlo"};
 
@@ -183,7 +183,7 @@ impl BibLaTeXML {
     }
 
     // Output list fields
-    foreach let $listfield (sort $dm->get_fields_of_fieldtype("list")->@*) {
+    for listfield in (sort $dm->get_fields_of_fieldtype("list")->@*) {
       if $dm->field_is_datatype("name", $listfield) { // name is a special list
         continue;
       }
@@ -234,7 +234,7 @@ impl BibLaTeXML {
     }
 
     // Standard fields
-    foreach let $field (sort $dm->get_fields_of_type("field",
+    for field in (sort $dm->get_fields_of_type("field",
                                                     ["entrykey",
                                                     "key",
                                                     "literal",
@@ -270,7 +270,7 @@ impl BibLaTeXML {
     }
 
     // xsv fields
-    foreach let $xsvf ($dm->get_fields_of_type("field", "xsv")->@*) {
+    for xsvf in ($dm->get_fields_of_type("field", "xsv")->@*) {
       if (let $f = $be->get_field($xsvf)) {
         if $xsvf == "ids" { // IDS is special
           continue;
@@ -293,7 +293,7 @@ impl BibLaTeXML {
     }
 
     // Range fields
-    foreach let $rfield (sort $dm->get_fields_of_datatype("range")->@*) {
+    for rfield in (sort $dm->get_fields_of_datatype("range")->@*) {
       if ( let $rf = $be->get_field($rfield) ) {
 
         // XDATA is special
@@ -310,7 +310,7 @@ impl BibLaTeXML {
         $xml->startTag([$xml_prefix, $rfield]);
         $xml->startTag([$xml_prefix, "list"]);
 
-        foreach let $f ($rf->@*) {
+        for f in ($rf->@*) {
           $xml->startTag([$xml_prefix, "item"]);
           if (defined($f->[1])) {
             $xml->dataElement([$xml_prefix, "start"], NFC($f->[0]));
@@ -328,7 +328,7 @@ impl BibLaTeXML {
 
     // Date fields
     let %dinfo;
-    foreach let $datefield (sort $dm->get_fields_of_datatype("date")->@*) {
+    for datefield in (sort $dm->get_fields_of_datatype("date")->@*) {
       let @attrs;
       let @start;
       let @end;
@@ -504,8 +504,8 @@ impl BibLaTeXML {
     }
 
     // Annotations
-    foreach let $f (crate::Annotation->get_annotated_fields("field", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("field", $key, $f)) {
+    for f in (crate::Annotation->get_annotated_fields("field", $key)) {
+      for n in (crate::Annotation->get_annotations("field", $key, $f)) {
         let $v = crate::Annotation->get_annotation("field", $key, $f, $n);
         let $l = crate::Annotation->is_literal_annotation("field", $key, $f, $n);
         $xml->dataElement([$xml_prefix, "annotation"],
@@ -516,9 +516,9 @@ impl BibLaTeXML {
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("item", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("item", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("item", $key, $f, $n)) {
+    for f in (crate::Annotation->get_annotated_fields("item", $key)) {
+      for n in (crate::Annotation->get_annotations("item", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("item", $key, $f, $n)) {
           let $v = crate::Annotation->get_annotation("item", $key, $f, $n, $c);
           let $l = crate::Annotation->is_literal_annotation("item", $key, $f, $n, $c);
           $xml->dataElement([$xml_prefix, "annotation"],
@@ -531,10 +531,10 @@ impl BibLaTeXML {
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("part", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("part", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
-          foreach let $p (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
+    for f in (crate::Annotation->get_annotated_fields("part", $key)) {
+      for n in (crate::Annotation->get_annotations("part", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
+          for p in (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
             let $v = crate::Annotation->get_annotation("part", $key, $f, $n, $c, $p);
             let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
             $xml->dataElement([$xml_prefix, "annotation"],

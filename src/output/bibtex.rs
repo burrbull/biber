@@ -126,7 +126,7 @@ impl BibTeX {
       $tonamesub = "name_to_xname";
     }
 
-    foreach let $namefield ($dmh->{namelists}->@*) {
+    for namefield in ($dmh->{namelists}->@*) {
       if (let $names = $be->get_field($namefield)) {
 
         // XDATA is special
@@ -175,11 +175,11 @@ impl BibTeX {
     }
 
     // List fields and verbatim list fields
-    foreach let $listfield ($dmh->{lists}->@*, $dmh->{vlists}->@*) {
+    for listfield in ($dmh->{lists}->@*, $dmh->{vlists}->@*) {
       if (let $list = $be->get_field($listfield)) {
         let $listsep = crate::Config->getoption("output_listsep");
         let @plainlist;
-        foreach let $item ($list->@*) {
+        for item in ($list->@*) {
           if !(crate::Config->getoption("output_resolve_xdata")) {
             let $xd = xdatarefcheck(item, false);
             $item = $xd.unwrap_or($item);
@@ -192,7 +192,7 @@ impl BibTeX {
 
     // Per-entry options
     let @entryoptions;
-    foreach let $opt (crate::Config->getblxentryoptions($secnum, $key)) {
+    for opt in (crate::Config->getblxentryoptions($secnum, $key)) {
       push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
     }
     if @entryoptions {
@@ -200,7 +200,7 @@ impl BibTeX {
     }
 
     // Date fields
-    foreach let $d ($dmh->{datefields}->@*) {
+    for d in ($dmh->{datefields}->@*) {
       $d =~ s/date$//;
       if !($be->get_field("${d}year")) {
         continue;
@@ -276,7 +276,7 @@ impl BibTeX {
     }
 
     // Ranges
-    foreach let $rfield ($dmh->{ranges}->@*) {
+    for rfield in ($dmh->{ranges}->@*) {
       if ( let $rf = $be->get_field($rfield) ) {
         let $rfl = construct_range($rf);
         if !(crate::Config->getoption("output_resolve_xdata")) {
@@ -288,7 +288,7 @@ impl BibTeX {
     }
 
     // Verbatim fields
-    foreach let $vfield ($dmh->{vfields}->@*) {
+    for vfield in ($dmh->{vfields}->@*) {
       if ( let $vf = $be->get_field($vfield) ) {
         if !(crate::Config->getoption("output_resolve_xdata")) {
           let $xd = xdatarefcheck(vf, false);
@@ -309,9 +309,9 @@ impl BibTeX {
     }
 
     // Annotations
-    foreach let $f (keys %acc) {
+    for f in (keys %acc) {
       if (crate::Annotation->is_annotated_field($key, lc($f))) {
-        foreach let $n (crate::Annotation->get_annotation_names($key, lc($f))) {
+        for n in (crate::Annotation->get_annotation_names($key, lc($f))) {
           $acc{$outmap->($f) . crate::Config->getoption("output_annotation_marker") .
               crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation($key, lc($f), $n);
         }
@@ -330,12 +330,12 @@ impl BibTeX {
                     "dates"     => "datefields");
 
 
-    foreach let $field (split(/\s*,\s*/, crate::Config->getoption("output_field_order"))) {
+    for field in (split(/\s*,\s*/, crate::Config->getoption("output_field_order"))) {
       if ($field == "names" ||
           $field == "lists" ||
           $field == "dates") {
         let @donefields;
-        foreach let $key (sort keys %acc) {
+        for key in (sort keys %acc) {
           if (first {unicase::eq($_, strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
             $acc .= bibfield($key, $acc{$key}, $max_field_len);
             push @donefields, $key;
@@ -349,7 +349,7 @@ impl BibTeX {
     }
 
     // Now rest of fields not explicitly specified
-    foreach let $field (sort keys %acc) {
+    for field in (sort keys %acc) {
       $acc .= bibfield($field, $acc{$field}, $max_field_len);
     }
 
@@ -413,7 +413,7 @@ impl BibTeX {
     // Output any macros when in tool mode
     if (crate::Config->getoption("tool")) {
       if (exists($data->{MACROS})) {
-        foreach let $macro (sort $data->{MACROS}->@*) {
+        for macro in (sort $data->{MACROS}->@*) {
           out($target, $macro);
         }
         out($target, "\n"); // Extra newline between macros and entries, for clarity
@@ -423,7 +423,7 @@ impl BibTeX {
       debug!("Writing entries in bibtex format");
 
     // Bibtex output uses just one special section, always sorted by global sorting spec
-    foreach let $key ($crate::MASTER->datalists->get_lists_by_attrs(section => 99999,
+    for key in ($crate::MASTER->datalists->get_lists_by_attrs(section => 99999,
                                                                   name => crate::Config->getblxoption(undef, "sortingtemplatename") . "/global//global/global",
                                                                   type => "entry",
                                                                   sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"),
@@ -436,7 +436,7 @@ impl BibTeX {
 
     // Output any comments when in tool mode
     if (crate::Config->getoption("tool")) {
-      foreach let $comment ($data->{COMMENTS}->@*) {
+      for comment in ($data->{COMMENTS}->@*) {
         out($target, $comment);
       }
     }
@@ -462,14 +462,14 @@ impl BibTeX {
     }
 
     // Create the comments output
-    foreach let $comment ($crate::MASTER->{comments}->@*) {
+    for comment in ($crate::MASTER->{comments}->@*) {
       $self->set_output_comment($comment);
     }
 
     // Create the macros output unless suppressed. This has to come after entry output creation
     // above as this gather information on which macros were actually used
     if !(crate::Config->getoption("output_no_macrodefs")) {
-      foreach let $m (sort values %RSTRINGS) {
+      for m in (sort values %RSTRINGS) {
         $self->set_output_macro($m);
       }
     }
@@ -537,12 +537,12 @@ impl BibTeX {
       push @annotations, "=$fa";
     }
 
-    foreach let $item (crate::Annotation->get_annotated_items("item", $key, $field, $name)) {
+    for item in (crate::Annotation->get_annotated_items("item", $key, $field, $name)) {
       push @annotations, "$item=" . crate::Annotation->get_annotation("item", $key, $field, $name, $item);
     }
 
-    foreach let $item (crate::Annotation->get_annotated_items("part", $key, $field, $name)) {
-      foreach let $part (crate::Annotation->get_annotated_parts("part", $key, $field, $name, $item)) {
+    for item in (crate::Annotation->get_annotated_items("part", $key, $field, $name)) {
+      for part in (crate::Annotation->get_annotated_parts("part", $key, $field, $name, $item)) {
         push @annotations, "$item:$part=" . crate::Annotation->get_annotation("part", $key, $field, $name, $item, $part);
       }
     }
@@ -561,7 +561,7 @@ impl BibTeX {
   /// ```
   fn construct_range(r) {
     let @ranges;
-    foreach let $e ($r->@*) {
+    for e in ($r->@*) {
       let $rs = $e->[0];
       if (defined($e->[1])) {
         $rs .= '--' . $e->[1];

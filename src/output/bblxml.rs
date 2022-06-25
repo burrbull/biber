@@ -142,7 +142,7 @@ impl BblXML {
 
     $xml->startTag([$xml_prefix, "entry"], key => _bblxml_norm($key), type => _bblxml_norm($bee), @entryopts);
     let @opts;
-    foreach let $opt (filter_entry_options($secnum, $be)->@*) {
+    for opt in (filter_entry_options($secnum, $be)->@*) {
       push @opts, $opt;
     }
     if (@opts) {
@@ -190,7 +190,7 @@ impl BblXML {
     else { // Everything else that isn't a set parent ...
       if (let $es = $be->get_field("entryset")) { // ... gets a <inset> if it's a set member
         $xml->startTag([$xml_prefix, "inset"]);
-        foreach let $m ($es->@*) {
+        for m in ($es->@*) {
           $xml->dataElement([$xml_prefix, "member"], _bblxml_norm($m));
         }
         $xml->endTag();// inset
@@ -222,7 +222,7 @@ impl BblXML {
           }
 
           // Add per-namelist options
-          foreach let $nlo (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+          for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
             if (defined($nf->${\"get_$nlo"})) {
               let $nlov = $nf->${\"get_$nlo"};
 
@@ -236,7 +236,7 @@ impl BblXML {
         $xml->startTag([$xml_prefix, "names"], type => $namefield, count => $total, map {$_ => $plo{$_}} sort keys %plo);
 
         // Now the names
-        foreach let $n ($nf->names->@*) {
+        for n in ($nf->names->@*) {
 
           // Per-name uniquename if this is labelname
           if ($lni == $namefield) {
@@ -250,7 +250,7 @@ impl BblXML {
     }
 
     // Output list fields
-    foreach let $listfield ($dm->get_fields_of_fieldtype("list")->@*) {
+    for listfield in ($dm->get_fields_of_fieldtype("list")->@*) {
       if (let $lf = $be->get_field($listfield)) {
         if $dm->field_is_datatype("name", $listfield) { // name is a special list
           continue;
@@ -272,7 +272,7 @@ impl BblXML {
 
         let $total = $lf->$#* + 1;
         $xml->startTag([$xml_prefix, "list"], name => $listfield, count => $total, map {$_ => $plo{$_}} sort keys %plo);
-        foreach let $f ($lf->@*) {
+        for f in ($lf->@*) {
           $xml->dataElement([$xml_prefix, "item"], _bblxml_norm($f));
         }
         $xml->endTag();// list
@@ -288,7 +288,7 @@ impl BblXML {
     $xml->dataElement("BDS", "BIBNAMEHASH");
 
     // Output namelist hashes
-    foreach let $namefield ($dmh->{namelists}->@*) {
+    for namefield in ($dmh->{namelists}->@*) {
       if !($be->get_field($namefield)) {
         continue;
       }
@@ -357,7 +357,7 @@ impl BblXML {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ck), name => "clonesourcekey");
     }
 
-    foreach let $field (sort $dm->get_fields_of_type("field",
+    for field in (sort $dm->get_fields_of_type("field",
                                                     ["entrykey",
                                                     "key",
                                                     "integer",
@@ -393,7 +393,7 @@ impl BblXML {
     }
 
     // Date parts
-    foreach let $field (sort $dm->get_fields_of_type("field", "datepart")->@*) {
+    for field in (sort $dm->get_fields_of_type("field", "datepart")->@*) {
       let $val = $be->get_field($field);
 
       if ( length($val) || // length() catches '0' values, which we want
@@ -470,7 +470,7 @@ impl BblXML {
     }
 
     // XSV fields
-    foreach let $field ($dmh->{xsv}->@*) {
+    for field in ($dmh->{xsv}->@*) {
       if (let $f = $be->get_field($field)) {
         if $dm->field_is_skipout($field) {
           continue;
@@ -481,14 +481,14 @@ impl BblXML {
           continue;
         }
         $xml->startTag([$xml_prefix, "field"], name => $field, format => "xsv");
-        foreach let $f ($f->@*) {
+        for f in ($f->@*) {
           $xml->dataElement([$xml_prefix, "item"], _bblxml_norm($f));
         }
         $xml->endTag();// field
       }
     }
 
-    foreach let $rfield ($dmh->{ranges}->@*) {
+    for rfield in ($dmh->{ranges}->@*) {
       if ( let $rf = $be->get_field($rfield) ) {
         if $dm->field_is_skipout($rfield) {
           continue;
@@ -497,7 +497,7 @@ impl BblXML {
         // range_end can be be empty for open-ended range or undef
         let @pr;
         $xml->startTag([$xml_prefix, "range"], name => $rfield);
-        foreach let $f ($rf->@*) {
+        for f in ($rf->@*) {
           $xml->startTag([$xml_prefix, "item"], length => rangelen($rf));
           $xml->dataElement([$xml_prefix, "start"], _bblxml_norm($f->[0]));
           if (defined($f->[1])) {
@@ -510,7 +510,7 @@ impl BblXML {
     }
 
     // uri fields
-    foreach let $uri ($dmh->{uris}->@*) {
+    for uri in ($dmh->{uris}->@*) {
       if ( let $f = $be->get_field($uri) ) {
         if $dm->field_is_skipout($uri) {
           continue;
@@ -520,7 +520,7 @@ impl BblXML {
     }
 
     // uri lists
-    foreach let $uril ($dmh->{urils}->@*) {
+    for uril in ($dmh->{urils}->@*) {
       if ( let $urilf = $be->get_field($uril) ) {
         if $dm->field_is_skipout($uril) {
           continue;
@@ -533,7 +533,7 @@ impl BblXML {
         let $total = $urilf->$#* + 1;
         $xml->startTag([$xml_prefix, "list"], name => $uril, count => $total, map {$_ => $plo{$_}} sort keys %plo);
 
-        foreach let $f ($urilf->@*) {
+        for f in ($urilf->@*) {
           $xml->dataElement([$xml_prefix, "item"], _bblxml_norm($f));
         }
         $xml->endTag();// list
@@ -543,7 +543,7 @@ impl BblXML {
     // Keywords
     if ( let $kws = $be->get_field("keywords") ) {
       $xml->startTag([$xml_prefix, "keywords"]);
-      foreach let $k ($kws->@*) {
+      for k in ($kws->@*) {
         $xml->dataElement([$xml_prefix, "keyword"], _bblxml_norm($k));
       }
       $xml->endTag();// keywords
@@ -556,8 +556,8 @@ impl BblXML {
     }
 
     // Output annotations
-    foreach let $f (crate::Annotation->get_annotated_fields("field", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("field", $key, $f)) {
+    for f in (crate::Annotation->get_annotated_fields("field", $key)) {
+      for n in (crate::Annotation->get_annotations("field", $key, $f)) {
         let $v = crate::Annotation->get_annotation("field", $key, $f, $n);
         let $l = crate::Annotation->is_literal_annotation("field", $key, $f, $n);
         $xml->dataElement([$xml_prefix, "annotation"],
@@ -570,9 +570,9 @@ impl BblXML {
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("item", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("item", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("item", $key, $f)) {
+    for f in (crate::Annotation->get_annotated_fields("item", $key)) {
+      for n in (crate::Annotation->get_annotations("item", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("item", $key, $f)) {
           let $v = crate::Annotation->get_annotation("item", $key, $f, $c);
           let $l = crate::Annotation->is_literal_annotation("item", $key, $f, $n, $c);
           $xml->dataElement([$xml_prefix, "annotation"],
@@ -587,10 +587,10 @@ impl BblXML {
       }
     }
 
-    foreach let $f (crate::Annotation->get_annotated_fields("part", $key)) {
-      foreach let $n (crate::Annotation->get_annotations("part", $key, $f)) {
-        foreach let $c (crate::Annotation->get_annotated_items("part", $key, $f)) {
-          foreach let $p (crate::Annotation->get_annotated_parts("part", $key, $f, $c)) {
+    for f in (crate::Annotation->get_annotated_fields("part", $key)) {
+      for n in (crate::Annotation->get_annotations("part", $key, $f)) {
+        for c in (crate::Annotation->get_annotated_items("part", $key, $f)) {
+          for p in (crate::Annotation->get_annotated_parts("part", $key, $f, $c)) {
             let $v = crate::Annotation->get_annotation("part", $key, $f, $c, $p);
             let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
             $xml->dataElement([$xml_prefix, "annotation"],
@@ -609,7 +609,7 @@ impl BblXML {
 
     // Append any warnings to the entry, if any
     if (let $w = $be->get_field("warnings")) {
-      foreach let $warning ($w->@*) {
+      for warning in ($w->@*) {
         $xml->dataElement([$xml_prefix, "warning"], _bblxml_norm($warning));
       }
     }
@@ -648,7 +648,7 @@ impl BblXML {
       info!("Converting UTF-8 to TeX macros on output to .bbl");
     }
 
-    foreach let $secnum (sort keys $data->{ENTRIES}->%*) {
+    for secnum in (sort keys $data->{ENTRIES}->%*) {
         debug!("Writing entries for section {}", secnum);
 
       $xml->startTag([$xml_prefix, "refsection"], id => $secnum);
@@ -659,7 +659,7 @@ impl BblXML {
 
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit the global context list so that we can add this last
-      foreach let $list (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
+      for list in (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
         if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
             list.get_sortingnamekeytemplatename() == "global" &&
             list.get_labelprefix() == "" &&
@@ -725,7 +725,7 @@ impl BblXML {
 
       // undef citekeys are global to a section
       // Missing citekeys
-      foreach let $k ($section->get_undef_citekeys) {
+      for k in ($section->get_undef_citekeys) {
         $xml->dataElement([$xml_prefix, "missing"], _bblxml_norm($k));
       }
 
