@@ -24,7 +24,6 @@ use crate::Entries;
 use crate::Entry;
 use crate::Entry::Names;
 use crate::Entry::Name;
-use crate::LangTags;
 use crate::Sections;
 use crate::Section;
 use crate::LaTeX::Recode;
@@ -76,10 +75,10 @@ impl Biber {
     if (crate::Config->getoption("validate_config") && $opts{configfile}) {
       validate_biber_xml($opts{configfile}, "config", "");
     }
-
+/*
     // Set up LangTag parser
     $self->{langtags} = crate::LangTags->new();
-
+*/
     return $self;
   }
 
@@ -140,12 +139,12 @@ impl Biber {
   fn datalists(self) {
     return $self->{datalists};
   }
-
+/*
   /// Returns a crate::LangTags object containing a parser for BCP47 tags
   fn langtags(self) {
     return $self->{langtags};
   }
-
+*/
   /// Sets the object used to output final results
   /// Must be a subclass of crate::Output::base
   fn set_output_obj(self, obj) {
@@ -1715,8 +1714,8 @@ impl Biber {
         // of the sub are used
         $namedis->{$nlid}{$nid} = {nameun        => $nameun,
                                   namelistul    => $ul,
-                                  namestring    => strip_nonamestring($namestring, $nl->get_type),
-                                  namestrings   => [map {strip_nonamestring($_, $nl->get_type)} $namestrings->@*],
+                                  namestring    => strip_nonamestring($namestring, nl.get_type()),
+                                  namestrings   => [map {strip_nonamestring($_, nl.get_type())} $namestrings->@*],
                                   namedisschema => $namedisschema};
       }
     }
@@ -1879,7 +1878,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
-    let $bee = $be->get_field("entrytype");
+    let bee = be.get_field("entrytype");
 
     if (let $lni = be.get_labelname_info()) {
       if (crate::Config->getblxoption(undef, "uniqueprimaryauthor", $bee, $citekey)) {
@@ -1888,8 +1887,8 @@ impl Biber {
 
         let $namedis = $self->process_namedis($citekey, $dlist);
 
-        let $nds = $namedis->{$nl->get_id}{$nl->nth_name(1)->get_id}{namedisschema};
-        let $nss = $namedis->{$nl->get_id}{$nl->nth_name(1)->get_id}{namestrings};
+        let $nds = $namedis->{nl.get_id()}{nl.nth_name(1).get_id()}{namedisschema};
+        let $nss = $namedis->{nl.get_id()}{nl.nth_name(1).get_id()}{namestrings};
         let $pabase;
 
         for (let $i=0;$i<=$nds->$#*;$i++) {
@@ -2196,13 +2195,12 @@ impl Biber {
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
     let bee = be.get_field("entrytype");
-    let $lnamespec = crate::Config->getblxoption(undef, "labelnamespec", $bee);
-    let $dm = crate::config::get_dm();
-    let $dmh = crate::config::get_dm_helpers();
+    let lnamespec = crate::Config->getblxoption(undef, "labelnamespec", bee);
+    let dm = crate::config::get_dm();
+    let dmh = crate::config::get_dm_helpers();
 
     // First we set the normal labelname name
-    foreach let $h_ln ($lnamespec->@*) {
-      let $lnameopt;
+    for h_ln in &lnamespec {
       let $ln = $h_ln->{content};
       let lnameopt = if ln.len() > 5 && ln.starts_with("short") {
         ln[5..].to_string()
@@ -2221,7 +2219,7 @@ impl Biber {
         continue;
       }
 
-      if ($be->get_field($ln)) {
+      if (be.get_field(ln)) {
         $be->set_labelname_info($ln);
         break;
       }
@@ -2513,8 +2511,8 @@ impl Biber {
       }
       foreach let $n ($nl->names->@*) {
         let $pnhash = $self->_genpnhash($citekey, $n);
-        $n->set_hash($pnhash);
-        $dlist->set_namehash($nl->get_id, $n->get_id, $pnhash);
+        n.set_hash($pnhash);
+        dlist.set_namehash(nl.get_id(), n.get_id(), pnhash);
       }
     }
     return;

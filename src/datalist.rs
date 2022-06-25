@@ -179,7 +179,7 @@ impl DataList {
   }
 
   /// Set hash for a name
-  fn set_namehash(self, $nlid, $nid, $s) {
+  fn set_namehash(self, nlid: &str, nid: &str, s: &str) {
     $self->{state}{namelistdata}{$nlid}{$nid}{hash} = $s;
     return;
   }

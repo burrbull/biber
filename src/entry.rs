@@ -277,8 +277,8 @@ impl Entry {
   /// Retrieve the labelname information. This is special
   /// meta-information so we have a separate method for this
   /// Returns a hash ref with the information.
-  fn get_labelname_info(&self) -> Option<Unknown> {
-    self.labelnameinfo
+  fn get_labelname_info(&self) -> &Option<String> {
+    &self.labelnameinfo
   }
 
   /// Record the fullhash labelname information. This is special

@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(non_snake_case)]
 use core::fmt;
 
 mod constants;

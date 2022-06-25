@@ -1,5 +1,8 @@
 //! Various utility subs used in Biber
+
+use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
+
 /* TODO
 use parent qw(Exporter);
 
@@ -487,37 +490,50 @@ pub fn normalise_string_sort($str, $fieldname) {
   $str =~ s/\s+/ /g;               // collapse spaces
   return $str;
 }
-
+*/
 /// Some string normalisation for bblxml output
-pub fn normalise_string_bblxml($str) {
-  if !($str) {
-    return ""; // Sanitise missing data
+pub fn normalise_string_bblxml(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
   }
-  $str =~ s/\\[A-Za-z]+//g; // remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/\{([^\{\}]+)\}/$1/g; // remove pointless braces
-  $str =~ s/~/ /g; // replace ties with spaces
-  return $str;
+  // remove latex macros (assuming they have only ASCII letters)
+  let r = Regex::new(r"\\[A-Za-z]+").unwrap();
+  let s = r.replace_all(s, "");
+  // remove pointless braces
+  let r = Regex::new(r"\{(?P<word>[^\{\}]+)\}").unwrap();
+  let s = r.replace_all(&s, "${word}");
+  // replace ties with spaces
+  s.replace('~', " ")
 }
 
 /// Removes LaTeX macros, and all punctuation, symbols, separators and control characters,
 /// as well as leading and trailing whitespace for sorting strings.
 /// Only decodes LaTeX character macros into Unicode if output is UTF-8
-pub fn normalise_string($str) (
-  if !($str) {
-    return ""; // Sanitise missing data
+pub fn normalise_string(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
   }
   // First replace ties with spaces or they will be lost
-  $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
-  return normalise_string_common($str);
+  // Foo~Bar -> Foo Bar
+  let r = Regex::new(r"(?P<word>[^\\])~").unwrap();
+  let s = r.replace_all(s, "${word} ");
+  normalise_string_common(&s).into()
 }
 
 /// Common bit for normalisation
-fn normalise_string_common($str) {
-  $str =~ s/\\[A-Za-z]+//g;        // remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/[\p{P}\p{S}\p{C}]+//g; // remove punctuation, symbols and control
-  $str =~ s/^\s+|\s+$//g;          // Remove leading and trailing spaces
-  $str =~ s/\s+/ /g;               // collapse spaces
-  return $str;
+fn normalise_string_common(s: &str) -> String {
+  // remove latex macros (assuming they have only ASCII letters)
+  let r = Regex::new(r"\\[A-Za-z]+").unwrap();
+  let s = r.replace_all(s, "");
+  // remove punctuation, symbols and control
+  let r = Regex::new(r"[\p{P}\p{S}\p{C}]+").unwrap();
+  let s = r.replace_all(&s, "");
+  // Remove leading and trailing spaces
+  let r = Regex::new(r"^\s+|\s+$").unwrap();
+  let s = r.replace_all(&s, "");
+  // collapse spaces
+  let r = Regex::new(r"\s+").unwrap();
+  r.replace_all(&s, " ").into()
 }
 
 /// Normalise strings used for hashes. We collapse LaTeX macros into a vestige
@@ -530,52 +546,60 @@ fn normalise_string_common($str) {
 ///
 /// \v S -> v:
 /// \" -> 34:
-pub fn normalise_string_hash($str) {
-  if !($str) {
-    return ""; // Sanitise missing data
-  }*/
- // $str =~ s/\\(\p{L}+)\s*/$1:/g; // remove tex macros
-//  $str =~ s/\\([^\p{L}])\s*/ord($1).':'/ge; // remove accent macros like \"a
-//  $str =~ s/[\{\}~\.\s]+//g; // Remove braces, ties, dots, spaces
-/* TODO  return $str;
+pub fn normalise_string_hash(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
+  }
+  // remove tex macros
+  let r = Regex::new(r"\\(?P<name>\p{L}+)\s*").unwrap();
+  let s = r.replace_all(s, "${name}:");
+  // remove accent macros like \"a
+  let r = Regex::new(r"\\(?P<name>[^\p{L}])\s*").unwrap();
+  let s = r.replace_all(&s, "ord(${name}).':'"); // TODO: `e` modifier
+  // Remove braces, ties, dots, spaces
+  let r = Regex::new(r"[\{\}~\.\s]+").unwrap();
+  r.replace_all(&s, "").into()
 }
 
 /// Like normalise_string, but also substitutes ~ and whitespace with underscore.
-pub fn normalise_string_underscore($str) {
-  if !($str) {
-    return ""; // Sanitise missing data
+pub fn normalise_string_underscore(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
   }
-  $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
-  $str = normalise_string($str);
-  $str =~ s/\s+/_/g;
-  return $str;
+  // Foo~Bar -> Foo Bar
+  let r = Regex::new(r"(?P<word>[^\\])~").unwrap();
+  let s = r.replace_all(s, "${word} ");
+  let s = normalise_string(&s);
+  let r = Regex::new(r"\s+").unwrap();
+  r.replace_all(&s, "_").into()
 }
 
 /// Escapes a few special character which might be used in labels
-pub fn escape_label($str) {
-  if !($str) {
-    return ""; // Sanitise missing data
+pub fn escape_label(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
   }
-  $str =~ s/([_\^\$\#\%\&])/\\$1/g;
-  $str =~ s/~/{\\textasciitilde}/g;
-  $str =~ s/>/{\\textgreater}/g;
-  $str =~ s/</{\\textless}/g;
-  return $str;
+  let r = Regex::new(r"(?P<symbol>[_\^\$\#%\&])").unwrap();
+  let s = r.replace_all(&s, "\\${symbol}");
+  //$str =~ s/([_\^\$\#\%\&])/\\$1/g;
+  s.replace('~', "{\\textasciitilde}")
+   .replace('>', "{\\textgreater}")
+   .replace('<', "{\\textless}")
 }
-
 /// Unscapes a few special character which might be used in label but which need
 /// sorting without escapes
-pub fn unescape_label($str) {
-  if !($str) {
-    return ""; // Sanitise missing data
+pub fn unescape_label(s: &str) -> String {
+  if s.is_empty() {
+    return String::new(); // Sanitise missing data
   }
-  $str =~ s/\\([_\^\$\~\#\%\&])/$1/g;
-  $str =~ s/\{\\textasciitilde\}/~/g;
-  $str =~ s/\{\\textgreater\}/>/g;
-  $str =~ s/\{\\textless\}/</g;
-  return $str;
+  let r = Regex::new(r"\\(?P<symbol>[_\^\$\#%\&])").unwrap();
+  let s = r.replace_all(&s, "${symbol}");
+  s.replace("{\\textasciitilde}", "~")
+   .replace("{\\textgreater}", ">")
+   .replace("{\\textless}", "<")
 }
 
+/*
 /// reduce_array(\@a, \@b) returns all elements in @a that are not in @b
 pub fn reduce_array($a, $b) {
   let %countb = ();
@@ -611,7 +635,7 @@ pub fn remove_outer(s: &str) -> (bool, String) {
     (false, s.into())
   }
 }
-
+*/
 /// Return (boolean if surrounded in braces
 pub fn has_outer(s: &str) -> bool {
   if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
@@ -625,14 +649,14 @@ pub fn has_outer(s: &str) -> bool {
 pub fn add_outer(s: &str) -> String {
     format!("{{{}}}", s)
 }
-
 /// upper case of initial letters in a string
-pub fn ucinit($str) {
-  $str = lc($str);
-  $str =~ s/\b(\p{Ll})/\u$1/g;
-  return $str;
+pub fn ucinit(s: &str) -> String {
+  let s = s.to_lowercase();
+  let r = Regex::new(r"\b(?P<symbol>\p{Ll})").unwrap();
+  r.replace_all(&s, r"\u${symbol}").into()
 }
 
+/* TODO
 /// Checks for undefness of arbitrary things, including
 /// composite method chain calls which don't reliably work
 /// with defined() (see perldoc for defined())
@@ -648,13 +672,13 @@ pub fn ucinit($str) {
 ///
 /// works since we only test the return value of all the methods
 /// with defined()
-pub fnb is_undef($val) {
-  return defined($val) ? 0 : 1;
+pub fnb is_undef($val) -> bool {
+  !defined($val)
 }
 
 /// Checks for definedness in the same way as is_undef()
-pub fn is_def($val) {
-  return defined($val) ? 1 : 0;
+pub fn is_def($val) -> bool {
+  defined($val)
 }
 
 /// Checks for undef or nullness (see is_undef() above)
@@ -667,55 +691,45 @@ pub fn is_undef_or_null($val) -> bool {
 
 /// Checks for def and unnullness (see is_undef() above)
 pub fn is_def_and_notnull($arg) -> bool {
-  if (defined($arg) && is_notnull($arg)) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
+  defined($arg) && is_notnull($arg)
 }
 
 /// Checks for def and nullness (see is_undef() above)
-pub fn is_def_and_null($arg) {
-  if (defined($arg) && is_null($arg)) {
-    return 1;
-  }
-  else {
-    return 0;
-  }
+pub fn is_def_and_null($arg) -> bool {
+  defined($arg) && is_null($arg)
 }
 
 /// Checks for nullness
 pub fn is_null($arg) {
-  return is_notnull($arg) ? 0 : 1;
+  !is_notnull($arg)
 }
 
 /// Checks for notnullness
-pub fn is_notnull($arg) {
+pub fn is_notnull($arg) -> bool {
   if !defined($arg) {
     return undef;
   }
   let $st = is_notnull_scalar($arg);
-  if (defined($st) && $st) { return 1; }
+  if (defined($st) && $st) { return true; }
   let $at = is_notnull_array($arg);
-  if (defined($at) && $at) { return 1; }
+  if (defined($at) && $at) { return true; }
   let $ht = is_notnull_hash($arg);
-  if (defined($ht) && $ht) { return 1; }
+  if (defined($ht) && $ht) { return true; }
   let $ot = is_notnull_object($arg);
-  if (defined($ot) && $ot) { return 1; }
-  return 0;
+  if (defined($ot) && $ot) { return true; }
+  false
 }
 
 /// Checks for notnullness of a scalar
-fn is_notnull_scalar($arg) {
+fn is_notnull_scalar($arg) -> bool {
   if !(ref \$arg == "SCALAR") {
     return undef;
   }
-  return $arg != "" ? 1 : 0;
+  arg != ""
 }
 
 /// Checks for notnullness of an array (passed by ref)
-fn is_notnull_array($arg) {
+fn is_notnull_array($arg) -> bool {
   if !(ref $arg == "ARRAY") {
     return undef;
   }

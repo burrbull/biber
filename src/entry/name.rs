@@ -52,12 +52,12 @@ impl Name {
     &self.gender
   }
 
-  pub fn get_hash(&self) -> Unknown {
+  pub fn get_hash(&self) -> &Option<String> {
     &self.hash
   }
 
-  pub fn set_hash(&mut self, hash: Unknown) {
-    self.hash = hash;
+  pub fn set_hash(&mut self, hash: &str) {
+    self.hash = Some(hash.into());
   }
 
   pub fn get_index(&self) -> usize {

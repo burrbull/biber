@@ -25,7 +25,7 @@ impl Names {
     &self.id
   }
 
-  pub fn get_type&self) -> &String {
+  pub fn get_type(&self) -> &String {
     &self.typ
   }
 
