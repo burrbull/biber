@@ -135,8 +135,9 @@ impl BibLaTeXML {
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
           !$be->is_xdata_resolved($namefield)) {
-          if (let $xdata = $nf->get_xdata) {
-            $xml->emptyTag([$xml_prefix, "names"], "xdata" => NFC(xdatarefout($xdata, 1)));
+          let xdata = nf.get_xdata();
+          if !xdata.is_empty() {
+            $xml->emptyTag([$xml_prefix, "names"], "xdata" => NFC(xdatarefout(xdata, true)));
             continue;
           }
         }
@@ -144,7 +145,7 @@ impl BibLaTeXML {
         let @attrs = ("type" => $namefield);
 
         // Did we have "and others" in the data?
-        if ( $nf->get_morenames ) {
+        if nf.get_morenames() {
           push @attrs, (morenames => 1);
         }
 
@@ -167,13 +168,14 @@ impl BibLaTeXML {
           // XDATA is special
           if (!crate::Config->getoption("output_resolve_xdata") ||
             !$be->is_xdata_resolved($namefield, $i+1)) {
-            if (let $xdata = $n->get_xdata) {
-              $xml->emptyTag([$xml_prefix, "name"], "xdata" => NFC(xdatarefout($xdata, 1)));
+            let xdata = n.get_xdata();
+            if !xdata.is_empty() {
+              $xml->emptyTag([$xml_prefix, "name"], "xdata" => NFC(xdatarefout(xdata, true)));
               continue;
             }
           }
 
-          $n->name_to_biblatexml($self, $xml, $key, $namefield, $n->get_index);
+          $n->name_to_biblatexml($self, $xml, $key, $namefield, n.get_index());
         }
 
         $xml->endTag(); // Names
@@ -192,7 +194,7 @@ impl BibLaTeXML {
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
             !$be->is_xdata_resolved($listfield)) {
-          if (let $val = xdatarefcheck($lf, 1)) {
+          if (let $val = xdatarefcheck(lf, true)) {
             $xml->emptyTag([$xml_prefix, $listfield], "xdata" => NFC($val));
             continue;
           }
@@ -218,7 +220,7 @@ impl BibLaTeXML {
           // XDATA is special
           if (!crate::Config->getoption("output_resolve_xdata") ||
               !$be->is_xdata_resolved($listfield, $i+1)) {
-            if (let $val = xdatarefcheck($f, 1)) {
+            if (let $val = xdatarefcheck(f, true)) {
               $xml->emptyTag([$xml_prefix, "item"], "xdata" => NFC($val));
               continue;
             }
@@ -246,7 +248,7 @@ impl BibLaTeXML {
       if (!crate::Config->getoption("output_resolve_xdata") ||
           !$be->is_xdata_resolved($field)) {
 
-        if (let $xval = xdatarefcheck($val, 1)) {
+        if (let $xval = xdatarefcheck(val, true)) {
           $xml->emptyTag([$xml_prefix, $field], "xdata" => NFC($xval));
           continue;
         }
@@ -280,7 +282,7 @@ impl BibLaTeXML {
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
             !$be->is_xdata_resolved($xsvf)) {
-          if (let $val = xdatarefcheck($f, 1)) {
+          if (let $val = xdatarefcheck(f, true)) {
             $xml->emptyTag([$xml_prefix, $xsvf], "xdata" => NFC($val));
             continue;
           }
@@ -297,7 +299,7 @@ impl BibLaTeXML {
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
             !$be->is_xdata_resolved($rfield)) {
-          if (let $val = xdatarefcheck($rf, 1)) {
+          if (let $val = xdatarefcheck(rf, true)) {
             $xml->emptyTag([$xml_prefix, $rfield], "xdata" => NFC($val));
             continue;
           }

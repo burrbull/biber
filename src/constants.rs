@@ -201,10 +201,12 @@ our %UNIQUENAME_CONTEXTS = ("false" => "none",
                             "allfull" => "initorfull",
                             "mininit" => "init",
                             "minfull" => "initorfull");
-
+*/
 // Mapping of strings to numeric uniquename values for easier biblatex processing
-our %UNIQUENAME_VALUES = ("none" => 0, "init" => 1, full => 2);
-
+pub static UNIQUENAME_VALUES: phf::Map<&'static str, usize> = phf_map! {
+  "none" => 0, "init" => 1, "full" => 2
+};
+/* TODO
 // Biber option defaults. Mostly not needed outside of tool mode since they are passed by .bcf
 our $CONFIG_DEFAULT_BIBER = {
   annotation_marker                           => { content => q/+an/ },

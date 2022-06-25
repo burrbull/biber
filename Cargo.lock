@@ -36,27 +36,16 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "base62"
-version = "1.1.5"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35fcadde14317dcd219327c21dd952bfd55fcd457bd5af1c15bb82f4e62734ab"
-
-[[package]]
-name = "base62-uuid"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c81084f28bfe1e4bfefb5642ea290f65643f939a928c0c0d9418816ba8b16704"
-dependencies = [
- "base62",
- "clap",
- "uuid",
-]
+checksum = "ec2c9267a0e9917635cf7a55814e045be180874b1079042c76d6b340ea6951dc"
 
 [[package]]
 name = "biber"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base62-uuid",
+ "base62",
  "clap",
  "language-tags",
  "log",
@@ -64,6 +53,7 @@ dependencies = [
  "regex",
  "unicase",
  "unicode-normalization",
+ "uuid",
 ]
 
 [[package]]
@@ -422,11 +412,12 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "0.8.2"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
 dependencies = [
  "getrandom",
+ "rand",
 ]
 
 [[package]]

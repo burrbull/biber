@@ -131,8 +131,9 @@ impl BibTeX {
 
         // XDATA is special
         if !(crate::Config->getoption("output_resolve_xdata")) { // already resolved
-          if (let $xdata = $names->get_xdata) {
-            $acc{$outmap->($namefield)} = xdatarefout($xdata);
+          let xdata = nf.get_xdata();
+          if !names.is_empty() {
+            $acc{$outmap->($namefield)} = xdatarefout(xdata, false);
             continue;
           }
         }
@@ -151,12 +152,12 @@ impl BibTeX {
         }
 
         // Now add all names to accumulator
-        foreach let $name ($names->names->@*) {
-
+        for name names.names() {
           // XDATA is special
           if !(crate::Config->getoption("output_resolve_xdata")) {
-            if (let $xdata = $name->get_xdata) {
-              push @namelist, xdatarefout($xdata);
+            let xdata = name.get_xdata();
+            if !xdata.is_empty() {
+              namelist.push(xdatarefout(xdata, false));
               continue;
             }
           }
@@ -167,7 +168,7 @@ impl BibTeX {
         $acc{$outmap->($namefield)} = join(" $namesep ", @namelist);
 
         // Deal with morenames
-        if ($names->get_morenames) {
+        if names.get_morenames() {
           $acc{$outmap->($namefield)} .= " $namesep others";
         }
       }
@@ -180,7 +181,7 @@ impl BibTeX {
         let @plainlist;
         foreach let $item ($list->@*) {
           if !(crate::Config->getoption("output_resolve_xdata")) {
-            let $xd = xdatarefcheck($item);
+            let $xd = xdatarefcheck(item, false);
             $item = $xd.unwrap_or($item);
           }
           push @plainlist, $item;
@@ -244,10 +245,10 @@ impl BibTeX {
     }
 
     // Standard fields
-    foreach let $field ($dmh->{fields}->@*) {
-      if (let $val = $be->get_field($field)) {
+    for field in ($dmh->{fields}->@*) {
+      if (let $val = be.get_field(field)) {
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck($val);
+          let $xd = xdatarefcheck(val, false);
           $val = $xd.unwrap_or($val);
         }
         // Could have been set in dates above (MONTH, YEAR special handling)
@@ -258,16 +259,16 @@ impl BibTeX {
     }
 
     // XSV fields
-    foreach let $field ($dmh->{xsv}->@*) {
+    for field in ($dmh->{xsv}->@*) {
       // keywords is by default field/xsv/keyword but it is in fact
       // output with its own special macro below
       if $field == "keywords" {
         continue;
       }
-      if (let $f = $be->get_field($field)) {
-        let $fl = join(',', $f->@*);
+      if (let $f = be.get_field($field)) {
+        let $fl = f.join(",");
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck($fl);
+          let $xd = xdatarefcheck(fl, false);
           $fl = $xd.unwrap_or($fl);
         }
         $acc{$outmap->($field)} .= $fl;
@@ -279,7 +280,7 @@ impl BibTeX {
       if ( let $rf = $be->get_field($rfield) ) {
         let $rfl = construct_range($rf);
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck($rfl);
+          let $xd = xdatarefcheck(rfl, false);
           $rfl = $xd.unwrap_or($rfl);
         }
         $acc{$outmap->($rfield)} .= $rfl;
@@ -290,7 +291,7 @@ impl BibTeX {
     foreach let $vfield ($dmh->{vfields}->@*) {
       if ( let $vf = $be->get_field($vfield) ) {
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck($vf);
+          let $xd = xdatarefcheck(vf, false);
           $vf = $xd.unwrap_or($vf);
         }
         $acc{$outmap->($vfield)} = $vf;
@@ -298,13 +299,13 @@ impl BibTeX {
     }
 
     // Keywords
-    if ( let $k = $be->get_field("keywords") ) {
-      let $kl = join(',', $k->@*);
+    if ( let $k = be.get_field("keywords") ) {
+      let mut kl = k.join(",");
       if !(crate::Config->getoption("output_resolve_xdata")) {
-        let $xd = xdatarefcheck($kl);
-        $kl = $xd.unwrap_or($kl);
+        let $xd = xdatarefcheck(kl, false);
+        kl = $xd.unwrap_or(kl);
       }
-      $acc{$outmap->("keywords")} = $kl;
+      $acc{$outmap->("keywords")} = kl;
     }
 
     // Annotations

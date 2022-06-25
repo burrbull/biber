@@ -64,14 +64,14 @@ impl DataList {
 
   /// Add a name to the list of name contexts which have the name in it
   /// (only called for visible names)
-  fn add_uniquenamecount(self, $name, $namecontext, $key) {
+  fn add_uniquenamecount(&mut self, $name, $namecontext, $key) {
     $self->{state}{uniquenamecount}{$name}{$namecontext}{$key}++;
     return;
   }
 
   /// Add a name to the list of name contexts which have the name in it
   /// (called for all names)
-  fn add_uniquenamecount_all(self, $name, $namecontext, $key) {
+  fn add_uniquenamecount_all(&mut self, $name, $namecontext, $key) {
     $self->{state}{uniquenamecount_all}{$name}{$namecontext}{$key}++;
     return;
   }
@@ -123,29 +123,28 @@ impl DataList {
   }
 
   /// Reset the list of names which have the name part in it
-  fn reset_uniquenamecount(self) {
-    $self->{state}{uniquenamecount} = {};
-    $self->{state}{uniquenamecount_all} = {};
-    return;
+  fn reset_uniquenamecount(&mut self) {
+    self.state.uniquenamecount.clear();
+    self.state.uniquenamecount_all.clear();
   }
 
   /// Get a basenamestring for a particular name
-  fn get_basenamestring(self, $nlid, $nid) {
+  fn get_basenamestring(&self, nlid: Id, nid: Id) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring};
   }
 
   /// Get a namestring for a particular name
-  fn get_namestring(self, $nlid, $nid) {
+  fn get_namestring(&self, nlid: Id, nid: Id) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{namestring};
   }
 
   /// Get namestrings for a particular name
-  fn get_namestrings(self, $nlid, $nid) {
+  fn get_namestrings(&self, nlid: Id, nid: Id) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{namestrings};
   }
 
   /// Set name disambiguation metadata
-  fn set_namedis(self, $nlid, $nid, $ns, $nss, $nds) {
+  fn set_namedis(&mut self, nlid: Id, nid: Id, $ns, $nss, $nds) {
     $self->{state}{namelistdata}{$nlid}{$nid}{namestring} = $ns;
     $self->{state}{namelistdata}{$nlid}{$nid}{namestrings} = $nss;
 
@@ -164,44 +163,44 @@ impl DataList {
 
   /// Return boolean to say if a namepart is a base part according to
   /// template which created the information
-  fn is_unbasepart(self, $nlid, $nid, $np) {
+  fn is_unbasepart(&self, nlid: Id, nid: Id, $np) -> bool {
     if (first {$_ == $np} $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}->@*) {
-      return 1;
+      return true;
     }
     else {
-      return 0;
+      return false;
     }
   }
 
   /// Get hash for a name
-  fn get_namehash(self, $nlid, $nid) {
+  fn get_namehash(&self, nlid: Id, nid: Id) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{hash};
   }
 
   /// Set hash for a name
-  fn set_namehash(self, nlid: &str, nid: &str, s: &str) {
+  fn set_namehash(&mut self, nlid: Id, nid: Id, s: &str) {
     $self->{state}{namelistdata}{$nlid}{$nid}{hash} = $s;
     return;
   }
 
   /// Get uniquename minimalness info for a name
-  fn get_unmininfo(self, $nlid, $nid) {
+  fn get_unmininfo(&self, nlid: Id, nid: Id) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo};
   }
 
   /// Set uniquename minimalness info for a name
-  fn set_unmininfo(self, $nlid, $nid, $s) {
+  fn set_unmininfo(&mut self, nlid: Id, nid: Id, $s) {
     $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo} = $s;
     return;
   }
 
   /// Get a name disambiguation schema for a name
-  fn get_namedisschema(self, $nlid, $nid) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{namedisschema};
+  fn get_namedisschema(&self, nlid: Id, nid: Id) {
+    self.state.namelistdata{$nlid}{$nid}.namedisschema;
   }
 
   /// Get legacy uniquename summary for a name
-  fn get_unsummary(self, $nlid, $nid) -> Option<u32> {
+  fn get_unsummary(&self, nlid: Id, nid: Id) -> Option<u32> {
     let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
     if !defined($un) {
       return None;
@@ -219,7 +218,7 @@ impl DataList {
   }
 
   /// Get uniquename summary part for a name
-  fn get_unpart(self, $nlid, $nid) {
+  fn get_unpart(&self, nlid: Id, nid: Id) {
     let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
     if !defined($un) {
       return undef;
@@ -228,64 +227,64 @@ impl DataList {
   }
 
   /// Get uniquename parts for a name
-  fn get_unparts(self, $nlid, $nid, $np) {
+  fn get_unparts(&self, nlid: Id, nid: Id, $np) {
     return $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np};
   }
 
   /// Set uniquename parts for a name
-  fn set_unparts(self, $nlid, $nid, $np, $s) {
+  fn set_unparts(&mut self, nlid: Id, nid: Id, $np, $s) {
     $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np} = $s;
     return;
   }
 
   /// Get the list of name contexts which contain a name
   /// Mainly for use in tests
-  fn _get_uniquename(self, $name, $namecontext) {
+  fn _get_uniquename(&self, $name, $namecontext) {
     let @list = sort keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
     return \@list;
   }
 
   /// Get uniquename for a name
-  fn get_uniquename(self, $nlid, $nid) {
+  fn get_uniquename(&self, nlid: Id, nid: Id) -> Option<Unknown> {
     return $self->{state}{namelistdata}{$nlid}{$nid}{un};
   }
 
   /// Set uniquename for a name
-  fn set_uniquename(self, $nlid, $nid, $s) {
+  fn set_uniquename(&mut self, nlid: Id, nid: Id, s: Unknown) {
 
-    let $currval = $self->{state}{namelistdata}{$nlid}{$nid}{un};
+    let currval = $self->{state}{namelistdata}{$nlid}{$nid}{un};
     // Set modified flag to positive if we changed something
-    if (!defined($currval) || !Compare($currval, $s)) {
-      $self->set_unul_changed(1);
+    if (currval.is_none() || !Compare($currval, $s)) {
+      self.set_unul_changed(true);
     }
-    $self->{state}{namelistdata}{$nlid}{$nid}{un} = $s;
+    $self->{state}{namelistdata}{$nlid}{$nid}{un} = Some(s);
     return;
   }
 
   /// Reset uniquename for a name
-  fn reset_uniquename(self, nlid, nid) {
+  fn reset_uniquename(&mut self, nlid: Id, nid: Id) {
     $self->{state}{namelistdata}{$nlid}{$nid}{un} = ["base", $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}];
     return;
   }
 
   /// Get uniquename for a name, regardless of visibility
-  fn get_uniquename_all(self, nlid, nid) {
+  fn get_uniquename_all(&self, nlid: Id, nid: Id) -> Option<Unknown> {
     return $self->{state}{namelistdata}{$nlid}{$nid}{unall};
   }
 
   /// Set uniquename for a name, regardless of visibility
-  fn set_uniquename_all(self, nlid, nid, s) {
+  fn set_uniquename_all(&mut self, nlid: Id, nid: Id, s) {
     $self->{state}{namelistdata}{$nlid}{$nid}{unall} = $s;
     return;
   }
 
   /// Count the names in a string used to determine uniquelist.
-  fn count_uniquelist(self, namelist) {
+  fn count_uniquelist(&self, namelist: Unknown) -> usize {
     namelist.len()
   }
 
   /// Gets a uniquelist setting for a namelist
-  fn get_uniquelist(self, $nlid) {
+  fn get_uniquelist(&self, nlid: Id) -> Option<Unknown> {
     return $self->{state}{namelistdata}{$nlid}{ul};
   }
 
@@ -293,24 +292,24 @@ impl DataList {
   fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
     // $nl is the namelist object
     // $namelist is the extracted string concatenation from $nl which forms the tracking key
-    let $nlid = $nl->get_id;
-    let $uniquelist = $self->count_uniquelist($namelist);
-    let $num_names = $nl->count;
+    let nlid = nl.get_id();
+    let uniquelist = self.count_uniquelist(namelist);
+    let num_names = nl.count();
     let $currval = $self->{state}{namelistdata}{$nlid}{ul};
 
     // Set modified flag to positive if we changed something
     if (!defined($currval) || $currval != $uniquelist) {
-      $self->set_unul_changed(1);
+      self.set_unul_changed(true);
     }
 
     // Special case $uniquelist <=1 is meaningless
-    if $uniquelist <= 1 {
+    if uniquelist <= 1 {
       return;
     }
 
     // Don't set uniquelist unless the list is longer than maxcitenames as it was therefore
     // never truncated to mincitenames in the first place and uniquelist is a "local mincitenames"
-    if !($num_names > $maxcn) {
+    if !(num_names > maxcn) {
       return;
     }
 
@@ -323,7 +322,7 @@ impl DataList {
     // $uniquelist cannot be undef or 0 either since every list occurs at least once.
     // This guarantees that uniquelist, when set, is >1 because mincitenames cannot
     // be <1
-    if $uniquelist <= $mincn && !($mincn == $num_names) {
+    if uniquelist <= mincn && mincn != num_names {
       return;
     }
 
@@ -336,20 +335,20 @@ impl DataList {
     // up to any index. If there is such a list, set uniquelist using that index.
 
     // if final count > 1 (identical lists)
-    if ($self->get_uniquelistcount_final($namelist) > 1) {
+    if self.get_uniquelistcount_final(namelist) > 1 {
       // index where this namelist begins to differ from any other
       // Can't be 0 as that means it begins differently in which case $index is undef
-      let $index = $self->namelist_differs_index($namelist);
-      if !($index) {
+      let index = self.namelist_differs_index(namelist);
+      if !index {
         return;
       }
       // Now we know that some disambiguation is needed from other similar list(s)
-      $uniquelist = $index+1;// convert zero-based index into 1-based uniquelist value
+      uniquelist = index+1;// convert zero-based index into 1-based uniquelist value
     }
     // this is an else if because for final count > 1, we are setting uniquelist and don't
     // want to mess about with it any more
-    else if ($num_names > $uniquelist &&
-          !$self->namelist_differs_nth($namelist, $uniquelist, $ul, $labelyear)) {
+    else if num_names > uniquelist &&
+          !self.namelist_differs_nth($namelist, $uniquelist, $ul, $labelyear) {
       // If there are more names than uniquelist, reduce it by one unless
       // there is another list which differs at uniquelist and is at least as long
       // so we get:
@@ -376,72 +375,71 @@ impl DataList {
   }
 
   /// Gets citation name list visibility
-  fn get_visible_cite(self, $nlid) {
+  fn get_visible_cite(&self, nlid: Id) {
     return $self->{state}{namelistdata}{$nlid}{viscite};
   }
 
   /// Gets citation name list visibility
-  fn set_visible_cite(self, $nlid, $s) {
+  fn set_visible_cite(&mut self, nlid: Id, $s) {
     $self->{state}{namelistdata}{$nlid}{viscite} = $s;
     return;
   }
 
   /// Gets bib name list visibility
-  fn get_visible_bib(self, $nlid) {
+  fn get_visible_bib(&self, nlid: Id) {
     return $self->{state}{namelistdata}{$nlid}{visbib};
   }
 
   /// Gets bib name list visibility
-  fn set_visible_bib(self, $nlid, $s) {
+  fn set_visible_bib(&mut self, nlid: Id, $s) {
     $self->{state}{namelistdata}{$nlid}{visbib} = $s;
     return;
   }
 
   /// Gets sort name list visibility
-  fn get_visible_sort(self, $nlid) {
+  fn get_visible_sort(&self, nlid: Id) {
     return $self->{state}{namelistdata}{$nlid}{vissort};
   }
 
   /// Gets sort name list visibility
-  fn set_visible_sort(self, $nlid, $s) {
+  fn set_visible_sort(&mut self, nlid: Id, $s) {
     $self->{state}{namelistdata}{$nlid}{vissort} = $s;
     return;
   }
 
   /// Gets alpha name list visibility
-  fn get_visible_alpha(self, $nlid) {
+  fn get_visible_alpha(&self, nlid: Id) {
     return $self->{state}{namelistdata}{$nlid}{visalpha};
   }
 
   /// Gets alpha name list visibility
-  fn set_visible_alpha(self, $nlid, $s) {
+  fn set_visible_alpha(&mut self, nlid: Id, $s) {
     $self->{state}{namelistdata}{$nlid}{visalpha} = $s;
     return;
   }
 
   /// Get the number of uniquenames entries for a visible name
-  fn get_numofuniquenames(self, $name, $namecontext) {
+  fn get_numofuniquenames(&self, name: &str, namecontext: &str) -> usize {
     return scalar keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
   }
 
   /// Get the number of uniquenames entries for a name
-  fn get_numofuniquenames_all(self, $name, $namecontext) {
+  fn get_numofuniquenames_all(&self, name: &str, namecontext: &str) -> usize {
     return scalar keys $self->{state}{uniquenamecount_all}{$name}{$namecontext}->%*;
   }
 
   /// Return a boolean saying whether uniquenename+uniquelist processing is finished
-  fn get_unul_done(self) {
-    return $self->{unulchanged} ? 0 : 1;
+  fn get_unul_done(&self) -> bool {
+    self.unulchanged
   }
 
   /// Set a boolean saying whether uniquename+uniquelist has changed
-  fn set_unul_changed(self, $val) {
-    $self->{unulchanged} = $val;
-    return;
+  fn set_unul_changed(&mut self, val: bool) {
+    self.unulchanged = val;
   }
 
   /// Reset the counters for extra*
-  fn reset_seen_extra(self) {
+  fn reset_seen_extra(&mut, self) {
     $self->{state}{seen_extradate} = {};
     $self->{state}{seen_extraname} = {};
     $self->{state}{seen_extratitle} = {};
@@ -1045,26 +1043,26 @@ impl DataList {
         if !nl {
           continue;
         }
-        let nlid = nl->get_id;
+        let nlid = nl.get_id();
         if let Some(ul) = self.get_uniquelist(nlid) {
           let s = format!("ul={ul}");
           entry_string = entry_string.replace(&format!("<BDS>UL-{nlid}</BDS>"), &s);
         } else {
-          let r = Regex::new(&format!("<BDS>UL-{nlid}</BDS>,?")).unwrap();
+          let r = Regex::new(&format!(r"(?xms)<BDS>UL-{nlid}</BDS>,?")).unwrap();
           entry_string = r.replace_all(entry_string, "");
         }
       }
 
       // uniquename
-      foreach let $namefield ($dmh->{namelists}->@*) {
-        let nl = $be->get_field($namefield);
+      for namefield in ($dmh->{namelists}->@*) {
+        let nl = be.get_field(namefield);
         if !nl {
           continue;
         }
-        let $nlid = nl->get_id;
-        foreach let $n ($nl->names->@*) {
-          let $nid = $n->get_id;
-          if let Some(unsummary) = self.get_unsummary($nlid, $nid) {
+        let nlid = nl.get_id();
+        for n in nl.names() {
+          let nid = n.get_id();
+          if let Some(unsummary) = self.get_unsummary(nlid, nid) {
             let $str = format!("un={unsummary}");
             $entry_string =~ s|<BDS>UNS-$nid</BDS>|$str|gxms;
             $str = "uniquepart=" . $self->get_unpart($nlid, $nid);
@@ -1135,9 +1133,9 @@ impl DataList {
         if !nl {
           continue;
         }
-        foreach let $n ($nl->names->@*) {
-          let $nid = $n->get_id;
-          if (let $e = $self->{state}{namelistdata}{$nl->get_id}{$nid}{hash}) {
+        for n in nl.names() {
+          let nid = n.get_id();
+          if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
             let $str = "hash=$e";
             $entry_string =~ s|<BDS>$nid-PERNAMEHASH</BDS>|$str|gxms;
           }
@@ -1243,48 +1241,47 @@ impl DataList {
       }
 
       // uniquelist
-      foreach let $namefield ($dmh->{namelists}->@*) {
+      for namefield in ($dmh->{namelists}->@*) {
         let nl = $be->get_field($namefield);
         if !nl {
           continue;
         }
-        let $nlid = $nl->get_id;
-        if (defined($self->get_uniquelist($nlid))) {
-          let $str = $self->get_uniquelist($nlid);
-          $entry_string =~ s|\[BDS\]UL-$nlid\[/BDS\]|$str|gxms;
+        let nlid = nl.get_id();
+        if let Some(s) = self.get_uniquelist(nlid) {
+          entry_string = entry_string.replace(&format!("\[BDS\]UL-{nlid}\[/BDS\]"), s);
         }
         else {
-          $entry_string =~ s|\sul="\[BDS\]UL-$nlid\[/BDS\]"||gxms;
+          entry_string = entry_string.replace(&format!(r#"\sul="\[BDS\]UL-$nlid\[/BDS\]""#), "");
         }
       }
 
       // uniquename
-      foreach let $namefield ($dmh->{namelists}->@*) {
-        let nl = $be->get_field($namefield);
+      for namefield in ($dmh->{namelists}->@*) {
+        let nl = be.get_field($namefield);
         if !nl {
           continue;
         }
-        let $nlid = $nl->get_id;
-        foreach let $n ($nl->names->@*) {
-          let $nid = $n->get_id;
-          if let Some(unsummary) = self.get_unsummary($nlid, $nid) {
+        let nlid = nl.get_id();
+        for n in nl.names() {
+          let nid = n.get_id();
+          if let Some(unsummary) = self.get_unsummary(nlid, nid) {
             let $str = format!("{unsummary}");
             $entry_string =~ s|\[BDS\]UNS-$nid\[/BDS\]|$str|gxms;
-            $str = $self->get_unpart($nlid, $nid);
+            $str = self.get_unpart(nlid, nid);
             $entry_string =~ s|\[BDS\]UNP-$nid\[/BDS\]|$str|gxms;
-            foreach let $np ($n->get_nameparts) {
-              if ($self->is_unbasepart($nlid, $nid, $np)) {
+            for np in n.get_nameparts() {
+              if (self.is_unbasepart(nlid, nid, np)) {
                 $entry_string =~ s|\sun="\[BDS\]UNP-$np-$nid\[/BDS\]",?||gxms;
               }
               else {
-                $str = $self->get_unparts($nlid, $nid, $np);
+                $str = self.get_unparts(nlid, nid, np);
                 $entry_string =~ s|\[BDS\]UNP-$np-$nid\[/BDS\]|$str|gxms;
               }
             }
           }
           else {
             $entry_string =~ s#\s(?:un|uniquepart)="\[BDS\]UN[SP]-$nid\[/BDS\]",?##gxms;
-            foreach let $np ($n->get_nameparts) {
+            for np in n.get_nameparts() {
               $entry_string =~ s|\sun="\[BDS\]UNP-$np-$nid\[/BDS\]",?||gxms;
             }
           }
@@ -1337,9 +1334,9 @@ impl DataList {
         if !nl {
           continue;
         }
-        foreach let $n ($nl->names->@*) {
-          let $nid = $n->get_id;
-          if (let $e = $self->{state}{namelistdata}{$nl->get_id}{$nid}{hash}) {
+        for n in nl.names() {
+          let nid = n.get_id();
+          if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
             let $str = $e;
             $entry_string =~ s|\[BDS\]$nid-PERNAMEHASH\[/BDS\]|$str|gxms;
           }
@@ -1454,7 +1451,7 @@ impl DataList {
   /// [a, b, d, e, f]
   /// [a, b, e, z, z, y]
   /// ```
-  fn namelist_differs_nth(self, list, n, ul, labelyear) {
+  fn namelist_differs_nth(self, list, n, ul: &str, labelyear) {
     let @list_one = $list->@*;
     // Loop over all final lists, looking for ones which match:
     // * up to n - 1
@@ -1464,18 +1461,18 @@ impl DataList {
     // uniquelist=minyear should only disambiguate from entries with the
     // same labelyear
     let $unames = $self->{state}{uniquelistcount}{global}{final};
-    if ($ul == "minyear") {
+    if ul == "minyear" {
       $unames = $self->{state}{uniquelistcount}{global}{final}{$labelyear};
     }
 
-    foreach let $l_s (keys $unames->%*) {
-      let @l = split("\x{10FFFD}", $l_s);
+    for l_s in unames.keys() {
+      let l: Vec<_> = l_s.split("\x{10FFFD}").collect();
       // If list is shorter than the list we are checking, it's irrelevant
-      if $#l < $list->$#* {
+      if l.len() < list.len() {
         continue;
       }
       // If list matches at $n, it's irrelevant
-      if ($list_one[$n-1] == $l[$n-1]) {
+      if list_one[n-1] == l[n-1] {
         continue;
       }
       // If list doesn't match up to $n - 1, it's irrelevant

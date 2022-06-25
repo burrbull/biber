@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-base62-uuid = "0.2.0"
+base62 = "2.0.0"
 clap = { version = "3.2.5", features = ["derive"] }
 language-tags = "0.3.2"
 log = "0.4.17"
@@ -15,3 +15,4 @@ phf = { version = "0.10.1", features = ["macros"] }
 regex = "1.5.6"
 unicase = "2.6.0"
 unicode-normalization = "0.1.19"
+uuid = { version = "1.1.2", features = ["v4", "fast-rng"] }

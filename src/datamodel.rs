@@ -87,7 +87,7 @@ impl DataModel {
         }
 
         // Multiscriptfields
-        foreach let $f ($udm->{multiscriptfields}{field}->@*) {
+        for f in ($udm->{multiscriptfields}{field}->@*) {
           push $dm->{multiscriptfields}{field}->@*, $f;
         }
       }
@@ -114,8 +114,8 @@ impl DataModel {
     }
 
     // Multiscript enabled fields
-    foreach let $f ($dm->{multiscriptfields}{field}->@*) {
-      $self->{multiscriptfields}{$f} = 1;
+    for f in ($dm->{multiscriptfields}{field}->@*) {
+      self.multiscriptfields.insert(f)
     }
 
     // Pull out legal entrytypes, fields and constraints and make lookup hash
@@ -350,8 +350,8 @@ impl DataModel {
   }
 
   /// Returns boolean to say if a field is a multiscript field
-  fn is_multiscript(self, field) {
-    return $self->{multiscriptfields}{$field} ? 1 : 0;
+  fn is_multiscript(self, field: &str) -> bool {
+    self.multiscriptfields.contains(field)
   }
 
   /// Returns array ref of legal fieldtypes
@@ -386,12 +386,12 @@ impl DataModel {
   }
 
   /// Returns boolean to say if an entrytype is a legal entrytype
-  fn is_entrytype(self, type) {
+  fn is_entrytype(&self, type) -> bool {
     return $self->{entrytypesbyname}{$type} ? 1 : 0;
   }
 
   /// Returns boolean to say if a field is legal for an entrytype
-  fn is_field_for_entrytype(self, type, field) {
+  fn is_field_for_entrytype(&self, type, field) -> bool {
     if ($self->{entrytypesbyname}{$type}{legal_fields}{$field}) {
       return 1;
     }
@@ -401,14 +401,14 @@ impl DataModel {
   }
 
   /// Returns boolean depending on whether an entrytype is to be skipped on output
-  fn entrytype_is_skipout(self, $type) {
+  fn entrytype_is_skipout(&self, $type) {
     return $self->{entrytypesbyname}{$type}{skipout}.unwrap_or(0);
   }
 
   /// Retrieve fields of a certain biblatex fieldtype from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_fieldtype(self, $fieldtype) {
+  fn get_fields_of_fieldtype(&self, $fieldtype) {
     let $f = $self->{fieldsbyfieldtype}{$fieldtype};
     return $f ? [ sort $f->@* ] : [];
   }
@@ -416,7 +416,7 @@ impl DataModel {
   /// Retrieve fields of a certain format from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_fieldformat(self, $format) {
+  fn get_fields_of_fieldformat(&self, $format) {
     let $f = $self->{fieldsbyformat}{$format};
     return $f ? [ sort $f->@* ] : [];
   }
@@ -424,19 +424,19 @@ impl DataModel {
   /// Retrieve fields of a certain biblatex datatype from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_datatype(self, $datatype) {
-    let @f;
+  fn get_fields_of_datatype(&self, $datatype) {
+    let f = Vec::new();
     // datatype can be array ref of datatypes - makes some calls cleaner
     if (ref($datatype) == "ARRAY") {
-      foreach let $dt ($datatype->@*) {
+      for dt in &datatype {
         if (let $fs = $self->{fieldsbydatatype}{$dt}) {
-          push @f, $fs->@*;
+          f.push(fs);
         }
       }
     }
     else {
       if (let $fs = $self->{fieldsbydatatype}{$datatype}) {
-        push @f, $fs->@*;
+        f.push(fs);
       }
     }
     return [ sort @f ];
@@ -445,21 +445,21 @@ impl DataModel {
   /// Retrieve fields of a certain biblatex type from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_type(self, $fieldtype, $datatype, $format) {
-    let @f;
+  fn get_fields_of_type(self, fieldtype: &str, datatype: &str, format: Option<&str>) -> Vec<Unknown> {
+    let f = Vec::new();
     $format = format.unwrap_or("*");
 
     // datatype can be array ref of datatypes - makes some calls cleaner
     if (ref($datatype) == "ARRAY") {
-      foreach let $dt ($datatype->@*) {
+      for dt in &datatype {
         if (let $fs = $self->{fieldsbytype}{$fieldtype}{$dt}{$format}) {
-          push @f, $fs->@*;
+          f.push(fs);
         }
       }
     }
     else {
       if (let $fs = $self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) {
-        push @f, $fs->@*;
+        f.push(fs);
       }
     }
 
@@ -467,7 +467,7 @@ impl DataModel {
   }
 
   /// Returns boolean to say if the given fieldtype/datatype/format is a valid combination
-  fn is_fields_of_type(self, $fieldtype, $datatype, $format) {
+  fn is_fields_of_type(self, $fieldtype, $datatype, $format) -> bool {
     let $f;
     if ($format) {
       return exists($self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) ? 1 : 0;
@@ -500,18 +500,18 @@ impl DataModel {
   }
 
   /// Returns boolean depending on whether a field is a certain biblatex fieldtype
-  fn field_is_fieldtype(self, $fieldtype, $field) {
+  fn field_is_fieldtype(self, $fieldtype, $field) -> bool {
     return $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype ? 1 : 0;
   }
 
   /// Returns boolean depending on whether a field is a certain biblatex datatype
-  fn field_is_datatype(self, $datatype, $field) {
+  fn field_is_datatype(self, $datatype, $field) -> bool {
     return $self->{fieldsbyname}{$field}{datatype} == $datatype ? 1 : 0;
   }
 
   ///  Returns boolean depending on whether a field is a certain biblatex fieldtype
   /// and datatype
-  fn field_is_type(self, $fieldtype, $datatype, $field) {
+  fn field_is_type(self, $fieldtype, $datatype, $field) -> bool {
     if ($self->{fieldsbyname}{$field} &&
         $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype &&
         $self->{fieldsbyname}{$field}{datatype} == $datatype) {
@@ -534,195 +534,194 @@ impl DataModel {
 
   /// Checks constraints of type "mandatory" on entry and
   /// returns an arry of warnings, if any
-  fn check_mandatory_constraints(self, be) {
+  fn check_mandatory_constraints(self, be: &mut Entry) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
-    let @warnings;
-    let $et = $be->get_field("entrytype");
-    let $key = $be->get_field("citekey");
-    let $ds = $section->get_keytods($key);
+    let warnings = Vec::new();
+    let et = be.get_field("entrytype");
+    let key = be.get_field("citekey");
+    let ds = section.get_keytods(key);
   // ["title", ["OR", "url", "doi", "eprint"]]
-    foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{mandatory}->@*) {
+    for c in ($self->{entrytypesbyname}{$et}{constraints}{mandatory}->@*) {
       if (ref($c) == "ARRAY") {
         // Exactly one of a set is mandatory
-        if ($c->[0] == "XOR") {
-          let @fs = $c->@[1..$#$c]; // Lose the first element which is the "XOR"
-          let $flag = 0;
-          let $xorflag = 0;
-          foreach let $of (@fs) {
-            if ($be->field_exists($of) &&
+        if (c[0] == "XOR") {
+          let fs = &c[1..]; // Lose the first element which is the "XOR"
+          let mut flag = false;
+          let mut xorflag = false;
+          for of in &fs {
+            if b.field_exists(of) &&
                 // ignore date field if it has been split into parts
-                !($of == "date" && $be->get_field("datesplit"))) {
-              if ($xorflag) {
-                push @warnings, "Datamodel: Entry '$key' ($ds): Mandatory fields - only one of '" . join(', ', @fs) . "' must be defined - ignoring field '$of'";
-                $be->del_field($of);
+                !(of == "date" && be.get_field("datesplit")) {
+              if xorflag {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Mandatory fields - only one of '{}' must be defined - ignoring field '{of}'", fs.join(", ")));
+                be.del_field(of);
               }
-              $flag = 1;
-              $xorflag = 1;
+              flag = true;
+              xorflag = true;
             }
           }
-          if !($flag) {
-            push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
+          if !flag {
+            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined"), fs.join(", "));
           }
         }
         // One or more of a set is mandatory
-        else if ($c->[0] == "OR") {
-          let @fs = $c->@[1..$#$c]; // Lose the first element which is the "OR"
-          let $flag = 0;
-          foreach let $of (@fs) {
-            if ($be->field_exists($of)) {
-              $flag = 1;
+        else if (c[0] == "OR") {
+          let fs = &c[1..]; // Lose the first element which is the "OR"
+          let mut flag = false;
+          for of in &fs {
+            if (be.field_exists(of)) {
+              flag = true;
               break;
             }
           }
-          if !($flag) {
-            push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field - one of '" . join(', ', @fs) . "' must be defined";
+          if !flag {
+            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined", join(', ', @fs)));
           }
         }
       }
       // Simple mandatory field
       else {
-        if !($be->field_exists($c)) {
-          push @warnings, "Datamodel: Entry '$key' ($ds): Missing mandatory field '$c'";
+        if !be.field_exists(c) {
+          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field '{c}'"));
         }
       }
     }
-    return @warnings;
+    warnings
   }
 
   /// Checks constraints of type "conditional" on entry and
   /// returns an arry of warnings, if any
-  fn check_conditional_constraints(self, be) {
+  fn check_conditional_constraints(self, be) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
-    let @warnings;
-    let $et = $be->get_field("entrytype");
-    let $key = $be->get_field("citekey");
-    let $ds = $section->get_keytods($key);
+    let warnings = Vec::new();
+    let et = be.get_field("entrytype");
+    let key = be.get_field("citekey");
+    let ds = section.get_keytods(key);
 
-    foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{conditional}->@*) {
-      let $aq  = $c->[0];          // Antecedent quantifier
-      let $afs = $c->[1];          // Antecedent fields
-      let $cq  = $c->[2];          // Consequent quantifier
-      let $cfs = $c->[3];          // Consequent fields
-      let @actual_afs = (grep {$be->field_exists($_)} $afs->@*); // antecedent fields in entry
+    for c in ($self->{entrytypesbyname}{$et}{constraints}{conditional}->@*) {
+      let aq  = c[0];          // Antecedent quantifier
+      let afs = c[1];          // Antecedent fields
+      let cq  = c[2];          // Consequent quantifier
+      let cfs = c[3];          // Consequent fields
+      let actual_afs = afs.iter().filter(|cf| be.field_exists(cf)).collect(); // antecedent fields in entry
       // check antecedent
-      if ($aq == "all") {
-        if !($afs->$#* == $#actual_afs) { // ALL -> ? not satisfied
+      if aq == "all" {
+        if !(afs.len() == actual_afs.len()) { // ALL -> ? not satisfied
           continue;
         }
       }
-      else if ($aq == "none") {
-        if @actual_afs {      // NONE -> ? not satisfied
+      else if aq == "none" {
+        if !actual_afs.len() {      // NONE -> ? not satisfied
           continue;
         }
       }
-      else if ($aq == "one") {
-        if !(@actual_afs) {  // ONE -> ? not satisfied
+      else if aq == "one" {
+        if actual_afs.len() {  // ONE -> ? not satisfied
           continue;
         }
       }
 
       // check consequent
-      let @actual_cfs = (grep {$be->field_exists($_)} $cfs->@*);
-      if ($cq == "all") {
-        if !($cfs->$#* == $#actual_cfs) { // ? -> ALL not satisfied
-          push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", join(", ", $cfs->@*), join(", ", $afs->@*));
+      let actual_cfs = cfs.iter().filter(|cf| be.field_exists(cf)).collect();
+      if cq == "all" {
+        if !(cfs.len() == actual_cfs.len()) { // ? -> ALL not satisfied
+          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
         }
       }
-      else if ($cq == "none") {
-        if (@actual_cfs) {        // ? -> NONE not satisfied
-          push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist. Ignoring them.", join(", ", @actual_cfs), join(", ", $afs->@*));
+      else if cq == "none" {
+        if !actual_cfs.is_empty() {        // ? -> NONE not satisfied
+          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist. Ignoring them.", actual_cfs.join(", "), afs.join(", ")));
           // delete the offending fields
-          foreach let $f (@actual_cfs) {
-            $be->del_field($f);
+          for f in &actual_cfs {
+            be.del_field(f);
           }
         }
       }
-      else if ($cq == "one") {
-        if !(@actual_cfs) {    // ? -> ONE not satisfied
-          push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", join(", ", $cfs->@*), join(", ", $afs->@*));
+      else if cq == "one" {
+        if actual_cfs.is_empty() {    // ? -> ONE not satisfied
+          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
         }
       }
     }
-    return @warnings;
+    warnings
   }
 
   /// Checks constraints of type "data" on entry and
   /// returns an array of warnings, if any
-  fn check_data_constraints(self, be) {
+  fn check_data_constraints(self, be) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
-    let @warnings;
-    let $et = $be->get_field("entrytype");
-    let $key = $be->get_field("citekey");
-    let $ds = $section->get_keytods($key);
+    let warnings = Vec::new();
+    let et = be.get_field("entrytype");
+    let key = be.get_field("citekey");
+    let ds = section.get_keytods(key);
 
-    foreach let $c ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
+    for c in ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
       // This is the datatype of the constraint, not the field!
       if ($c->{datatype} == "isbn") {
-        foreach let $f ($c->{fields}->@*) {
-          if (let $fv = $be->get_field($f)) {
+        for f in ($c->{fields}->@*) {
+          if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !($self->get_fieldtype($f) == "list") {
+            if !(self.get_fieldtype(f) == "list") {
               $fv = [$fv];
             }
-            foreach ($fv->@*) {
-              if (!$DM_DATATYPES{isbn}->($_, $f)) {
-                push @warnings, format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'");
+            for i in fv {
+              if (!$DM_DATATYPES{isbn}->(i, f)) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'"));
               }
             }
           }
         }
       }
       else if ($c->{datatype} == "issn") {
-        foreach let $f ($c->{fields}->@*) {
-          if (let $fv = $be->get_field($f)) {
+        for f in ($c->{fields}->@*) {
+          if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !($self->get_fieldtype($f) == "list") {
+            if !(self.get_fieldtype(f) == "list") {
               $fv = [$fv];
             }
-            foreach ($fv->@*) {
-              if (!$DM_DATATYPES{issn}->($_)) {
-              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISSN in value of field '$f'";
+            for i in fv {
+              if (!$DM_DATATYPES{issn}->(i)) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISSN in value of field '{f}'"));
               }
             }
           }
         }
       }
       else if ($c->{datatype} == "ismn") {
-        foreach let $f ($c->{fields}->@*) {
-          if (let $fv = $be->get_field($f)) {
+        for f in ($c->{fields}->@*) {
+          if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !($self->get_fieldtype($f) == "list") {
+            if !(self.get_fieldtype(f) == "list") {
               $fv = [$fv];
             }
-            foreach ($fv->@*) {
-              if (!$DM_DATATYPES{ismn}->($_)) {
-                push @warnings, "Datamodel: Entry '$key' ($ds): Invalid ISMN in value of field '$f'";
+            for i in fv {
+              if (!$DM_DATATYPES{ismn}->(i)) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISMN in value of field '{f}'"));
               }
             }
           }
         }
       }
-      else if ($c->{datatype} == "integer" ||
-            $c->{datatype} == "datepart") {
-        foreach let $f ($c->{fields}->@*) {
-          if (let $fv = $be->get_field($f)) {
+      else if ($c->{datatype} == "integer" || $c->{datatype} == "datepart") {
+        for f in ($c->{fields}->@*) {
+          if (let $fv = be.get_field(f)) {
             if (let $fmin = $c->{rangemin}) {
-              if !($fv >= $fmin) {
-                push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '>=$fmin' - ignoring field";
-                $be->del_field($f);
+              if !(fv >= fmin) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '>={fmin}' - ignoring field"));
+                be.del_field(f);
                 continue;
               }
             }
             if (let $fmax = $c->{rangemax}) {
-              if !($fv <= $fmax) {
-                push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be '<=$fmax' - ignoring field";
-                $be->del_field($f);
+              if !(fv <= fmax) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '<={fmax}' - ignoring field"));
+                be.del_field(f);
                 continue;
               }
             }
@@ -732,59 +731,58 @@ impl DataModel {
       else if ($c->{datatype} == "pattern") {
         let $patt;
         if !($patt = $c->{pattern}) {
-          push @warnings, "Datamodel: Pattern constraint has no pattern!";
+          warnings.push("Datamodel: Pattern constraint has no pattern!".into());
         }
-        foreach let $f ($c->{fields}->@*) {
-          if (let $fv = $be->get_field($f)) {
+        for f in ($c->{fields}->@*) {
+          if (let $fv = be.get_field(f)) {
             if !(imatch($fv, $patt)) {
-              push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value (pattern match fails) for field '$f'";
+              warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value (pattern match fails) for field '{f}'"));
             }
           }
         }
       }
     }
-    return @warnings;
+    warnings
   }
 
   /// Checks datatypes of fields against fields. These are not explicit constraints
   /// in the datamodel but rather checks of the datatype of fields in the datamodel.
-  fn check_datatypes(self, be) {
+  fn check_datatypes(self, be: &Entry) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
-    let @warnings;
-    let $et = $be->get_field("entrytype");
-    let $key = $be->get_field("citekey");
-    let $ds = $section->get_keytods($key);
+    let warnings = Vec::new();
+    let et = be.get_field("entrytype");
+    let key = be.get_field("citekey");
+    let ds = section.get_keytods(key);
 
-    foreach let $f ($be->fields) {
-      let $fv = $be->get_field($f);
-      let $fdt = $self->get_datatype($f);
-      let $fft = $self->get_fieldtype($f);
-      let $ffmt = $self->get_fieldformat($f);
+    for f in be.fields() {
+      let fv = be.get_field(f);
+      let fdt = self.get_datatype(f);
+      let fft = self.get_fieldtype(f);
+      let ffmt = self.get_fieldformat(f);
       // skip special fields which are not in the datamodel such as:
       // citekey, entrykey, rawdata, datatype
-      if !defined($fdt) {
+      if fdt.is_none() {
         continue;
       }
-      let $dt = exists($DM_DATATYPES{$fdt}) ? $DM_DATATYPES{$fdt} : $DM_DATATYPES{default};
-      if (($fft == "list" && $fdt != "name") ||
-          $ffmt == "xsv") {
+      let $dt = exists($DM_DATATYPES{fdt}) ? $DM_DATATYPES{fdt} : $DM_DATATYPES{default};
+      if (fft == "list" && fdt != "name") || ffmt == "xsv" {
         $dt = $DM_DATATYPES{list};
       }
 
       // Fields which are allowed to be null and are indeed null are fine
       // These can mess up further tests so weed them out now
-      if ($self->field_is_nullok($f) && $fv == "") {
+      if self.field_is_nullok(f) && fv == "" {
         continue;
       }
 
-      if !($dt->($fv, $f)) {
-        push @warnings, "Datamodel: Entry '$key' ($ds): Invalid value of field '$f' must be datatype '$fdt' - ignoring field";
-        $be->del_field($f);
+      if !($dt->($fv, f)) {
+        warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be datatype '{fdt}' - ignoring field"));
+        be.del_field(f);
       }
     }
 
-    return @warnings;
+    warnings
   }
 
   /// Dump crate::DataModel object

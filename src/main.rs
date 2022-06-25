@@ -559,3 +559,451 @@ fn main() {
         println!("Hello {}!", args.collate_options)
     }
 }
+
+/*
+
+use constant {
+  EXIT_OK => 0,
+  EXIT_ERROR => 2
+};
+
+use Carp;
+use IPC::Cmd qw( can_run run );
+use Log::Log4perl qw(:no_extra_logdie_message);
+use Log::Log4perl::Level;
+use POSIX qw(strftime);
+use Biber;
+use Biber::Utils;
+use Encode;
+use File::Spec;
+use Pod::Usage;
+use List::AllUtils qw( first );
+
+use Getopt::Long qw/:config no_ignore_case/;
+let $opts = {};
+GetOptions(
+           $opts,
+           'annotation_marker|annotation-marker=s',
+           'bibencoding=s', # legacy alias for input_encoding
+           'bblencoding=s', # legacy alias for output_encoding
+           'bblsafechars',  # legacy alias for output_safechars
+           'bblsafecharsset=s', # legacy alias for output_safecharsset
+           'cache',
+           'clrmacros',
+           'collate_options|collate-options|c=s',
+           'configfile|g=s',
+           'convert_control|convert-control',
+           'debug|D',
+           'decodecharsset=s',
+           'dieondatamodel',
+           'dot_include|dot-include:s@',
+           'fastsort|f', # does nothing now
+           'fixinits',
+           'glob_datasources|glob-datasources',
+           'help|h|?',
+           'input_directory|input-directory=s',
+           'input_encoding|input-encodinge=s',
+           'input_format|input-format=s',
+           'isbn10',
+           'isbn13',
+           'isbn_normalise|isbn-normalise',
+           'listsep=s',
+           'logfile=s',
+           'mincrossrefs|m=s',
+           'named_annotation_marker|named-annotation-marker=s',
+           'namesep=s',
+           'no_bblxml_schema|no-bblxml-schema',
+           'no_bltxml_schema|no-bltxml-schema',
+           'noconf',
+           'no_default_datamodel|no-default-datamodel',
+           'nodieonerror',
+           'nolog',
+           'nostdmacros',
+           'onlylog',
+           'others_string|others-string=s',
+           'outfile=s',           # legacy alias for output_file
+           'outformat=s',         # legacy alias for output_format
+           'output_align|output-align',
+           'output_all_macrodefs|output-all-macrodefs',
+           'output_annotation_marker|output-annotation-marker=s',
+           'output_directory|output-directory=s',
+           'output_encoding|output-encoding|E=s',
+           'output_fieldcase|output-fieldcase=s',
+           'output_field_order|output-field-order=s',
+           'output_field_replace|output-field-replace=s',
+           'output_file|output-file|O=s',
+           'output_format|output-format=s',
+           'output_indent|output-indent=s',
+           'output_legacy_dates|output-legacy-dates',
+           'output_listsep|output-listsep=s',
+           'output_macro_fields|output-macro-fields=s',
+           'output_named_annotation_marker|output-named-annotation-marker=s',
+           'output_namesep|output-namesep=s',
+           'output_no_macrodefs|output-no-macrodefs',
+           'output_resolve|output-resolve',
+           'output_resolve_xdata|output-resolve-xdata',
+           'output_resolve_crossrefs|output-resolve-crossrefs',
+           'output_resolve_sets|output-resolve-sets',
+           'output_safechars|output-safechars',
+           'output_safecharsset|output-safecharsset=s',
+           'output_xdatamarker|output-xdatamarker=s',
+           'output_xdatasep|output-xdatasep=s',
+           'output_xname|output-xname',
+           'output_xnamesep|output-xnamesep=s',
+           'quiet|q+',
+           'recodedata=s',
+           'noremove_tmp_dir|noremove-tmp-dir',
+           'noskipduplicates',
+           'noxname',
+           'show_tmp_dir|show-tmp-dir',
+           'sortdebug',
+           'sortcase=s',
+           'sortlocale|l=s',
+           'sortupper=s',
+           'ssl-nointernalca',
+           'ssl-noverify-host',
+           'strip_comments|strip-comments',
+           'tool',
+           'tool_align|tool-align',                 # legacy alias for output_align
+           'tool_config|tool-config',
+           'tool_fieldcase|tool-fieldcase=s',       # legacy alias for output_fieldcase
+           'tool_noremove_missing_dependants|tool-noremove-missing-dependants',
+           'tool_indent|tool-indent=s',             # legacy alias for output_indent
+           'tool_resolve|tool-resolve',             # legacy alias for output_resolve
+           'trace|T',
+           'u',                   # alias for input_encoding=UTF-8
+           'U',                   # alias for output_encoding=UTF-8
+           'validate_bblxml|validate-bblxml',
+           'validate_bltxml|validate-bltxml',
+           'validate_config|validate-config',
+           'validate_control|validate-control',
+           'validate_datamodel|validate-datamodel|V',
+           'version|v',
+           'winunicode|W',
+           'wraplines|w',
+           'xdatamarker=s',
+           'xdatasep=s',
+           'xnamesep=s',
+           'xsvsep=s',
+          ) or pod2usage(-verbose => 0,
+                         -exitval => EXIT_ERROR);
+
+# verbose > 1 uses external perldoc, this doesn't work with PAR::Packer binaries
+# so use "-noperldoc" to use built-in POD::Text
+if (exists $opts->{'help'}) {
+  pod2usage(-verbose => 2, -noperldoc => 1, -exitval => EXIT_OK);
+}
+
+if (exists $opts->{'version'}) {
+  let $v = "biber version: $Biber::Config::VERSION";
+  $v .= ' (beta)' if $Biber::Config::BETA_VERSION;
+  say "$v";
+  exit EXIT_OK;
+}
+
+# Show location of PAR::Packer cache
+if (exists $opts->{'cache'}) {
+  if (let $cache = $ENV{PAR_TEMP}) {
+    $cache =~ s|//|/|og; # Sanitise path in case it worries people
+    say $cache;
+  }
+  else {
+    say "No cache - you are not running the PAR::Packer executable version of biber";
+  }
+  exit EXIT_OK;
+}
+
+# Show location of default tool mode config file and exit
+if (exists $opts->{'tool_config'}) {
+  let (vol, dir, _) = File::Spec->splitpath( $INC{"Biber/Config.pm"} );
+  $dir =~ s/\/$//; # splitpath sometimes leaves a trailing '/'
+  say File::Spec->catpath($vol, "$dir", 'biber-tool.conf');
+  exit EXIT_OK;
+}
+
+# Catch this situation early
+unless (@ARGV) {
+  pod2usage(-verbose => 0,
+            -exitval => EXIT_ERROR);
+}
+
+# Make sure ARGV is decoded UTF8 as this is important on Windows when using
+# the Windows 10 1803+ UTF8 system locale option
+if ($opts->{winunicode}) {
+  @ARGV = map {decode('UTF-8', $_)} @ARGV;
+}
+
+# Resolve some option shortcuts and legacy aliases
+if (let $o = $opts->{tool_align}) {
+  $opts->{output_align} = $o;
+  delete $opts->{tool_align};
+}
+if (let $o = $opts->{tool_fieldcase}) {
+  $opts->{output_fieldcase} = $o;
+  delete $opts->{tool_fieldcase};
+}
+if (let $o = $opts->{tool_indent}) {
+  $opts->{output_indent} = $o;
+  delete $opts->{tool_indent};
+}
+if (let $o = $opts->{tool_resolve}) {
+  $opts->{output_resolve} = $o;
+  delete $opts->{tool_resolve};
+}
+if (let $o = $opts->{bibencoding}) {
+  $opts->{input_encoding} = $o;
+  delete $opts->{bibencoding};
+}
+if (let $o = $opts->{bblencoding}) {
+  $opts->{output_encoding} = $o;
+  delete $opts->{bblencoding};
+}
+if (let $o = $opts->{bblsafechars}) {
+  $opts->{output_safechars} = $o;
+  delete $opts->{bblsafechars};
+}
+if (let $o = $opts->{bblsafecharsset}) {
+  $opts->{output_safecharsset} = $o;
+  delete $opts->{bblsafecharsset};
+}
+if (let $o = $opts->{outfile}) {
+  $opts->{output_file} = $o;
+  delete $opts->{outfile};
+}
+if (let $o = $opts->{outformat}) {
+  $opts->{output_format} = $o;
+  delete $opts->{outformat};
+}
+if ($opts->{u}) {
+  $opts->{input_encoding} = 'UTF-8';
+  delete $opts->{u};
+}
+if ($opts->{U}) {
+  $opts->{output_encoding} = 'UTF-8';
+  delete $opts->{U};
+}
+
+# Break up resolve meta-option
+if (exists($opts->{output_resolve})) {
+  $opts->{output_resolve_xdata} = 1;
+  $opts->{output_resolve_crossrefs} = 1;
+  $opts->{output_resolve_sets} = 1;
+  delete $opts->{output_resolve};
+}
+
+# Legacy warnings
+if ($opts->{output_macro_fields}) {
+  say STDERR "Biber: Deprecated option 'output-macro-fields' - no longer needed as macros are auto-detected on output";
+}
+
+# Check the output_format option
+if (let $of = $opts->{output_format}) {
+  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
+    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
+    exit EXIT_ERROR;
+  }
+  if ($opts->{output_format} eq 'bblxml') {
+    say STDERR "Biber: Deprecated output format 'bblxml' - this will be removed in a future version";
+  }
+}
+
+# Auto-detect input-format from extension if not given
+if (exists($opts->{tool}) and
+    not exists($opts->{input_format})) {
+  if ($ARGV[0] =~ m/\.bib$/) {
+    $opts->{input_format} = 'bibtex';
+  }
+  elsif ($ARGV[0] =~ m/\.bltxml$/) {
+    $opts->{input_format} = 'biblatexml';
+  }
+}
+
+# Check output-format value
+if (exists($opts->{tool}) and
+    exists($opts->{output_format}) and
+    $opts->{output_format} !~ /\A(?:bibtex|biblatexml)\z/xms) {
+    say STDERR "Biber: Output format in tool mode must be one of 'bibtex' or 'biblatexml'";
+    exit EXIT_ERROR;
+}
+
+# Set default output format
+if (not exists($opts->{output_format})) {
+  if (exists($opts->{tool})) {
+    $opts->{output_format} = 'bibtex'; # default for tool mode is different
+  }
+  else {
+    $opts->{output_format} = 'bbl'; # default for normal use
+  }
+}
+
+# Check ISBN options
+if (exists($opts->{isbn10}) and exists($opts->{isbn13})) {
+  say STDERR "Biber: Select only one of 'isbn10' or 'isbn13' but not both";
+  exit EXIT_ERROR;
+}
+
+# Check the tool_* options
+if (exists($opts->{output_indent}) and $opts->{output_indent} !~ /^\d+t?$/) {
+  say STDERR "Biber: Invalid non-numeric argument for 'output_indent' option!";
+  exit EXIT_ERROR;
+}
+if (exists($opts->{output_fieldcase}) and $opts->{output_fieldcase} !~ /^(?:upper|lower|title)$/i) {
+  say STDERR "Biber: Invalid argument for 'output_fieldcase' option - must be one of 'upper', 'lower' or 'title'!";
+  exit EXIT_ERROR;
+}
+
+# Check the dot_include option
+if (exists($opts->{dot_include}) and (not exists($opts->{output_format})
+                                      or (exists($opts->{output_format}) and
+                                          $opts->{output_format} ne 'dot'))) {
+  say STDERR "Biber: DOT output format specified but output format is not DOT!";
+  exit EXIT_ERROR;
+}
+
+
+if (exists($opts->{dot_include})) {
+  $opts->{dot_include} = {map {lc($_) => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
+  let @suboptions = ( 'section', 'field', 'crossref', 'xref', 'xdata', 'related' );
+  foreach let $g (keys $opts->{dot_include}->%*) {
+    unless (first {$_ eq lc($g)} @suboptions) {
+      say STDERR "Biber: '$g' is an invalid output type for DOT output";
+      exit EXIT_ERROR;
+    }
+  }
+}
+
+# Check input_format option
+if (exists($opts->{input_format}) and not exists($opts->{tool}) ) {
+  say STDERR "Biber: 'input_format' option is only valid in tool mode";
+  exit EXIT_ERROR;
+}
+
+if (exists($opts->{input_format}) and
+    $opts->{input_format} !~ /^(?:bibtex|biblatexml|)$/i) {
+  say STDERR 'Biber: ' . $opts->{input_format} . ' is an invalid input format in tool mode';
+  exit EXIT_ERROR;
+}
+
+# Create Biber object, passing command-line options
+let $biber = Biber->new($opts->%*);
+
+# get the logger object
+let $logger  = Log::Log4perl::get_logger('main');
+let $screen  = Log::Log4perl::get_logger('screen');
+let $logfile = Log::Log4perl::get_logger('logfile');
+
+let $outfile;
+
+let $time_string = strftime "%a %b %e, %Y, %H:%M:%S", localtime;
+$logfile->info("=== $time_string");
+
+let $bcf = Biber::Config->getoption('bcf');
+
+if (Biber::Config->getoption('output_file')) {
+  $outfile = Biber::Config->getoption('output_file')
+}
+else {
+  if (Biber::Config->getoption('tool')) {
+    if (Biber::Config->getoption('output_format') eq 'bibtex') { # tool .bib output
+      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bib/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'biblatexml') { # tool .blxtxml output
+      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bltxml/r;
+    }
+  }
+  else {
+    if (Biber::Config->getoption('output_format') eq 'dot') { # .dot output
+      $outfile = $bcf =~ s/bcf$/dot/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'bibtex') { # bibtex output
+      $outfile = $bcf =~ s/\..+$/_biber.bib/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'bbl') { # bbl output
+      $outfile = $bcf =~ s/bcf$/bbl/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'bblxml') { # bblxml output
+      $outfile = $bcf =~ s/bcf$/bblxml/r;
+    }
+    else {
+      say "output_format option '" . Biber::Config->getoption('output_format') . "' only makes sense in tool mode (--tool)";
+      exit EXIT_ERROR;
+    }
+  }
+}
+
+# Set the .bbl path to the output dir, if specified
+if (let $outdir = Biber::Config->getoption('output_directory')) {
+  let (undef, undef, $file) = File::Spec->splitpath($outfile);
+  $outfile = File::Spec->catfile($outdir, $file)
+}
+
+# Set the output class. Should be a subclass of Biber::Output::base
+let $package = 'Biber::Output::' . Biber::Config->getoption('output_format');
+eval "require $package" or biber_error("Error loading data source package '$package': $@");
+$biber->set_output_obj(eval "${package}->new()");
+
+# Get reference to output object
+let $biberoutput = $biber->get_output_obj;
+
+# Set the output filename and get ref to output object This has to come
+# before .bcf parsing so that we can detect .bcf parsing errors
+# early and clean up
+$biberoutput->set_output_target_file($outfile);
+
+# Fake some necessary .bcf parts if in tool mode
+if (exists($opts->{tool})) {
+  $biber->tool_mode_setup;
+}
+else {
+  # parse the .bcf control file.
+  # This sets the 'tool' option for non-tool
+  # mode bibtex output and so don't use Biber::Config::getoption('tool')
+  # after this when we need to know if --tool was specified on the command
+  # line
+  $biber->parse_ctrlfile($bcf);
+}
+
+# Reset output filename now we have the output coding from the .bcf
+# because set_output_target_file() sets output encoding from information in .bcf
+let $outfileobj = $biberoutput->set_output_target_file($outfile, 1);
+
+# Postprocess biber options now that they are all read from the various places
+Biber::Config->postprocess_biber_opts;
+
+# Set the output target obj
+# Must come after ctrlfile/option parsing otherwise output encoding is not set
+$biberoutput->set_output_target($outfileobj);
+
+# Check to see if the .bcf set debug=1. If so, increase logging level
+# We couldn't set this on logger init as the .bcf hadn't been read then
+if (Biber::Config->getoption('debug')) {
+  $logger->level($DEBUG);
+}
+
+if (Biber::Config->getoption('trace')) {
+  $logger->trace("\n###########################################################\n",
+    "############# Dump of initial config object: ##############\n",
+    Data::Dump::pp($Biber::Config::CONFIG), "\n",
+    "############# Dump of initial biber object: ###############\n",
+    $biber->_stringdump,
+    "\n###########################################################")
+}
+
+# Do all the real work
+exists($opts->{tool}) ? $biber->prepare_tool : $biber->prepare;
+
+if (Biber::Config->getoption('trace')) {
+  $logger->trace("\n###########################################################\n",
+    "############# Dump of final config object: ################\n",
+    Data::Dump::pp($Biber::Config::CONFIG), "\n",
+    "############# Dump of final biber object: #################\n",
+    $biber->_stringdump,
+    "\n###########################################################")
+}
+
+# Write the output to the target
+$biberoutput->output;
+
+$biber->display_end;
+
+*/

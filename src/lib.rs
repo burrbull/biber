@@ -1,11 +1,38 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 use core::fmt;
+use uuid::Uuid;
 
 mod constants;
 mod utils;
 
+// TODO: Relpace with known types
 pub struct Unknown;
+
+
+#[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct Id(Uuid);
+
+impl Id {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&base62::encode(self.0.as_u128()))
+    }
+}
+
+impl core::str::FromStr for Id {
+    type Err = base62::DecodeError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(Uuid::from_u128(base62::decode(s)?)))
+    }
+}
+
 
 pub trait SkipEmpty {
     fn skip_empty(self) -> Self;

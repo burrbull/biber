@@ -1,5 +1,6 @@
 //! Various utility subs used in Biber
 
+use crate::Id;
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
 
@@ -1351,7 +1352,7 @@ pub fn maploopreplace($string, $maploop) {
   $string =~ s/\$MAPLOOP/$maploop/g;
   $string =~ s/\$MAPUNIQVAL/$MAPUNIQVAL/g;
   if ($string =~ m/\$MAPUNIQ/) {
-    let $MAPUNIQ = base62_uuid::base62_uuid();
+    let $MAPUNIQ = Id::new();
     $string =~ s/\$MAPUNIQ/$MAPUNIQ/g;
     $MAPUNIQVAL = $MAPUNIQ;
   }
@@ -1488,35 +1489,36 @@ pub fn appendstrict_check($step, $orig, $val) {
 }
 
 /// Process backendin attribute from .bcf
-pub fn process_backendin($bin) {
+pub fn process_backendin($bin) -> Option<Unknown> {
   if !($bin) {
-    return undef;
+    return None;
   } */
 //  let $opts = [split(/\s*,\s*/, $bin)];
 //  if (grep {/=/} $opts->@*) {
 //    let $hopts;
-//    foreach let $o ($opts->@*) {
+//    for o in opts {
 //      let ($k, $v) = $o =~ m/\s*([^=]+)=(.+)\s*/;
-/* TODO      $hopts->{$k} = $v;
+/* TODO 
+      $hopts->{$k} = $v;
     }
     return $hopts;
   }
   else {
     return $opts;
   }
-  return undef;
+  Nones
 }
 
 /// Replace xnamesep/xdatasep with output variants
 /// Some datasource formats don't need the marker (biblatexml)
-pub fn xdatarefout($xdataref, $implicitmarker) {
+pub fn xdatarefout(xdataref: &str, implicitmarker: bool) {
   let $xdmi = crate::Config->getoption("xdatamarker");
   let $xdmo = crate::Config->getoption("output_xdatamarker");
   let $xnsi = crate::Config->getoption("xnamesep");
   let $xnso = crate::Config->getoption("output_xnamesep");
   let $xdsi = crate::Config->getoption("xdatasep");
   let $xdso = crate::Config->getoption("output_xdatasep");
-  if ($implicitmarker) { // Don't want output marker at all
+  if implicitmarker { // Don't want output marker at all
     $xdataref =~ s/^$xdmi$xnsi//x;
   }
   else {
@@ -1528,16 +1530,16 @@ pub fn xdatarefout($xdataref, $implicitmarker) {
 }
 
 /// Check an output value for an xdata ref and replace output markers if necessary.
-pub fn xdatarefcheck($val, $implicitmarker) {
-  if !($val) {
-    return undef;
+pub fn xdatarefcheck(val: &str, implicitmarker: bool) -> Option<String> {
+  if !(val) {
+    return None;
   }
   let $xdmi = crate::Config->getoption("xdatamarker");
   let $xnsi = crate::Config->getoption("xnamesep");
   if ($val =~ m/^\s*$xdmi(?=$xnsi)/) {
-    return xdatarefout($val, $implicitmarker);
+    return Some(xdatarefout($val, implicitmarker));
   }
-  return undef;
+  return None;
 }
 
 fn _bool_norm($b) -> bool {

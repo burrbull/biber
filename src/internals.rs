@@ -26,17 +26,21 @@ fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
   let be = section.bibentry(citekey);
   let bee = be.get_field("entrytype");
 
-  let $hashkey = "";
-  let $count = $names->count;
-  let $visible = $bib ? $dlist->get_visible_bib($names->get_id) : $dlist->get_visible_cite($names->get_id);
-  let $dm = crate::config::get_dm();
-  let @nps = $dm->get_constant_value("nameparts");
+  let mut hashkey = String::new();
+  let count = names.count();
+  let visible = if bib {
+    dlist.get_visible_bib(names.get_id())
+  } else {
+    dlist.get_visible_cite(names.get_id())
+  };
+  let dm = crate::config::get_dm();
+  let nps = dm.get_constant_value("nameparts");
 
   // namehash obeys list truncations but not uniquename
-  foreach let $n ($names->first_n_names($visible)->@*) {
-    foreach let $nt (@nps) {// list type so returns list
-      if (let $np = $n->get_namepart($nt)) {
-        $hashkey .= $np;
+  for n in names.first_n_names(visible) {
+    for nt in nps {// list type so returns list
+      if (let $np = n.get_namepart(nt)) {
+        hashkey.push_str(np);
       }
     }
   }
@@ -49,9 +53,9 @@ fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
   }
 
   // name list was truncated
-  if !($nho) {
-    if ($visible < $count || $names->get_morenames) {
-      $hashkey .= '+';
+  if !nho {
+    if visible < count || names.get_morenames() {
+      hashkey.pish('+');
     }
   }
 
@@ -64,8 +68,8 @@ fn _getfullhash(self, $citekey, $names) {
   let $dm = crate::config::get_dm();
   let @nps = $dm->get_constant_value("nameparts");
 
-  foreach let $n ($names->names->@*) {
-    foreach let $nt (@nps) {// list type so returns list
+  for n names.names() {
+    for nt in &nps {// list type so returns list
       if (let $np = $n->get_namepart($nt)) {
         $hashkey .= strip_nonamestring($np, names.get_type());
       }
@@ -73,7 +77,7 @@ fn _getfullhash(self, $citekey, $names) {
   }
 
   // If we had an "and others"
-  if ($names->get_morenames) {
+  if names.get_morenames() {
     $hashkey .= '+'
   }
 
@@ -89,50 +93,47 @@ fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
   let be = section.bibentry(citekey);
   let bee = be.get_field("entrytype");
 
-  let $hashkey = "";
-  let $count = $names->count;
-  let $nlid = $names->get_id;
-  let $visible = $dlist->get_visible_cite($nlid);
+  let hashkey = String::new();
+  let count = names.count();
+  let nlid = names.get_id();
+  let visible = dlist.get_visible_cite(nlid);
   let $dm = crate::config::get_dm();
-  let @nps = $dm->get_constant_value("nameparts");
+  let @nps = dm.get_constant_value("nameparts");
 
   // refcontext or per-entry uniquenametemplate
-  let $untname = crate::Config->getblxoption($secnum, "uniquenametemplatename", undef, $citekey).unwrap_or($dlist->get_uniquenametemplatename);
+  let untname = crate::Config->getblxoption(secnum, "uniquenametemplatename", None, citekey)
+    .or(dlist.get_uniquenametemplatename());
 
   // Per-namelist uniquenametemplate
-  if (defined($names->get_uniquenametemplatename)) {
-    $untname = $names->get_uniquenametemplatename;
-  }
+  untname = names.get_uniquenametemplatename().or(untname);
 
   // namehash obeys list truncations
-  foreach let $n ($names->first_n_names($visible)->@*) {
-    let $nid = $n->get_id;
+  for n in names.first_n_names(visible) {
+    let nid = n.get_id();
     // Per-name uniquenametemplate
-    if (defined($n->get_uniquenametemplatename)) {
-      $untname = $n->get_uniquenametemplatename;
-    }
+    untname = n.get_uniquenametemplatename.or(untname);
 
     // Use nameuniqueness template to construct hash
-    foreach let $nps (crate::Config->getblxoption($secnum, "uniquenametemplate")->{$untname}->@*) {
+    for nps in (crate::Config->getblxoption($secnum, "uniquenametemplate")->{$untname}->@*) {
       // Same as omitting this
       if defined($nps->{disambiguation}) && ($nps->{disambiguation} == "none") {
         continue;
       }
       let $npn = $nps->{namepart};
 
-      if (let $np = $n->get_namepart($npn)) {
+      if (let $np = n.get_namepart(npn)) {
         if ($nps->{base}) {
-          $hashkey .= $np;
+          hashkey.push_str(np);
         }
         else {
-          let $un = $dlist->get_uniquename($nlid, $nid);
+          let un = dlist.get_uniquename(nlid, nid);
           if (defined($un) && ($un->[0] != "base")) {
             if ($un->[1] == "full" || $un->[1] == "fullonly") {
-              $hashkey .= $np;
+              hashkey.push_str(np);
             }
             // Use initials for non-base parts if uniquename indicates this will disambiguate
             else if ($un->[1] == "init") {
-              $hashkey .= join("", $n->get_namepart_initial($npn)->@*);
+              hashkey.push_str(n.get_namepart_initial(npn).join(""));
             }
           }
         }
@@ -140,7 +141,7 @@ fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
     }
   }
 
-  let $nho = crate::Config->getblxoption($secnum, "nohashothers", $bee, $citekey);
+  let nho = crate::Config->getblxoption(secnum, "nohashothers", bee, citekey);
 
   // Per-namelist nohashothers
   if (defined($names->get_nohashothers)) {
@@ -148,14 +149,14 @@ fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
   }
 
   // name list was truncated
-  if !($nho) {
-    if ($visible < $count || $names->get_morenames) {
-      $hashkey .= '+';
+  if !nho {
+    if visible < count || names.get_morenames() {
+      hashkey.push('+');
     }
   }
 
   // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
-  return md5_hex(encode_utf8(NFC(normalise_string_hash($hashkey))));
+  return md5_hex(encode_utf8(NFC(normalise_string_hash(&hashkey))));
 }
 
 // Special hash to track per-name information
@@ -432,8 +433,8 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
       $useprefix = $names->get_useprefix;
     }
 
-    let $numnames  = $names->count;
-    let $visibility = $dlist->get_visible_alpha($names->get_id);
+    let numnames = names.count();
+    let visibility = dlist.get_visible_alpha(names.get_id());
 
     // Use name range override, if any
     let $nr_start;
@@ -561,7 +562,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 
     // Add alphaothers if name list is truncated unless noalphaothers is specified
     if !($labelattrs->{noalphaothers}) {
-      if ($numnames > $nr_end || $names->get_morenames) {
+      if numnames > nr_end || names.get_morenames() {
         $acc .= $alphaothers.unwrap_or(""); // alphaothers can be undef
         $sortacc .= $sortalphaothers.unwrap_or(""); // sortalphaothers can be undef
       }
@@ -614,11 +615,11 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
           for key in &citekeys {
             if (let $f = section.bibentry(key).get_field(field)) {
               if ($nameparts) { // name field
-                let $nlid = $f->get_id;
-                foreach let $n ($f->first_n_names($dlist->get_visible_alpha($nlid))->@*) {
+                let nlid = f.get_id();
+                for n in f.first_n_names(dlist.get_visible_alpha(nlid)) {
                   // Do strip/nosort here as that's what we also do to the field contents
                   // we will use to look up in this hash later
-                  $indices{normalise_string_label(join("",map {$n->get_namepart($_)} $nameparts->@*), $field)} = $n->get_index;
+                  $indices{normalise_string_label(nameparts.iter().map(|np| n.get_namepart(np)).join(""), field)} = n.get_index();
                 }
               }
               else {
@@ -687,7 +688,7 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
           // This retains the structure of the entries for the "l" list disambiguation
           // Have to be careful if field "$f" is not set for all entries
           let $strings = [map {let $f = section.bibentry($_).get_field(field);
-                              $f ? ($nameparts ? [map {let $n = $_;join("", map {$n->get_namepart($_)} $nameparts->@*)} $f->first_n_names($dlist->get_visible_alpha($f->get_id))->@*] : [$f]) : [""] }
+                              $f ? ($nameparts ? [map {let $n = $_;join("", map {$n->get_namepart($_)} $nameparts->@*)} $f->first_n_names($dlist->get_visible_alpha(f.get_id()))->@*] : [$f]) : [""] }
                          @citekeys];
           let $lcache = _label_listdisambiguation($strings);
 
@@ -1469,9 +1470,9 @@ fn _namestring(self, citekey: &str, field, dlist) {
   // sorting visibility but can be citation visibility as the biblatex
   // "sortcites" option can require a different visibility for citations and
   // so we have to generate a separate sorting list for this case
-  let $visible = $dlist->get_visible_sort($names->get_id);
+  let visible = dlist.get_visible_sort(names.get_id());
   if (defined($tmpsnk) && $tmpsnk->{visibility} == "cite") {
-    $visible = $dlist->get_visible_cite($names->get_id);
+    visible = dlist.get_visible_cite(names.get_id());
   }
 
   // Name list scope useprefix option
@@ -1479,7 +1480,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
     $useprefix = $names->get_useprefix;
   }
 
-  let $trunc = "\x{10FFFD}";  // sort string for "et al" truncated name
+  let trunc = '\x{10FFFD}';  // sort string for "et al" truncated name
 
   for n in &names.first_n_names(visible) {
 
@@ -1570,7 +1571,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
 
   if !($nso) {
     if $visible < $count {
-      $str .= $trunc; // name list was truncated
+      $str.push(trunc); // name list was truncated
     }
   }
 

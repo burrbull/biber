@@ -2,10 +2,12 @@
 
 //no autovivification;
 
+use crate::Id;
+
 #[derive(Debug)]
 pub struct Names {
   namelist: Vec<Name>,
-  id: String,
+  id: Id,
   typ: String,
   morenames: bool,
 }
@@ -15,14 +17,14 @@ impl Names {
   pub fn new(typ: &str) -> Self {
     Self {
       namelist: Vec::new(),
-      id: base62_uuid::base62_uuid(),
+      id: Id::new(),
       typ: typ.into(),
       morenames: false,
     }
   }
 
-  pub fn get_id(&self) -> &String {
-    &self.id
+  pub fn get_id(&self) -> Id {
+    self.Id
   }
 
   pub fn get_type(&self) -> &String {
@@ -79,12 +81,12 @@ impl Names {
   }
 
   /// Gets the morenames flag
-  fn get_morenames(self) -> bool {
+  fn get_morenames(&self) -> bool {
     self.morenames
   }
 
   /// Returns the number of crate::Entry::Name objects in the object
-  fn count(self) {
+  fn count(&self) {
     self.namelist.len()
   }
 

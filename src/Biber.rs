@@ -136,8 +136,8 @@ impl Biber {
   /// ```
   /// let $datalists = $biber->datalists
   /// ```
-  fn datalists(self) {
-    return $self->{datalists};
+  fn datalists(&self) -> &DataLists {
+    &self.datalists
   }
 /*
   /// Returns a crate::LangTags object containing a parser for BCP47 tags
@@ -294,7 +294,7 @@ impl Biber {
       }
       else {
         biber_warn("Cannot find XML::LibXSLT stylesheet. Skipping conversion : $!");
-        goto LOADCF;
+        goto 'LOADCF;
       }
 
       let $CF = XML::LibXML->load_xml(location => $ctrl_file_path);
@@ -305,7 +305,7 @@ impl Biber {
     }
 
     // Open control file
-  LOADCF:
+  'LOADCF:
     info!("Reading '{}'", ctrl_file_path);
     let $buf = slurp_switchr($ctrl_file_path)->$*;
     $buf = NFD($buf);// Unicode NFD boundary
@@ -1606,9 +1606,7 @@ impl Biber {
         }
 
         // per-name uniquename
-        if (defined($n->get_uniquename)) {
-          $un = $n->get_uniquename;
-        }
+        un = n.get_uniquename().or(un);
 
         let $nameun = $un;
 
@@ -2539,8 +2537,8 @@ impl Biber {
       let $maxan = crate::Config->getblxoption($secnum, "maxalphanames", bee, citekey);
       let $minan = crate::Config->getblxoption($secnum, "minalphanames", bee, citekey);
 
-      foreach let $n ($dmh->{namelistsall}->@*) {
-        let $nl = $be->get_field($n);
+      for n in ($dmh->{namelistsall}->@*) {
+        let nl = be.get_field(n);
         if !nl {
           continue;
         }
@@ -2582,7 +2580,7 @@ impl Biber {
           // names. We also know that uniquelist > mincitenames because it is a further
           // disambiguation on top of mincitenames so can't be less as you can't disambiguate
           // by losing information
-          $visible_names_cite = $dlist->get_uniquelist($nl->get_id).unwrap_or($l_mincn);
+          $visible_names_cite = dlist.get_uniquelist(nl.get_id()).unwrap_or($l_mincn);
         }
         else { // visibility is simply the full list
           $visible_names_cite = $count;
@@ -2605,7 +2603,7 @@ impl Biber {
           // names. We also know that uniquelist > minbibnames because it is a further
           // disambiguation on top of minbibnames so can't be less as you can't disambiguate
           // by losing information
-          $visible_names_bib = $dlist->get_uniquelist($nl->get_id).unwrap_or($l_minbn);
+          $visible_names_bib = dlist.get_uniquelist(nl.get_id()).unwrap_or($l_minbn);
         }
         else { // visibility is simply the full list
           $visible_names_bib = $count;
@@ -2618,7 +2616,7 @@ impl Biber {
           // names. We also know that uniquelist > minsortnames because it is a further
           // disambiguation on top of minsortnames so can't be less as you can't disambiguate
           // by losing information
-          $visible_names_sort = $dlist->get_uniquelist($nl->get_id).unwrap_or($l_minsn);
+          $visible_names_sort = dlist.get_uniquelist(nl.get_id()).unwrap_or($l_minsn);
         }
         else { // visibility is simply the full list
           $visible_names_sort = $count;
@@ -2630,7 +2628,7 @@ impl Biber {
           trace!("Setting visible names (alpha) for key '{}' to '{}'", citekey, visible_names_alpha);
 
         // Need to set these on all name forms
-        let $nlid = $be->get_field($n)->get_id;
+        let nlid = be.get_field(n).get_id();
         $dlist->set_visible_cite($nlid, $visible_names_cite);
         $dlist->set_visible_bib($nlid, $visible_names_bib);
         $dlist->set_visible_sort($nlid, $visible_names_sort);
@@ -2716,7 +2714,7 @@ impl Biber {
       if !(crate::Config->getoption("tool")) {
 
         // Set this so that uniqueness processing starts
-        $list->set_unul_changed(1);
+        list.set_unul_changed(true);
 
         // Main processing loop, part 1
         $self->process_entries_pre($list);
@@ -2932,13 +2930,13 @@ impl Biber {
 
     // Set a flag for first uniquelist pass. This is a special case as we always want to run
     // at least one uniquelist pass if requested, regardless of unul_done global flag.
-    let $first_ul_pass = 1;
+    let mut first_ul_pass = true;
 
     // Generate uniquename information, if requested
     while ("true") {
-      if !($dlist->get_unul_done) {
+      if !dlist.get_unul_done() {
           debug!("Entering uniquename processing");
-        $dlist->set_unul_changed(0); // reset state for global unul changed flag
+        dlist.set_unul_changed(false); // reset state for global unul changed flag
         $self->create_uniquename_info($dlist);
         $self->generate_uniquename($dlist);
       }
@@ -2947,10 +2945,10 @@ impl Biber {
       }
       // Generate uniquelist information, if requested
       // Always run uniquelist at least once, if requested
-      if ($first_ul_pass || !$dlist->get_unul_done) {
+      if first_ul_pass || !dlist.get_unul_done() {
           debug!("Entering uniquelist processing");
-        $dlist->set_unul_changed(0); // reset state for global unul changed flag
-        $first_ul_pass = 0; // Ignore special case when uniquelist has run once
+        dlist.set_unul_changed(false); // reset state for global unul changed flag
+        first_ul_pass = false; // Ignore special case when uniquelist has run once
         $self->create_uniquelist_info($dlist);
         $self->generate_uniquelist($dlist);
       }
@@ -3012,16 +3010,16 @@ impl Biber {
   /// allfull = 4
   /// mininit = 5
   /// minfull = 6
-  fn create_uniquename_info(self, $dlist) {
+  fn create_uniquename_info(&self, dlist: &mut Datalist) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let bibentries = section.bibentries();
 
     // Reset uniquename information as we have to generate it
     // again because uniquelist information might have changed
-    $dlist->reset_uniquenamecount;
+    dlist.reset_uniquenamecount();
 
-    'MAIN: foreach let $citekey ( $section.get_citekeys() ) {
+    'MAIN: for citekey in section.get_citekeys() {
       let be = bibentries.entry(citekey);
       let bee = be.get_field("entrytype");
       let lni = match be.get_labelname_info() {
@@ -3029,26 +3027,24 @@ impl Biber {
         Some(lni) => lni,
       }
 
-      let $nl = $be->get_field($lni);
-      let $nlid = $nl->get_id;
+      let nl = be.get_field(lni);
+      let nlid = nl.get_id();
 
-      let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $citekey);
+      let un = crate::Config->getblxoption(secnum, "uniquename", bee, citekey);
 
       // Per-namelist uniquename
-      if (defined($nl->get_uniquename)) {
-        $un = $nl->get_uniquename;
-      }
+      un = nl.get_uniquename().or(un);
 
         trace!("Generating uniquename information for '{}'", citekey);
 
       // Set the index limit beyond which we don't look for disambiguating information
-      let $ul = undef;             // Not set
-      if (defined($dlist->get_uniquelist($nlid))) {
+      let ul = None;             // Not set
+      if let Some(ulist) = dlist.get_uniquelist(nlid) {
         // If defined, $ul will always be >1, see comment in set_uniquelist() in Names.pm
-        $ul = $dlist->get_uniquelist($nlid);
+        ul = Some(ulist);
       }
-      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", $bee, $citekey);
-      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", $bee, $citekey);
+      let maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
 
       // Note that we don't determine if a name is unique here -
       // we can't, were still processing entries at this point.
@@ -3062,25 +3058,23 @@ impl Biber {
       // would be uniquename = 2 unless even the full name doesn't disambiguate
       // and then it is left at uniquename = 0
 
-      let $num_names = $nl->count;
-      let $names = $nl->names;
+      let num_names = nl.count();
+      let names = nl.names();
 
       // If name list was truncated in bib with "and others", this overrides maxcitenames
-      let $morenames = $nl->get_morenames ? 1 : 0;
+      let morenames = nl.get_morenames();
 
-      let %truncnames;
-      let @basenames;
-      let @allnames;
+      let truncnames = HashSet::new();
+      let basenames = Vec::new();
+      let allnames = Vec::new();
 
-      foreach let $n ($names->@*) {
-        let $nid = $n->get_id;
+      for n in names {
+        let nid = n.get_id();
 
         // Per-name uniquename
-        if (defined($n->get_uniquename)) {
-          $un = $n->get_uniquename;
-        }
+        un = n.get_uniquename().or(un);
 
-        if $un == "false" {
+        if un == "false" {
           continue 'MAIN;
         }
 
@@ -3102,72 +3096,74 @@ impl Biber {
         // Uniquelist is not set, a name list is longer than the maxcitenames truncation
         //   and the name appears before the mincitenames truncation
 
-        if ($un == "allinit" || $un == "allfull" ||
-            ($ul && $n->get_index <= $ul) ||
-            $morenames ||
-            $num_names <= $maxcn ||
-            $n->get_index <= $mincn) { // implicitly, $num_names > $maxcn here
+        if (un == "allinit" || $un == "allfull" ||
+            (ul && n.get_index() <= ul) ||
+            morenames ||
+            num_names <= maxcn ||
+            n.get_index() <= mincn) { // implicitly, $num_names > $maxcn here
 
-          $truncnames{$nid} = 1;
-          if ($un == "mininit" || $un == "minfull") {
-            push @basenames, $dlist->get_basenamestring($nlid, $nid);
-            push @allnames, $dlist->get_namestring($nlid, $nid);
+          truncnames.insert(nid);
+          if (un == "mininit" || un == "minfull") {
+            basenames.push(dlist.get_basenamestring(nlid, nid));
+            allnames.push(dlist.get_namestring(nlid, nid));
           }
         }
       }
       // Information for mininit or minfull, here the basename
       // and non-basename is all names in the namelist, not just the current name
-      let $min_basename;
-      let $min_namestring;
-      if ($un == "mininit" || $un == "minfull") {
-        $min_basename = join("\x{10FFFD}", @basenames);
-        $min_namestring = join("\x{10FFFD}", @allnames);
-        if ($#basenames + 1 < $num_names || $morenames) {
-          $min_basename .= "\x{10FFFD}et al";     // if truncated, record this
-          $min_namestring .= "\x{10FFFD}et al";   // if truncated, record this
+      let mut min_basename;
+      let mut min_namestring;
+      if (un == "mininit" || un == "minfull") {
+        min_basename = basenames.join("\x{10FFFD}");
+        min_namestring = allnames.join("\x{10FFFD}");
+        if (basenames.len() < num_names || morenames) {
+          min_basename.push_str("\x{10FFFD}et al");     // if truncated, record this
+          min_namestring.push_str("\x{10FFFD}et al");   // if truncated, record this
         }
       }
 
-      foreach let $n ($names->@*) {
-        let $nid = $n->get_id;
-        let $basename    = $dlist->get_basenamestring($nlid, $nid);
-        let $namestring  = $dlist->get_namestring($nlid, $nid);
-        let $namestrings = $dlist->get_namestrings($nlid, $nid);
-        let $namedisamiguationscope;
-        let $nskey;
+      for n in &names {
+        let nid = n.get_id();
+        let basename    = dlist.get_basenamestring(nlid, nid);
+        let namestring  = dlist.get_namestring(nlid, nid);
+        let namestrings = dlist.get_namestrings(nlid, nid);
+        let namedisamiguationscope;
+        let nskey;
 
         // Disambiguation scope and key depend on the uniquename setting
-        if ($un == "init" || $un == "full" || $un == "allinit" || $un == "allfull") {
-          $namedisamiguationscope = "global";
-          $nskey = join("\x{10FFFD}", $namestrings->@*);
+        if (un == "init" || un == "full" || un == "allinit" || un == "allfull") {
+          namedisamiguationscope = "global";
+          nskey = namestrings.join("\x{10FFFD}");
         }
-        else if ($un == "mininit" || $un == "minfull") {
-          $namedisamiguationscope = $min_basename;
-          $nskey = $min_namestring;
-          $dlist->set_unmininfo($nlid, $nid, $min_basename);
+        else if (un == "mininit" || un == "minfull") {
+          namedisamiguationscope = min_basename;
+          nskey = min_namestring;
+          dlist.set_unmininfo(nlid, nid, min_basename);
         }
 
-        if ($truncnames{$nid}) {
+        if truncnames.contains(nid) {
           // Record uniqueness information entry for all name contexts
           // showing that they have been seen for this name key in this name scope
-          foreach let $ns ($namestrings->@*) {
-            $dlist->add_uniquenamecount($ns, $namedisamiguationscope, $nskey);
+          for ns in namestrings {
+            dlist.add_uniquenamecount(ns, namedisamiguationscope, nskey);
           }
         }
 
         // As above but here we are collecting (separate) information for all
         // names, regardless of visibility (needed to track uniquelist)
-        let $eul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
+        let eul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
 
         // Per-namelist uniquelist
-        let $nl = $be->get_field($lni);
-        if (defined($lni) && $nl->get_uniquelist) {
-          $eul = $nl->get_uniquelist;
+        let nl = be.get_field(lni);
+        if lni.is_some() {
+          if nl.get_uniquelist() {
+            eul = nl.get_uniquelist();
+          }
         }
 
-        if ($eul != "false") {
-          foreach let $ns ($namestrings->@*) {
-            $dlist->add_uniquenamecount_all($ns, $namedisamiguationscope, $nskey);
+        if (eul != "false") {
+          for ns in namestrings {
+            dlist.add_uniquenamecount_all(ns, namedisamiguationscope, nskey);
           }
         }
       }
@@ -3193,106 +3189,98 @@ impl Biber {
       }
 
       let nl = be.get_field(lni);
-      let $nlid = $nl->get_id;
+      let nlid = nl.get_id();
 
-      let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $citekey);
+      let un = crate::Config->getblxoption(secnum, "uniquename", bee, citekey);
 
       // Per-namelist uniquename
-      if (defined($nl->get_uniquename)) {
-        $un = $nl->get_uniquename;
-      }
+      un = nl.get_uniquename().or(un);
 
         trace!("Setting uniquename for '{}'", citekey);
 
       // Set the index limit beyond which we don't look for disambiguating information
       // If defined, $ul will always be >1, see comment in set_uniquelist() in Names.pm
-      let $ul = $dlist->get_uniquelist($nlid);
+      let ul = dlist.get_uniquelist(nlid);
 
-      let $maxcn = crate::Config->getblxoption($secnum, "maxcitenames", $bee, $citekey);
-      let $mincn = crate::Config->getblxoption($secnum, "mincitenames", $bee, $citekey);
+      let maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
 
-      let $num_names = $nl->count;
-      let $names = $nl->names;
+      let num_names = nl.count();
+      let names = nl.names();
       // If name list was truncated in bib with "and others", this overrides maxcitenames
-      let $morenames = ($nl->get_morenames) ? 1 : 0;
+      let morenames = nl.get_morenames();
 
-      let %truncnames;
+      let truncnames = HashSet::new();
 
-      foreach let $n ($names->@*) {
-        let $nid = $n->get_id;
+      for n in &names {
+        let nid = n.get_id();
 
         // Per-name uniquename
-        if (defined($n->get_uniquename)) {
-          $un = $n->get_uniquename;
-        }
+        un = n.get_uniquename().or(un);
 
-        if $un == "false" {
+        if un == "false" {
           continue 'MAIN;
         }
 
-        if ($un == "allinit" || $un == "allfull" ||
-            ($ul && $n->get_index <= $ul) ||
-            $morenames ||
-            $num_names <= $maxcn ||
-            $n->get_index <= $mincn) { // implicitly, $num_names > $maxcn here
-          $truncnames{$nid} = 1;
+        if (un == "allinit" || un == "allfull" ||
+            (ul && n.get_index() <= ul) ||
+            morenames ||
+            num_names <= maxcn ||
+            n.get_index() <= mincn) { // implicitly, $num_names > $maxcn here
+          truncnames.insert(nid);
         }
         else {
           // Set anything now not visible due to uniquelist back to 0
-          $dlist->reset_uniquename($nlid, $nid);
+          dlist.reset_uniquename(nlid, nid);
         }
       }
 
-      foreach let $n ($names->@*) {
-        let $nid = $n->get_id;
-        let $basename = $dlist->get_basenamestring($nlid, $nid);
-        let $namestrings = $dlist->get_namestrings($nlid, $nid);
-        let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
-        let $namescope = "global"; // default
+      for n in &names {
+        let nid = n.get_id();
+        let basename = dlist.get_basenamestring(nlid, nid);
+        let namestrings = dlist.get_namestrings(nlid, nid);
+        let namedisschema = dlist.get_namedisschema(nlid, nid);
+        let mut namescope = "global"; // default
 
         if ($un == "mininit" || $un == "minfull") {
-          $namescope = $dlist->get_unmininfo($nlid, $nid);
+          namescope = dlist.get_unmininfo(nlid, nid);
         }
 
-        if ($truncnames{$nid}) {
-          for (let $i=0; $i<=$namestrings->$#*; $i++) {
-            let $ns = $namestrings->[$i];
-            let $nss = $namedisschema->[$i];
-            if ($dlist->get_numofuniquenames($ns, $namescope) == 1) {
-              $dlist->set_uniquename($nlid, $nid, $nss);
+        if truncnames.contains(nid) {
+          for (i, ns) in namestrings.iter().enumerate() {
+            let nss = namedisschema[i];
+            if dlist.get_numofuniquenames(ns, namescope) == 1 {
+              dlist.set_uniquename(nlid, nid, nss);
               // We have found the most general disambiguation schema which disambiguates,
               // skip the rest since the schema array goes from most general to least general
               break;
             }
           }
           // Nothing disambiguates, set to just base of schema
-          if !defined($dlist->get_uniquename($nlid, $nid)) {
-            $dlist->set_uniquename($nlid, $nid, $namedisschema->[0]);
+          if dlist.get_uniquename(nlid, nid).is_none() {
+            dlist.set_uniquename(nlid, nid, namedisschema[0]);
           }
         }
 
-        let $eul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
+        let eul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
         // Per-namelist uniquelist
-        let $names = $be->get_field(be.get_labelname_info());
-        if (defined($names->get_uniquelist)) {
-          $eul = $names->get_uniquelist;
-        }
+        let names = be.get_field(be.get_labelname_info());
+        eul = names.get_uniquelist().or(eul);
 
         // As above but not just for visible names (needed for uniquelist)
-        if ($eul != "false") {
-          for (let $i=0; $i<=$namestrings->$#*; $i++) {
-            let $ns = $namestrings->[$i];
-            let $nss = $namedisschema->[$i];
-            if ($dlist->get_numofuniquenames_all($ns, $namescope) == 1) {
-              $dlist->set_uniquename_all($nlid, $nid, $nss);
+        if (eul != "false") {
+          for (i, ns) in namestrings.iter().enumerate() {
+            let nss = namedisschema[i];
+            if (dlist.get_numofuniquenames_all(ns, namescope) == 1) {
+              dlist.set_uniquename_all(nlid, nid, nss);
               // We have found the most general disambiguation schema which disambiguates,
               // skip the rest since the schema array goes from most general to least general
               break;
             }
           }
           // Nothing disambiguates, set to just base of schema
-          if !defined($dlist->get_uniquename_all($nlid, $nid)) {
-            $dlist->set_uniquename_all($nlid, $nid, $namedisschema->[0]);
+          if dlist.get_uniquename_all(nlid, nid).is_none() {
+            dlist.set_uniquename_all(nlid, nid, namedisschema[0]);
           }
             
         }
@@ -3314,46 +3302,44 @@ impl Biber {
     for citekey in section.get_citekeys() {
       let be = bibentries.entry(citekey);
       let bee = be.get_field("entrytype");
-      let $maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
-      let $mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
+      let maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
       let lni = match be.get_labelname_info() {
         None => continue, // only care about labelname
         Some(lni) => lni,
       }
-      let $nl = $be->get_field(lni);
-      let $nlid = $nl->get_id;
-      let $labelyear = $be->get_field("labelyear");
+      let nl = be.get_field(lni);
+      let nlid = nl.get_id();
+      let labelyear = be.get_field("labelyear");
 
-      let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
+      let ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
 
       // Per-namelist uniquelist
-      if (defined($nl->get_uniquelist)) {
-        $ul = $nl->get_uniquelist;
-      }
+      ul = nl.get_uniquelist().or(ul);
 
-      if $ul == "false" {
+      if ul == "false" {
         continue;
       }
 
         trace!("Generating uniquelist information for '{}'", citekey);
 
-      let $num_names = $nl->count;
-      let $namelist = [];
-      let $ulminyear_namelist = [];
+      let num_names = nl.count();
+      let namelist = Vec::new();
+      let ulminyear_namelist = Vec::new();
 
-      foreach let $n ($nl->names->@*) {
-        let $nid = $n->get_id;
-        let $basename = $dlist->get_basenamestring($nlid, $nid);
-        let $namestrings = $dlist->get_namestrings($nlid, $nid);
-        let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
-        let $ulminyearflag = 0;
+      for n in nl.names() {
+        let nid = n.get_id();
+        let basename = dlist.get_basenamestring(nlid, nid);
+        let namestrings = dlist.get_namestrings(nlid, nid);
+        let namedisschema = dlist.get_namedisschema(nlid, nid);
+        let mut ulminyearflag = false;
 
         // uniquelist = minyear
-        if ($ul == "minyear") {
+        if ul == "minyear" {
           // minyear uniquename, we set based on the max/mincitenames list
-          if ($num_names > $maxcn &&
-              $n->get_index <= $mincn) {
-            $ulminyearflag = 1;
+          if (num_names > maxcn &&
+              n.get_index() <= mincn) {
+            ulminyearflag = true;
           }
         }
 
@@ -3361,8 +3347,12 @@ impl Biber {
 
         // uniquename is not set so generate uniquelist based on just base name
         if (!defined($unall) || $unall->[0] == "base") {
-          push $namelist->@*, $basename if defined($basename);
-          push $ulminyear_namelist->@*, $basename if $ulminyearflag;
+          if let Some(basename) = basename {
+            namelist.push(basename);
+          }
+          if ulminyearflag {
+            ulminyear_namelist.push(basename);
+          }
         }
         else {
           for (let $i=0; $i<=$namedisschema->$#*; $i++) {
@@ -3371,7 +3361,7 @@ impl Biber {
               if defined($namestrings->[$i]) {
                 push $namelist->@*, $namestrings->[$i];
               }
-              if $ulminyearflag {
+              if ulminyearflag {
                 push $ulminyear_namelist->@*, $namestrings->[$i];
               }
             }
@@ -3414,48 +3404,47 @@ impl Biber {
       let be = bibentries.entry(citekey);
       let bee = be.get_field("entrytype");
       let labelyear = be.get_field("labelyear");
-      let $maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
-      let $mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
+      let maxcn = crate::Config->getblxoption(secnum, "maxcitenames", bee, citekey);
+      let mincn = crate::Config->getblxoption(secnum, "mincitenames", bee, citekey);
       let lni = match be.get_labelname_info() {
         None => continue, // only care about labelname
         Some(lni) => lni,
       }
-      let $nl = $be->get_field($lni);
-      let $nlid = $nl->get_id;
+      let nl = be.get_field(lni);
+      let nlid = nl.get_id();
 
-      let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $citekey);
+      let ul = crate::Config->getblxoption(secnum, "uniquelist", bee, citekey);
       // Per-namelist uniquelist
-      if (defined($nl->get_uniquelist)) {
-        $ul = $nl->get_uniquelist;
-      }
+      ul = nl.get_uniquelist().or(ul);
 
-      if $ul == "false" {
+      if ul == "false" {
         continue;
       }
 
         trace!("Creating uniquelist for '{}'", citekey);
 
-      let $namelist = [];
-      let $num_names = $nl->count;
+      let mut namelist = Vec::new();
+      let num_names = nl.count();
 
-      foreach let $n ($nl->names->@*) {
-        let $nid = $n->get_id;
-        let $basename = $dlist->get_basenamestring($nlid, $nid);
-        let $namestrings = $dlist->get_namestrings($nlid, $nid);
-        let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
+      for n in nl.names() {
+        let nid = n.get_id();
+        let basename = dlist.get_basenamestring(nlid, nid);
+        let namestrings = dlist.get_namestrings(nlid, nid);
+        let namedisschema = dlist.get_namedisschema(nlid, nid);
 
-        let $unall = $dlist->get_uniquename_all($nlid, $nid);
+        let unall = dlist.get_uniquename_all(nlid, nid);
 
         // uniquename is not set so generate uniquelist based on just base name
-        if (!defined($unall) || $unall->[0] == "base") {
-          push $namelist->@*, $basename if defined($basename);
+        if unall.is_none() || unall[0] == "base" {
+          if let Some(basename) = basename {
+            namelist.push(basename);
+          }
         }
         else {
-          for (let $i=0; $i<=$namedisschema->$#*; $i++) {
-            let $nss = $namedisschema->[$i];
-            if (Compare($nss, $unall)) {
-              if defined($namestrings->[$i]) {
-                push $namelist->@*, $namestrings->[$i];
+          for (i, nss) in namedisschema.iter().enumerate() {
+            if (Compare(nss, unall)) {
+              if let Some(ns) = namestrings.get(i) {
+                namelist.push(ns);
               }
             }
           }
@@ -3466,7 +3455,7 @@ impl Biber {
         // to disambiguate from
         if ($ul == "minyear" &&
             $num_names > $maxcn &&
-            $n->get_index <= $mincn &&
+            n.get_index() <= $mincn &&
             $dlist->get_uniquelistcount_minyear($namelist, $labelyear) == 1) {
             trace!("Not setting uniquelist=minyear for '{}'", citekey);
           continue 'MAIN;
@@ -3504,7 +3493,7 @@ impl Biber {
       // This gets the indices of the set elements in the sorted datalist, sorts
       // them numerically and then extracts the actual citekeys to make a new
       // entryset field value which we store in the list metadata until output time.
-      if ($be->get_field("entrytype") == "set") {
+      if be.get_field("entrytype") == "set" {
         let @es;
         if (crate::Config->getblxoption(undef, "sortsets")) {
           let setkeys: Vec<_> = be.get_field("entryset");
@@ -3519,7 +3508,7 @@ impl Biber {
           @es = $keys->@[sort {$a <=> $b} @sorted_setkeys];
         }
         else {
-          if $be->get_field("entryset") {
+          if be.get_field("entryset") {
             @es = $be->get_field("entryset")->@*;
           }
         }
@@ -3581,37 +3570,37 @@ impl Biber {
       }
 
       // uniquename
-      foreach let $namefield ($dmh->{namelists}->@*) {
-        if (let $nl = $be->get_field($namefield)) {
-          let $nlid = $nl->get_id;
-          if !(defined($lni) && $lni == $namefield) { // labelname only
+      for namefield in ($dmh->{namelists}->@*) {
+        if (let nl = be.get_field(namefield)) {
+          let nlid = nl.get_id();
+          if !(lni.is_some() && lni == namefield) { // labelname only
             continue;
           }
-          foreach let $n ($nl->names->@*) {
-            let $nid = $n->get_id;
-            let $uniquename = $dlist->get_uniquename($nlid, $nid);
+          for n in nl.names() {
+            let nid = n.get_id();
+            let uniquename = dlist.get_uniquename(nlid, nid);
             if !uniquename {
               continue;
             }
-            let $namedisschema = $dlist->get_namedisschema($nlid, $nid);
+            let namedisschema = dlist.get_namedisschema(nlid, nid);
 
             // Construct per-namepart uniquename value
-            let %pnun;
-            for (let $i=0; $i<=$namedisschema->$#*; $i++) {
-              let $nss = $namedisschema->[$i];
-              if (Compare($uniquename, $nss)) {
+            let pnun: HashMap<_, _>;
+            for (i, nss) in namedisschema.iter().enumerate() {
+              if (Compare($uniquename, nss)) {
                 // Find where uniqueness is established, determine un settings up to this point
-                let @dis = grep {$_->[0] != "base" && $_->[1] != "full"} $namedisschema->@[1..$i-1];
-                push @dis, $namedisschema->@[$i];
+                let dis = namedisschema.[1..i-1].iter()
+                  .filter(|v| v[0] != "base" && v[1] != "full")
+                  .extend(namedisschema[i].iter());
                 // normalise "fullonly" to "full" now that we have stripped all non-disambiguating elements
-                %pnun = map {$_->[0] => ($_->[1] == "fullonly" ? "full" : $_->[1])} @dis;
+                pnun = dis.map(|v| (v[0], if v[1] == "fullonly" { "full" } else {v[1]})).collect();
                 break;
               }
             }
-            foreach let $np ($n->get_nameparts) {
-              let npun = $UNIQUENAME_VALUES{$pnun{$np}.unwrap_or("none")};
+            for np in n.get_nameparts() {
+              let npun = UNIQUENAME_VALUES.get($pnun.get(np).unwrap_or("none"));
               let npun = npun.unwrap_or(0);
-              $dlist->set_unparts($nlid, $nid, $np, $npun);
+              dlist.set_unparts(nlid, nid, np, npun);
             }
           }
         }

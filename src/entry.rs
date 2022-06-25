@@ -410,10 +410,10 @@ impl Entry {
   /// Returns a sorted array of all field names, including ones
   /// added during processing which are not necessarily fields
   /// which came from the data file
-  fn fields(self) {
-    use locale;
-    let %keys = (%{$self->{derivedfields}}, %{$self->{datafields}});
-    return sort keys %keys;
+  fn fields(&self) -> Vec<&String> {
+    let mut v: Vec<_> = self.derivedfields().keys().extend(self.datafields().keys()).collect();
+    v.sort();
+    v
   }
 
   /// Returns the number of fields

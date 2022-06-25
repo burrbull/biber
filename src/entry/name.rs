@@ -2,6 +2,8 @@
 
 // no autovivification;
 
+use crate::Id;
+
 use Regexp::Common qw( balanced );
 use crate::Annotation;
 use crate::Config;
@@ -21,7 +23,7 @@ impl Name {
       // Name is an XDATA reference
       if (let $xdata = $params{xdata}) {
         $name->{xdata} = $xdata;
-        $name->{id} = base62_uuid::base62_uuid(),
+        $name->{id} = Id::new(),
         return bless $name, $class;
       }
 
@@ -40,11 +42,11 @@ impl Name {
       }
       $name->{rawstring} = join("",
                                 map {$name->{nameparts}{$_}{string}.unwrap_or("")} keys $name->{nameparts}->%*);
-      $name->{id} = base62_uuid::base62_uuid();
+      $name->{id} = Id::new();
       return bless $name, $class;
     }
     else {
-      return bless {id => base62_uuid::base62_uuid()}, $class;
+      return bless {id => Id::new()}, $class;
     }
   }
 
@@ -68,8 +70,8 @@ impl Name {
     self.index = index;
   }
 
-  pub fn get_id(&self) -> &String {
-    &self.id
+  pub fn get_id(&self) -> Id {
+    self.id
   }
 
   pub fn get_rawstring(&self) -> &String {
@@ -338,15 +340,16 @@ impl Name {
   }
 
   /// Return standard bibtex data format for name
-  fn name_to_bibtex(self) {
-    let $parts;
-    let $namestring = String::new();
+  fn name_to_bibtex(&self) -> String {
+    let parts = HashMap::new();
+    let namestring = String::new();
 
-    if (let $xdata = self.get_xdata) {
-      return $xdata;
+    let xdata = self.get_xdata();
+    if !xdata.is_empty() {
+      return xdata.into();
     }
 
-    foreach let $np ("prefix", "family", "suffix", "given") {
+    for np in ["prefix", "family", "suffix", "given"] {
       if ($parts->{$np} = self.get_namepart($np)) {
         $parts->{$np} =~ s/~/ /g;
         if (self.was_stripped($np)) {
@@ -355,12 +358,23 @@ impl Name {
       }
     }
 
-    if (let $p = $parts->{prefix}) {$namestring .= "$p "};
-    if (let $f = $parts->{family}) {$namestring .= $f};
-    if (let $s= $parts->{suffix}) {$namestring .= ", $s"};
-    if (let $g= $parts->{given}) {$namestring .= ", $g"};
+    if (let $p = $parts->{prefix}) {
+      namestring.push_str(p);
+      namestring.push(' ');
+    };
+    if (let $f = $parts->{family}) {
+      namestring.push_str(f);
+    };
+    if (let $s= $parts->{suffix}) {
+      namestring.push_str(", ");
+      namestring.push_str(s);
+    };
+    if (let $g= $parts->{given}) {
+      namestring.push_str(", ");
+      namestring.push_str(g);
+    };
 
-    return $namestring;
+    namestring
   }
 
   /// Return extended bibtex data format for name
