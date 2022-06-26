@@ -378,7 +378,7 @@ impl Bbl {
     }
 
     // The source field for labeltitle
-    if (let $lti = $be->get_labeltitle_info) {
+    if (let $lti = be.get_labeltitle_info()) {
       $acc .= "      \\field{labeltitlesource}{$lti}\n";
     }
 

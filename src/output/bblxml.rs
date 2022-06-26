@@ -349,7 +349,7 @@ impl BblXML {
     }
 
     // The source field for labeltitle
-    if (let $lti = $be->get_labeltitle_info) {
+    if (let $lti = be.get_labeltitle_info()) {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($lti), name => "labeltitlesource");
     }
 

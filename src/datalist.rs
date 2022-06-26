@@ -52,7 +52,7 @@ impl DataList {
   }
 
   /// Retrieves per-list datafield information for an entry
-  fn get_entryfield(self, $citekey, $f) {
+  fn get_entryfield(&self, citekey: &str, f: &str) -> Option<Unknown> {
     return self.state.fields{$citekey}{$f};
   }
 

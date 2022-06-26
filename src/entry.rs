@@ -305,7 +305,7 @@ impl Entry {
   /// Retrieve the labeltitle information. This is special
   /// meta-information so we have a separate method for this
   /// Returns a hash ref with the information.
-  fn get_labeltitle_info(&self) -> Unknown {
+  fn get_labeltitle_info(&self) -> &String {
     self.labeltitleinfo
   }
 

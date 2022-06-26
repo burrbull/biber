@@ -1,5 +1,7 @@
 //! Various utility subs used in Biber
 
+use std::collections::HashSet;
+
 use crate::Id;
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
@@ -600,22 +602,18 @@ pub fn unescape_label(s: &str) -> String {
    .replace("{\\textless}", "<")
 }
 
-/*
 /// reduce_array(\@a, \@b) returns all elements in @a that are not in @b
-pub fn reduce_array($a, $b) {
-  let %countb = ();
-  for elem in ($b->@*) {
-    $countb{$elem}++;
-  }
-  let @result;
-  for elem in ($a->@*) {
-    if !($countb{$elem}) {
-      push @result, $elem;
+pub fn reduce_array<T: Clone + Eq + std::hash::Hash>(a: impl Iterator<Item=T>, b: impl Iterator<Item=T>) -> Vec<T> {
+  let countb = HashSet::<T>::from_iter(b);
+  let mut result = Vec::<T>::new();
+  for elem in a {
+    if !countb.contains(&elem) {
+      result.push(elem.clone())
     }
   }
-  return @result;
+  result
 }
-
+/*
 /// Remove surrounding curly brackets:
 ///     "{string}" -> "string"
 /// but not

@@ -3,10 +3,12 @@
 use core::fmt;
 use uuid::Uuid;
 
+//mod section;
 mod constants;
 mod utils;
 
 // TODO: Relpace with known types
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Unknown;
 
 

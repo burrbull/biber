@@ -32,8 +32,8 @@ impl Annotation {
     $ANN->{fields}{$key}{$field} = 1;
 
     // Record all annotation names or a field
-    if !(first {unicase::eq($_, name)} $ANN->{names}{$key}{$field}->@*) {
-      push $ANN->{names}{$key}{$field}->@*, $name;
+    if !($ANN->{names}{$key}{$field}.iter().any(|&x| unicase::eq(x, name))) {
+      $ANN->{names}{$key}{$field}.push(name);
     }
     return;
   }
@@ -66,7 +66,7 @@ impl Annotation {
   }
 
   /// Retrieve an specific annotation for a scope, citekey and name
-  fn get_annotation($scope, $key, $field, $name, $count, $part) {
+  fn get_annotation($scope, $key, $field, $name, $count, $part) -> Option<Unknown> {
     $name = $name || "default";
     if ($scope == "field") {
       return $ANN->{field}{$key}{$field}{$name}{value};
@@ -77,11 +77,11 @@ impl Annotation {
     else if ($scope == "part") {
       return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{value};
     }
-    return undef;
+    return None;
   }
 
   /// Check if an annotation is a literal annotation
-  fn is_literal_annotation($scope, $key, $field, $name, $count, $part) {
+  fn is_literal_annotation($scope, $key, $field, $name, $count, $part) -> Option<Unknown> {
     $name = $name || "default";
     if ($scope == "field") {
       return $ANN->{field}{$key}{$field}{$name}{literal};
@@ -92,7 +92,7 @@ impl Annotation {
     else if ($scope == "part") {
       return $ANN->{part}{$key}{$field}{$name}{$count}{$part}{literal};
     }
-    return undef;
+    return None;
   }
 
   /// Returns boolean to say if a field is annotated

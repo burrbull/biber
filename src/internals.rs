@@ -266,14 +266,13 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
         if !name {
           continue;// just in case there is no labelname etc.
         }
-        let $total_names = $name->count;
-        let $visible_names;
-        if ($total_names > $maxan) {
-          $visible_names = $minan;
+        let total_names = name.count();
+        let visible_names = if (total_names > maxan) {
+          minan
         }
         else {
-          $visible_names = $total_names;
-        }
+          total_names
+        };
 
         // Deal with ifnames
         if ($inc =~ m/^\d+$/) {// just a number
@@ -660,8 +659,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
 
             // Now set a new global index for the name part index which is the maximum of those
             // occuring above a certain threshold
-            for s in (keys %$lcache) {
-              for ind in (keys %$is) {
+            for s in lcache.keys() {
+              for ind in is.keys() {
                 if $indices{$s} != $ind {
                   continue;
                 }
@@ -1267,7 +1266,7 @@ fn _sort_labelname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementa
 
 fn _sort_labeltitle(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
   // re-direct to the right sorting routine for the labeltitle
-  if (let $lti = $be->get_labeltitle_info) {
+  if (let $lti = be.get_labeltitle_info()) {
     // Don't process attributes as they will be processed in the real sub
     return $self->_dispatch_sorting($lti, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
   }
@@ -1589,22 +1588,21 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
     Some(f) => f,
   };
   let @items = $f->@*;
-  let $str = "";
-  let $truncated = 0;
+  let mut truncated = false;
 
   // These should be symbols which can't appear in lists and which sort before all alphanum
   // so that "Alan Smith" sorts after "Al Smith". This means, symbols which normalise_string_sort()
   // strips out. Unfortuately, this means using punctuation and these are by default variable
   // weight and ignorable in DUCET so we have to redefine these these symbols after loading DUCET
   // when sorting so that they are non-ignorable (see Biber.pm)
-  let $lsi    = '!';          // list separator, internal
+  let lsi    = '!';          // list separator, internal
   // Guaranteed to sort after everything else as it's the last legal Unicode code point
-  let $trunc = "\x{10FFFD}";  // sort string for truncated list
+  let trunc = '\x{10FFFD}';  // sort string for truncated list
 
   // perform truncation according to options minitems, maxitems
-  if ( $#items + 1 > crate::Config->getblxoption($secnum, "maxitems", $bee, $citekey) ) {
-    $truncated = 1;
-    @items = splice(@items, 0, crate::Config->getblxoption($secnum, "minitems", $bee, $citekey) );
+  if ( items.len() > crate::Config->getblxoption($secnum, "maxitems", $bee, citekey) ) {
+    truncated = true;
+    @items = splice(@items, 0, crate::Config->getblxoption($secnum, "minitems", $bee, citekey) );
   }
 
   // separate the items by a string to give some structure
@@ -1612,18 +1610,18 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
   // We strip each individual component instead of the whole thing so we can use
   // as name separators things which would otherwise be stripped. This way we
   // guarantee that the separators are never in names
-  if ($verbatim) { // no normalisation for verbatim/uri fields
-    $str = join($lsi, map { strip_nosort($_, $field)} @items);
+  let s = if ($verbatim) { // no normalisation for verbatim/uri fields
+    items.iter().map(|i| strip_nosort(i, field)).join(lsi)
   }
   else {
-    $str = join($lsi, map { normalise_string_sort($_, $field)} @items);
-  }
+    items.iter().map(|i| normalise_string_sort(i, field)).join(lsi)
+  };
 
-  $str =~ s/\s+\z//xms;
-  if $truncated {
-    $str .= $trunc;
+  s = Regex::new(r"(?xms)\s+\z").unwrap().replace(&s, "");
+  if truncated {
+    s.push(trunc);
   }
-  return $str;
+  s
 }
 
 // transliterate if requested

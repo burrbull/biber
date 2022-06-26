@@ -190,14 +190,14 @@ fn extract_entries(filename, encoding, keys) {
     // keys from the bibentries hash because we need to preserve the original order of
     // the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     // no explicitly cited keys
-    $section->add_citekeys($cache->{orig_key_order}{$filename}->@*);
+    section.add_citekeys($cache->{orig_key_order}{$filename}->@*);
 
       debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section.get_citekeys()));
     // Special case when allkeys but also some dynamic set entries. These keys must also be
     // in the section or they will be missed on output.
     if ($section->has_dynamic_sets) {
-      $section->add_citekeys($section->dynamic_set_keys->@*);
-        debug!("Added dynamic sets to section '{}': {}", secnum, join(', ', $section->dynamic_set_keys->@*));
+      section.add_citekeys(section.dynamic_set_keys());
+        debug!("Added dynamic sets to section '{}': {}", secnum, section.dynamic_set_keys().join(', '));
     }
   }
   else {
