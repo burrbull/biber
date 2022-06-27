@@ -22,6 +22,12 @@ impl Id {
     }
 }
 
+impl fmt::Debug for Id {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&base62::encode(self.0.as_u128()))
+    }
+}
+
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&base62::encode(self.0.as_u128()))
@@ -35,6 +41,112 @@ impl core::str::FromStr for Id {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum FieldType {
+    Field,
+    List,
+}
+
+impl FieldType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Field => "field",
+            Self::List => "list",
+        }
+    }
+}
+impl fmt::Debug for FieldType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+impl fmt::Display for FieldType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum DataType {
+    Code,
+    Date,
+    Datepart,
+    Entrykey,
+    Integer,
+    Key,
+    Literal,
+    Range,
+    Verbatim,
+    Uri,
+    Keyword,
+    Option,
+    Name,
+
+    Isbn,
+    Issn,
+    Ismn,
+    Pattern,
+    // ..
+}
+
+impl DataType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Code => "code",
+            Self::Date => "date",
+            Self::Datepart => "datepart",
+            Self::Entrykey => "entrykey",
+            Self::Integer => "integer",
+            Self::Key => "key",
+            Self::Literal => "literal",
+            Self::Range => "range",
+            Self::Verbatim => "verbatim",
+            Self::Uri => "uri",
+            Self::Keyword => "keyword",
+            Self::Option => "option",
+            Self::Name => "name",
+            Self::Isbn => "isbn",
+            Self::Issn => "issn",
+            Self::Ismn => "ismn",
+            Self::Pattern => "pattern",
+        }
+    }
+}
+impl fmt::Debug for DataType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+impl fmt::Display for DataType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum Format {
+    Xsv,
+    Default,
+}
+
+impl Format {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Xsv => "xsv",
+            Self::Default => "default",
+        }
+    }
+}
+impl fmt::Debug for Format {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+impl fmt::Display for Format {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
 
 pub trait SkipEmpty {
     fn skip_empty(self) -> Self;

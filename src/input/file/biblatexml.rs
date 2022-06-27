@@ -26,40 +26,10 @@ use URI;
 let $orig_key_order = {};
 
 let $BIBLATEXML_NAMESPACE_URI = "http://biblatex-biber.sourceforge.net/biblatexml";
-let $NS = "bltx";
+const NS: &str = "bltx";
 
 // Determine handlers from data model
 let $dm = crate::config::get_dm();
-let $handlers = {
-                "CUSTOM" => {"related" => \&_related,
-                             "annotation" => \&_annotation},
-                "field" => {
-                            "default" => {
-                                          "code"     => \&_literal,
-                                          "date"     => \&_datetime,
-                                          "entrykey" => \&_literal,
-                                          "integer"  => \&_literal,
-                                          "key"      => \&_literal,
-                                          "literal"  => \&_literal,
-                                          "range"    => \&_range,
-                                          "verbatim" => \&_literal,
-                                          "uri"      => \&_uri
-                                         },
-                            "xsv"     => {
-                                           "entrykey" => \&_xsv,
-                                           "keyword"  => \&_xsv,
-                                           "option"   => \&_xsv,
-                                         }
-                           },
-                "list" => {
-                           "default" => {
-                                         "entrykey" => \&_list,
-                                         "key"      => \&_list,
-                                         "literal"  => \&_list,
-                                         "name"     => \&_name
-                                        }
-                          }
-};
 
 /// Main data extraction routine.
 /// Accepts a data source identifier (filename in this case),
@@ -721,7 +691,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       continue;
     }
 
-    let bibentry = crate::Entry::new();
+    let mut bibentry = crate::Entry::new();
     let k = e.getAttribute("id");
     bibentry.set_field("citekey", k);
       debug!("Creating entry with key '{}'", k);
@@ -740,9 +710,59 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       }
 
       // Now run any defined handler
-      if ($dm->is_field(_norm($f))) {
-        let $handler = _get_handler($f);
-        $handler->($bibentry, $e, $f, $k);
+      let field = _norm(f);
+      if dm.is_field(field) {
+        match &field {
+          "related" => _related(&mut bibentry, e, f, k),
+          "annotation" => _annotation(&mut bibentry, e, f, k),
+          _ => {
+            let typ = dm.get_fieldtype(field).unwrap();
+            let fmt = dm.get_fieldformat(field).unwrap_or(Format::Default);
+            let dtype = dm.get_datatype(field).unwrap();
+            match typ {
+              FieldType::Field => {
+                match fmt {
+                  Format::Default => {
+                    match dtype {
+                      DataType::Code
+                      | DataType::Entrykey
+                      | DataType::Integer
+                      | DataType::Key
+                      | DataType::Literal
+                      | DataType::Verbatim => _literal(&mut bibentry, e, f, k),
+                      DataType::Date => _datetime(&mut bibentry, e, f, k),
+                      DataType::Range => _range(&mut bibentry, e, f, k),
+                      DataType::Uri => _uri(&mut bibentry, e, f, k),
+                      _ => unreachable!(),
+                    }
+                  }
+                  Format::Xsv => {
+                    match dtype {
+                      DataType::Entrykey
+                      | DataType::Keyword
+                      | DataType::Option => _xsv(&mut bibentry, e, f, k),
+                      _ => unreachable!(),
+                    }
+                  }
+                }
+              }
+              FieldType::List => {
+                match fmt {
+                  Format::Default => {
+                    match dtype {
+                      DataType::Entrykey
+                      | DataType::Key
+                      | DataType::Literal => _list(&mut bibentry, e, f, k),
+                      DataType::Name => _name(&mut bibentry, e, f, k)
+                      _ => unreachable!(),
+                    }
+                  }
+                  _ => unreachable!(),
+                }
+              }
+            }
+          };
+        }
       }
     }
 
@@ -754,7 +774,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 }
 
 // Annotations are special - there is a literal field and also more complex annotations
-fn _annotation(bibentry, entry, f, key) {
+fn _annotation(bibentry: &mut Entry, entry, f, key) {
   for node in ($entry->findnodes("./$f")) {
     let $field = $node->getAttribute("field");
     let $name = $node->getAttribute("name") || "default";
@@ -1294,19 +1314,10 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
 }
 
 // normalise a node name as they have a namsespace and might not be lowercase
-fn _norm {
-  let $name = lc(shift);
-  $name =~ s/\A$NS://xms;
-  return $name;
-}
-
-fn _get_handler(field) {
-  if (let $h = $handlers->{CUSTOM}{_norm($field)}) {
-    return $h;
-  }
-  else {
-    return $handlers->{$dm->get_fieldtype(_norm($field))}{$dm->get_fieldformat(_norm($field)) || "default"}{$dm->get_datatype(_norm($field))};
-  }
+fn _norm(field: &str) -> String {
+  let name = field.to_lowercase();
+  let r = Regex::new(&format!(r"(?xms)\A{NS}:")).unwrap();
+  r.replace(&name, "").into()
 }
 
 
@@ -1315,9 +1326,9 @@ fn _get_handler(field) {
 // also due to the requirements of creating new targets when then don't exist.
 fn _changenode(e, xp_target_s, value, error) {
   // names are special and can be specified by just the string
-  if ($dm->is_field($value)) {
-    let $dmv = $dm->get_dm_for_field($value);
-    if ($dmv->{fieldtype} == "list" && $dmv->{datatype} == "name") {
+  if dm.is_field(value) {
+    let dmv = dm.get_dm_for_field(value);
+    if dmv.fieldtype == Some(FieldType::List) && dmv.datatype == Some(DataType::Name) {
       $value = _getpath($value);
     }
   }
@@ -1432,9 +1443,9 @@ fn _getpath(string) {
     return $string;             // presumably already XPath
   }
   else {
-    if ($dm->is_field($string)) {
-      let $dms = $dm->get_dm_for_field($string);
-      if ($dms->{fieldtype} == "list" && $dms->{datatype} == "name") {
+    if dm.is_field(string) {
+      let dms = dm.get_dm_for_field(string);
+      if dms.fieldtype == Some(FieldType::List) && dms.datatype == Some(DataType::Name) {
         return "./bltx:names[\@type='$string']";
       }
       else {

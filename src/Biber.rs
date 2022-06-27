@@ -95,11 +95,11 @@ impl Biber {
       }
     }
 
-    if ($self->{warnings}) {
-      for w in ($self->{warnings}->@*) {
-        $logger->warn($w);
+    if !self.warnings.is_empty() {
+      for w in &self.warnings {
+        warn!(w);
       }
-      info!("WARNINGS: {}", scalar($self->{warnings}->@*));
+      info!("WARNINGS: {}", self.warnings.len());
     }
     if ($self->{errors}) {
       info!("ERRORS: {}", $self->{errors});
@@ -202,14 +202,14 @@ impl Biber {
     self.add_sections(bib_sections);
 
     let datalists = crate::DataLists::new();
-    let $seclist = crate::DataList->new(section => 99999,
+    let seclist = crate::DataList->new(section => 99999,
                                       sortingtemplatename        => "tool",
                                       sortingnamekeytemplatename => "global",
                                       uniquenametemplatename     => "global",
                                       labelalphanametemplatename => "global",
                                       labelprefix                => "",
                                       name                       => "tool/global//global/global");
-    $seclist->set_type("entry");
+    seclist.set_type("entry");
     // Locale just needs a default here - there is no biblatex option to take it from
     crate::Config->setblxoption(None, "sortlocale", "en_US");
       debug!("Adding "entry" list "tool" for pseudo-section 99999");
@@ -1112,21 +1112,24 @@ impl Biber {
   fn _resolve_datafieldsets {
     let $dm = crate::config::get_dm();
     while (let ($key, $value) = each %DATAFIELD_SETS) {
-      let $fs;
+      let fs = Vec::new();
       for m in ($value->@*) {
         if (ref $m == "HASH") {
-          if ($m->{fieldtype} && $m->{datatype}) {
-            push $fs->@*, $dm->get_fields_of_type($m->{fieldtype}, $m->{datatype})->@*;
-          }
-          else if ($m->{fieldtype}) {
-            push $fs->@*, $dm->get_fields_of_fieldtype($m->{fieldtype})->@*;
-          }
-          else if ($m->{datatype}) {
-            push $fs->@*, $dm->get_fields_of_datatype($m->{datatype})->@*;
+          match (m.fieldtype, m.datatype) {
+            (Some(fieldtype), Some(datatype)) => {
+              fs.extend(dm.get_fields_of_type(fieldtype, &[datatype], None));
+            }
+            (Some(fieldtype), None) => {
+              fs.extend(dm.get_fields_of_fieldtype(fieldtype));
+            }
+            (None, Some(datatype)) => {
+              fs.extend(dm.get_fields_of_datatype(&[datatype]));
+            }
+            _ => {}
           }
         }
         else {
-          push $fs->@*, $m;
+          fs.push(m);
         }
       }
       $DATAFIELD_SETS{$key} = $fs;

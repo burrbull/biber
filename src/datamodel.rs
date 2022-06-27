@@ -107,7 +107,7 @@ impl DataModel {
 
     // Early check for fatal datamodel errors
     // Make sure dates are named *date. A lot of code relies on this.
-    for date in (grep {$_->{datatype} == "date"} $dm->{fields}{field}->@*) {
+    for date in (grep {$_->{datatype} == DataType::Date} $dm->{fields}{field}->@*) {
       if !($date->{content} =~ m/date$/) {
         biber_error("Fatal datamodel error: date field '" . $date->{content} . "' must end with string 'date'");
       }
@@ -136,16 +136,16 @@ impl DataModel {
         delete $self->{fieldsbyname}{$f->{content}};
       }
 
-      $self->{fieldsbyname}{$f->{content}} = {"fieldtype"   => $f->{fieldtype},
-                                              "datatype"    => $f->{datatype},
-                                              "format"      => $f->{format} || "default"};
+      $self->{fieldsbyname}{$f->{content}} = {"fieldtype"   => f.fieldtype,
+                                              "datatype"    => f.datatype,
+                                              "format"      => f.format.unwrap_or(Format::Default)};
       if ($f->{format}) {
         push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{$f->{format}}->@*, $f->{content};
       }
       push $self->{fieldsbytype}{$f->{fieldtype}}{$f->{datatype}}{'*'}->@*, $f->{content};
       push $self->{fieldsbyfieldtype}{$f->{fieldtype}}->@*, $f->{content};
       push $self->{fieldsbydatatype}{$f->{datatype}}->@*, $f->{content};
-      push $self->{fieldsbyformat}{$f->{format} || "default"}->@*, $f->{content};
+      push $self->{fieldsbyformat}{f.format.unwrap_or(Format::Default)}->@*, $f->{content};
 
       // check null_ok
       if ($f->{nullok}) {
@@ -247,10 +247,10 @@ impl DataModel {
     // Mostly only used for .bbl output since that's the most commonly used one and so
     // we care about performance there. Other output formats are not often used and so a few
     // seconds difference is irrelevant.
-    $self->{helpers} = {namelistsall => [sort $self->get_fields_of_type("list", "name")->@*],
+    $self->{helpers} = {namelistsall => [sort $self.get_fields_of_type(FieldType::List, &[DataType::Name], None)->@*],
                         namelists => [sort grep
                                       {not $self->field_is_skipout($_)}
-                                      $self->get_fields_of_type("list", "name")->@*],
+                                      $self->get_fields_of_type(FieldType::List, &[DataType::Name], None)->@*],
                         lists     => [sort grep
                                       {
                                         !$self->field_is_datatype("name", $_) &&
@@ -264,15 +264,15 @@ impl DataModel {
                                         !$self->field_is_skipout($_) &&
                                           !$self->get_fieldformat($_) == "xsv"
                                       }
-                                      $self->get_fields_of_type("field",
-                                                                ["entrykey",
-                                                                "key",
-                                                                "integer",
-                                                                "datepart",
-                                                                "literal",
-                                                                "code"])->@*],
-                        datefields   => [sort $self->get_fields_of_type("field", "date")->@*],
-                        dateparts    => [sort $self->get_fields_of_type("field", "datepart")->@*],
+                                      self.get_fields_of_type(FieldType::Field,
+                                                                &[DataType::Entrykey,
+                                                                DataType::Key,
+                                                                DataType::Integer,
+                                                                DataType::Datepart,
+                                                                DataType::Literal,
+                                                                DataType::Code], None)->@*],
+                        datefields   => [sort self.get_fields_of_type(FieldType::Field, &[DataType::Date], None)->@*],
+                        dateparts    => [sort self.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None)->@*],
                         xsv       => [sort grep
                                       {
                                         !$self->field_is_skipout($_)
@@ -282,33 +282,33 @@ impl DataModel {
                                       {
                                         !$self->field_is_skipout($_)
                                       }
-                                      $self->get_fields_of_datatype("range")->@*],
+                                      self.get_fields_of_datatype(&[DataType::Range])->@*],
                         uris      => [sort grep
                                       {
                                         !$self->field_is_skipout($_);
                                       }
-                                      $self->get_fields_of_type("field", "uri")->@*],
+                                      $self->get_fields_of_type(FieldType::Field, &[DataType::Uri], None)->@*],
                         urils     => [sort grep
                                       {
                                         !$self->field_is_skipout($_);
                                       }
-                                      $self->get_fields_of_type("list", "uri")->@*],
+                                      $self->get_fields_of_type(FieldType::List, &[DataType::Uri], None)->@*],
                         verbs     => [sort grep
                                       {
                                         !$self->field_is_skipout($_);
                                       }
-                                      $self->get_fields_of_datatype(["verbatim", "uri"])->@*],
+                                      self.get_fields_of_datatype(&[DataType::Verbatim, DataType::Uri])->@*],
                         vfields   => [sort grep
                                       {
                                         !$self->field_is_skipout($_);
                                       }
-                                      $self->get_fields_of_type("field", ["verbatim", "uri"])->@*],
+                                      $self.get_fields_of_type(FieldType::Field, &[DataType::Verbatim, DataType::Uri], None)->@*],
                         vlists    => [sort grep
                                       {
                                         !$self->field_is_skipout($_);
                                       }
-                                      $self->get_fields_of_type("list", ["verbatim", "uri"])->@*],
-                        integers  => [sort $self->get_fields_of_datatype(["datepart", "integer"])->@*]
+                                      $self->get_fields_of_type(FieldType::List, &[DataType::Verbatim, DataType::Uri], None)->@*],
+                        integers  => [sort self.get_fields_of_datatype(&[DataType::Datepart, DataType::Integer])->@*]
                       };
     // Mapping of sorting fields to Sort::Key sort data types which are not "str"
     $self->{sortdataschema} = |f| {
@@ -367,7 +367,7 @@ impl DataModel {
   /// Returns boolean to say if a field is a legal field.
   /// Allows for fields with meta markers whose marked field should be in
   /// the datamodel.
-  fn is_field(self, field) {
+  fn is_field(&self, field: &str) -> bool {
     let $ann = $CONFIG_META_MARKERS{annotation};
     let $nam = $CONFIG_META_MARKERS{namedannotation};
 
@@ -424,18 +424,11 @@ impl DataModel {
   /// Retrieve fields of a certain biblatex datatype from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_datatype(&self, $datatype) {
+  fn get_fields_of_datatype(&self, datatype: &[DataType]) {
     let f = Vec::new();
     // datatype can be array ref of datatypes - makes some calls cleaner
-    if (ref($datatype) == "ARRAY") {
-      for dt in &datatype {
-        if (let $fs = $self->{fieldsbydatatype}{$dt}) {
-          f.push(fs);
-        }
-      }
-    }
-    else {
-      if (let $fs = $self->{fieldsbydatatype}{$datatype}) {
+    for dt in &datatype {
+      if (let $fs = self.fieldsbydatatype.get(dt) {
         f.push(fs);
       }
     }
@@ -445,31 +438,24 @@ impl DataModel {
   /// Retrieve fields of a certain biblatex type from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_type(self, fieldtype: &str, datatype: &str, format: Option<&str>) -> Vec<Unknown> {
+  fn get_fields_of_type(self, fieldtype: FieldType, datatype: &[DataType], format: Option<Format>) -> Vec<Unknown> {
     let f = Vec::new();
-    $format = format.unwrap_or("*");
+    let format = format.unwrap_or("*");
 
     // datatype can be array ref of datatypes - makes some calls cleaner
-    if (ref($datatype) == "ARRAY") {
-      for dt in &datatype {
-        if (let $fs = $self->{fieldsbytype}{$fieldtype}{$dt}{$format}) {
-          f.push(fs);
-        }
-      }
-    }
-    else {
-      if (let $fs = $self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) {
+    for dt in datatype.into_iter() {
+      if (let $fs = self.fieldsbytype{$fieldtype}{$dt}{$format}) {
         f.push(fs);
       }
     }
 
-    return [ sort @f ];
+    f.sort();
+    f
   }
 
   /// Returns boolean to say if the given fieldtype/datatype/format is a valid combination
-  fn is_fields_of_type(self, $fieldtype, $datatype, $format) -> bool {
-    let $f;
-    if ($format) {
+  fn is_fields_of_type(&self, fieldtype: FieldType, datatype: DataType, format: Option<Format>) -> bool {
+    if let Some(format) = format {
       return exists($self->{fieldsbytype}{$fieldtype}{$datatype}{$format}) ? 1 : 0;
     }
     else {
@@ -478,13 +464,13 @@ impl DataModel {
   }
 
   /// Returns the fieldtype of a field
-  fn get_fieldtype(self, $field) {
-    return $self->{fieldsbyname}{$field}{fieldtype};
+  fn get_fieldtype(&self, field: &str) -> FieldType {
+    self.fieldsbyname.get(field).unwrap().fieldtype
   }
 
   /// Returns the datatype of a field
-  fn get_datatype(self, $field) {
-    return $self->{fieldsbyname}{$field}{datatype};
+  fn get_datatype(&self, field: &str) -> Option<DataType> {
+    self.fieldsbyname.get(field).and_then(|f| f.datatype)
   }
 
   /// Returns the format of a field
@@ -493,32 +479,34 @@ impl DataModel {
   }
 
   /// Returns the fieldtype, datatype and format of a field
-  fn get_dm_for_field(self, $field) {
+  fn get_dm_for_field(self, field: &str) {
     return {"fieldtype" =>  $self->{fieldsbyname}{$field}{fieldtype},
             "datatype"  => $self->{fieldsbyname}{$field}{datatype},
             "format"    => $self->{fieldsbyname}{$field}{format}};
   }
 
   /// Returns boolean depending on whether a field is a certain biblatex fieldtype
-  fn field_is_fieldtype(self, $fieldtype, $field) -> bool {
-    return $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype ? 1 : 0;
+  fn field_is_fieldtype(&self, fieldtype: FieldType, field: &str) -> bool {
+    match self.fieldsbyname.get(field) {
+      Some(f) if (f.fieldtype == fieldtype) => true,
+      _ => false
+    }
   }
 
   /// Returns boolean depending on whether a field is a certain biblatex datatype
-  fn field_is_datatype(self, $datatype, $field) -> bool {
-    return $self->{fieldsbyname}{$field}{datatype} == $datatype ? 1 : 0;
+  fn field_is_datatype(&self, &datatype: DataType, field: &str) -> bool {
+    match self.fieldsbyname.get(field) {
+      Some(f) if (f.datatype == datatype) => true,
+      _ => false
+    }
   }
 
   ///  Returns boolean depending on whether a field is a certain biblatex fieldtype
   /// and datatype
-  fn field_is_type(self, $fieldtype, $datatype, $field) -> bool {
-    if ($self->{fieldsbyname}{$field} &&
-        $self->{fieldsbyname}{$field}{fieldtype} == $fieldtype &&
-        $self->{fieldsbyname}{$field}{datatype} == $datatype) {
-      return 1;
-    }
-    else {
-      return 0;
+  fn field_is_type(&self, fieldtype: FieldType, datatype: DataType, field: &str) -> bool {
+    match self.fieldsbyname.get(field) {
+      Some(f) if (f.fieldtype == fieldtype && f.datatype == datatype) => true,
+      _ => false
     }
   }
 
@@ -660,12 +648,12 @@ impl DataModel {
 
     for c in ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
       // This is the datatype of the constraint, not the field!
-      if ($c->{datatype} == "isbn") {
+      if c.datatype == DataType::Isbn {
         for f in ($c->{fields}->@*) {
           if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !(self.get_fieldtype(f) == "list") {
+            if self.get_fieldtype(f) != FieldType::List {
               $fv = [$fv];
             }
             for i in fv {
@@ -676,12 +664,12 @@ impl DataModel {
           }
         }
       }
-      else if ($c->{datatype} == "issn") {
+      else if c.datatype == DataType::Issn {
         for f in ($c->{fields}->@*) {
           if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !(self.get_fieldtype(f) == "list") {
+            if self.get_fieldtype(f) != FieldType::List {
               $fv = [$fv];
             }
             for i in fv {
@@ -692,12 +680,12 @@ impl DataModel {
           }
         }
       }
-      else if ($c->{datatype} == "ismn") {
+      else if c.datatype == DataType::Ismn {
         for f in ($c->{fields}->@*) {
           if (let $fv = be.get_field(f)) {
 
             // Treat as a list field just in case someone has made it so in a custom datamodel
-            if !(self.get_fieldtype(f) == "list") {
+            if self.get_fieldtype(f) != FieldType::List {
               $fv = [$fv];
             }
             for i in fv {
@@ -708,7 +696,7 @@ impl DataModel {
           }
         }
       }
-      else if ($c->{datatype} == "integer" || $c->{datatype} == "datepart") {
+      else if c.datatype == DataType::Integer || c.datatype == DataType::Datepart {
         for f in ($c->{fields}->@*) {
           if (let $fv = be.get_field(f)) {
             if (let $fmin = $c->{rangemin}) {
@@ -728,7 +716,7 @@ impl DataModel {
           }
         }
       }
-      else if ($c->{datatype} == "pattern") {
+      else if c.datatype == DataType::Pattern {
         let $patt;
         if !($patt = $c->{pattern}) {
           warnings.push("Datamodel: Pattern constraint has no pattern!".into());
@@ -766,7 +754,7 @@ impl DataModel {
         continue;
       }
       let $dt = exists($DM_DATATYPES{fdt}) ? $DM_DATATYPES{fdt} : $DM_DATATYPES{default};
-      if (fft == "list" && fdt != "name") || ffmt == "xsv" {
+      if (fft == FieldType::List && fdt != DataType::Name) || ffmt == Format::Xsv {
         $dt = $DM_DATATYPES{list};
       }
 
@@ -792,7 +780,7 @@ impl DataModel {
 
   /// Generate a RelaxNG XML schema from the datamodel for BibLaTeXML datasources
   fn generate_bltxml_schema(dm, outfile) {
-    if $dm->{bltxml_schema_gen_done} {
+    if dm.bltxml_schema_gen_done {
       return;
     }
 
@@ -837,14 +825,14 @@ impl DataModel {
     $writer->endTag();// attribute
     $writer->startTag("interleave");
 
-    for ft in ($dm->fieldtypes->@*) {
-      for dt in ($dm->datatypes->@*) {
-        if ($dm->is_fields_of_type($ft, $dt)) {
-          if $dt == "datepart" { // not legal in input, only output
+    for ft in &dm.fieldtypes {
+      for dt in &dm.datatypes {
+        if dm.is_fields_of_type(ft, dt, None) {
+          if dt == DataType::Datepart { // not legal in input, only output
             continue;
           }
-          $writer->comment("$dt ${ft}s");
-          $writer->emptyTag("ref", "name" => "$dt$ft");
+          $writer->comment(format!("{dt} {ft}s"));
+          $writer->emptyTag("ref", "name" => format!("{dt}{ft}"));
         }
       }
     }
@@ -858,18 +846,18 @@ impl DataModel {
     $writer->endTag();// entries element
     $writer->endTag();// start
 
-    for ft in ($dm->fieldtypes->@*) {
-      for dt in ($dm->datatypes->@*) {
-        if ($dm->is_fields_of_type($ft, $dt)) {
-          if $dt == "datepart" { // not legal in input, only output
+    for ft in &dm.fieldtypes {
+      for dt in &dm.datatypes {
+        if dm.is_fields_of_type(ft, dt, None) {
+          if dt == DataType::Datepart { // not legal in input, only output
             continue;
           }
-          $writer->comment("$dt ${ft}s definition");
-          $writer->startTag("define", "name" => "$dt$ft");
+          $writer->comment(format!("{dt} {ft}s definition"));
+          $writer->startTag("define", "name" => format!("{dt}{ft}"));
 
           // Name lists element definition
           // =============================
-          if ($ft == "list" && $dt == "name") {
+          if (ft == FieldType::List && dt == DataType::Name) {
             $writer->startTag("zeroOrMore");// for example, XDATA doesn't need a name
             $writer->startTag("element", "name" => format!("{bltx}:names"));
 
@@ -898,7 +886,7 @@ impl DataModel {
             $writer->comment("types of names elements");
             $writer->startTag("attribute", "name" => "type");
             $writer->startTag("choice");
-            for name in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for name in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->dataElement("value", $name);
             }
             $writer->endTag();    // choice
@@ -975,11 +963,11 @@ impl DataModel {
             $writer->endTag();    // zeroOrMore
             // ========================
           }
-          else if ($ft == "list") {
+          else if ft == FieldType::List {
             // lists element definition
             // ========================
             $writer->startTag("interleave");
-            for list in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for list in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:$list"));
               $writer->startTag("choice");
@@ -1004,11 +992,11 @@ impl DataModel {
             $writer->endTag();// interleave
             // ========================
           }
-          else if ($ft == "field" && $dt == "uri") {
+          else if ft == FieldType::Field && dt == DataType::Uri {
             // uri field element definition
             // ============================
             $writer->startTag("interleave");
-            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
               $writer->startTag("choice");
@@ -1021,11 +1009,11 @@ impl DataModel {
             $writer->endTag();// interleave
             // ============================
           }
-          else if ($ft == "field" && $dt == "range") {
+          else if ft == FieldType::Field && dt == DataType::Range {
             // range field element definition
             // ==============================
             $writer->startTag("interleave");
-            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
 
@@ -1062,11 +1050,11 @@ impl DataModel {
             $writer->endTag();// interleave
             // ==============================
           }
-          else if ($ft == "field" && $dt == "entrykey") {
+          else if ft == FieldType::Field && dt == DataType::Entrykey {
             // entrykey field element definition
             // =================================
             $writer->startTag("interleave");
-            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->startTag("optional");
               // related field is special
               if ($field == "related") {
@@ -1112,21 +1100,23 @@ impl DataModel {
             }
             $writer->endTag();// interleave
           }
-          else if ($ft == "field" && $dt == "date") {
+          else if ft == FieldType::Field && dt == DataType::Date {
             // date field element definition
             // Can't strongly type dates as we allow full ISO8601 meta characters
             // =============================
-            let @types = map { s/date$//r } $dm->get_fields_of_type($ft, $dt)->@*;
+            let types = dm.get_fields_of_type(ft, &[dt], None).iter().map(|f|
+              f.strip_suffix("date").unwrap_or(f)
+            );
             $writer->startTag("zeroOrMore");
             $writer->startTag("element", "name" => format!("{bltx}:date"));
             $writer->startTag("optional");
             $writer->startTag("attribute", "name" => "type");
             $writer->startTag("choice");
-            for datetype in(@types) {
-              if !($datetype) {
+            for datetype in types {
+              if datetype.is_empty() {
                 continue;
               }
-              $writer->dataElement("value", $datetype);
+              $writer->dataElement("value", datetype);
             }
             $writer->endTag(); // choice
             $writer->endTag(); // attribute
@@ -1151,11 +1141,11 @@ impl DataModel {
             $writer->endTag(); // zeroOrMore
             // =============================
           }
-          else if ($ft == "field") {
+          else if ft == FieldType::Field {
             // field element definition
             // ========================
             $writer->startTag("interleave");
-            for field in ($dm->get_fields_of_type($ft, $dt)->@*) {
+            for field in dm.get_fields_of_type(ft, &[dt], None) {
               $writer->startTag("optional");
               $writer->startTag("element", "name" => format!("{bltx}:{field}"));
               $writer->startTag("choice");
@@ -1230,17 +1220,17 @@ impl DataModel {
     $writer->end();
     $rng->close();
     // So we only do this one for potentially multiple .bltxml datasources
-    $dm->{bltxml_schema_gen_done} = 1;
+    dm.bltxml_schema_gen_done = true;
   }
 
   /// Generate a RelaxNG XML schema from the datamodel for bblXML output
-  fn generate_bblxml_schema(dm, $outfile) {
+  fn generate_bblxml_schema(dm: &DataModel, outfile: &Path) {
     let dmh = dm.helpers;
 
     // Set the .rng path to the output dir, if specified
     if (let $outdir = crate::Config->getoption("output_directory")) {
-      let (undef, undef, $file) = File::Spec->splitpath($outfile);
-      $outfile = File::Spec->catfile($outdir, $file)
+      let (_, _, file) = File::Spec->splitpath(outfile);
+      $outfile = File::Spec->catfile(outdir, file)
     }
     let $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
     $rng->autoflush;// Needed for running tests to string refs
@@ -1393,14 +1383,14 @@ impl DataModel {
     $writer->endTag();    // zeroOrMore
 
     // names
-    let @names = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_type("list", "name")->@*;
+    let names = dm.get_fields_of_type(FieldType::List, DataType::Name, None).filter(|f| !dm.field_is_skipout(f));
 
     $writer->startTag("oneOrMore");
     $writer->startTag("element", "name" => format!("{bbl}:names"));
     $writer->startTag("attribute", "name" => "type");
     $writer->startTag("choice");
-    for name in (@names) {
-      $writer->dataElement("value", $name);
+    for name in names {
+      $writer->dataElement("value", name);
     }
     $writer->endTag();    // choice
     $writer->endTag();    // attribute
@@ -1495,46 +1485,50 @@ impl DataModel {
     $writer->endTag();          // zeroOrMore
 
     // fields
-    let @fs1 = qw/namehash
-                bibnamehash
-                fullhash
-                labelalpha
-                sortinit
-                sortinithash
-                sortinithash
-                extraname
-                extradate
-                labelyear
-                labelmonth
-                labelday
-                labeldatesource
-                labelprefix
-                extratitle
-                extratitleyear
-                extraalpha
-                labelnamesource
-                labeltitlesource
-                clonesourcekey/;
+    let fs1 = vec![
+      "namehash",
+      "bibnamehash",
+      "fullhash",
+      "labelalpha",
+      "sortinit",
+      "sortinithash",
+      "sortinithash",
+      "extraname",
+      "extradate",
+      "labelyear",
+      "labelmonth",
+      "labelday",
+      "labeldatesource",
+      "labelprefix",
+      "extratitle",
+      "extratitleyear",
+      "extraalpha",
+      "labelnamesource",
+      "labeltitlesource",
+      "clonesourcekey",
+    ];
 
     // verbatim fields don't need special handling in XML, unlike TeX so they are here
-    let @fs2 = grep {
-        !($dm->get_fieldformat($_) == "xsv")
-          && !$dm->field_is_skipout($_)
-        } $dm->get_fields_of_type("field",
-                                    ["entrykey",
-                                    "key",
-                                    "integer",
-                                    "datepart",
-                                    "literal",
-                                    "code",
-                                    "verbatim"])->@*;
+    let fs2 = dm.get_fields_of_type(FieldType::Field,
+      &[DataType::Entrykey,
+      DataType::Key,
+      DataType::Integer,
+      DataType::Datepart,
+      DataType::Literal,
+      DataType::Code,
+      DataType::Verbatim], None).filter(|f| !(dm.get_fieldformat(f) == Format::Xsv)
+      && !dm.field_is_skipout(f));
 
     // uri fields
-    let @fs3 = $dm->get_fields_of_type("field", "uri")->@*;
+    let fs3 = dm.get_fields_of_type(FieldType::Field, &[DataType::Uri], None);
 
     // <namelist>namehash and <namelist>fullhash
-    let @fs4;
-    map {push @fs4, "${_}namehash";push @fs4, "${_}bibnamehash";push @fs4, "${_}fullhash"} $dmh->{namelists}->@*;
+    let fs4 = Vec::new();
+    for n in &dmh.namelists {
+      fs4.push(format!("{n}namehash"));
+      fs4.push(format!("{n}bibnamehash"));
+      fs4.push(format!("{n}fullhash"));
+    }
 
     $writer->startTag("oneOrMore");
     $writer->startTag("element", "name" => format!("{bbl}:field"));
@@ -1543,8 +1537,8 @@ impl DataModel {
     $writer->startTag("attribute", "name" => "name");
 
     $writer->startTag("choice");
-    for f in (@fs1, @fs2, @fs3, @fs4) {
-      $writer->dataElement("value", $f);
+    for f in fs1.iter().extend(fs2).extend(fs3.iter()).extend(fs4.iter()) {
+      $writer->dataElement("value", f);
     }
     $writer->endTag();    // choice
     $writer->endTag();    // attribute
@@ -1553,7 +1547,7 @@ impl DataModel {
     $writer->startTag("attribute", "name" => "name");
 
     $writer->startTag("choice");
-    for dp in ($dm->get_fields_of_type("field", "datepart")->@*) {
+    for dp in dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None) {
       $writer->dataElement("value", $dp);
     }
     $writer->endTag();    // choice
@@ -1642,13 +1636,13 @@ impl DataModel {
     $writer->endTag();    // oneOrMore
 
     // ranges
-    let @ranges = grep {not $dm->field_is_skipout($_)} $dm->get_fields_of_datatype("range")->@*;
+    let ranges = dm.get_fields_of_datatype(&[DataType::Range]).iter().filter(|f| !dm.field_is_skipout(f));
 
     $writer->startTag("zeroOrMore");
     $writer->startTag("element", "name" => format!("{bbl}:range"));
     $writer->startTag("attribute", "name" => "name");
     $writer->startTag("choice");
-    for r in (@ranges) {
+    for r in ranges {
       $writer->dataElement("value", $r);
     }
     $writer->endTag();    // choice
@@ -1672,26 +1666,29 @@ impl DataModel {
     $writer->endTag();    // zeroOrMore
 
     // uri lists - not in default data model
-    if (let @uril = $dm->get_fields_of_type("list", "uri")->@*) {
-      $writer->startTag("optional");
-      $writer->startTag("element", "name" => format!("{bbl}:list"));
-      $writer->startTag("attribute", "name" => "name");
-      $writer->startTag("choice");
-      for u in (@uril) {
-        $writer->dataElement("value", $u);
+    {
+      let uril = dm.get_fields_of_type(FieldType::List, &[DataType::Uri], None);
+      if !uril.is_empty() {
+        $writer->startTag("optional");
+        $writer->startTag("element", "name" => format!("{bbl}:list"));
+        $writer->startTag("attribute", "name" => "name");
+        $writer->startTag("choice");
+        for u in uril.into_iter() {
+          $writer->dataElement("value", $u);
+        }
+        $writer->endTag();          // choice
+        $writer->endTag();          // attribute
+        $writer->startTag("attribute", "name" => "count");
+        $writer->emptyTag("data", "type" => "integer");
+        $writer->endTag();          // attribute
+        $writer->startTag("oneOrMore");
+        $writer->startTag("element", "name" => format!("{bbl}:item"));
+        $writer->emptyTag("data", "type" => "anyURI");
+        $writer->endTag();          // item
+        $writer->endTag();          // oneOrMore
+        $writer->endTag();          // list element
+        $writer->endTag();          // optional
       }
-      $writer->endTag();          // choice
-      $writer->endTag();          // attribute
-      $writer->startTag("attribute", "name" => "count");
-      $writer->emptyTag("data", "type" => "integer");
-      $writer->endTag();          // attribute
-      $writer->startTag("oneOrMore");
-      $writer->startTag("element", "name" => format!("{bbl}:item"));
-      $writer->emptyTag("data", "type" => "anyURI");
-      $writer->endTag();          // item
-      $writer->endTag();          // oneOrMore
-      $writer->endTag();          // list element
-      $writer->endTag();          // optional
     }
 
     // nocite

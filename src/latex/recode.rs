@@ -13,8 +13,6 @@ use XML::LibXML::Simple;
 use Carp;
 use utf8;
 
-our @EXPORT  = qw(latex_encode latex_decode);
-
 
 /// Encode/Decode chars to/from UTF-8/lacros in LaTeX
 ///
@@ -186,7 +184,7 @@ fn init_sets(set_d, set_e) {
 ///
 /// * normalization => <normalization form> (default "NFD")
 ///     and if yes, the normalization form to use (see the Unicode::Normalize documentation)
-fn latex_decode(text, %opts) {
+pub fn latex_decode(text, %opts) {
       trace!("String before latex_decode() -> '{}'", text);
 
     let $norm      = exists $opts{normalize} ? $opts{normalize} : 1;
@@ -319,7 +317,7 @@ fn latex_decode(text, %opts) {
 }
 
 /// Converts UTF-8 to LaTeX
-fn latex_encode(text) {
+pub fn latex_encode(text) {
   // Optimisation - if virtual null set was specified, do nothing
   if $set_e == "null" {
     return $text;

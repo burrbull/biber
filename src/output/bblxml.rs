@@ -198,7 +198,7 @@ impl BblXML {
     }
 
     // Output name fields
-    for namefield in &dm.get_fields_of_type("list", "name") {
+    for namefield in dm.get_fields_of_type(FieldType::List, &[DataType::Name], None) {
       if ( let $nf = be.get_field(namefield) ) {
         if dm.field_is_skipout(namefield) {
           continue;
@@ -357,13 +357,14 @@ impl BblXML {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ck), name => "clonesourcekey");
     }
 
-    for field in (sort $dm->get_fields_of_type("field",
-                                                    ["entrykey",
-                                                    "key",
-                                                    "integer",
-                                                    "literal",
-                                                    "code",
-                                                    "verbatim"])->@*) {
+    // NOTE: already sorted
+    for field in dm.get_fields_of_type(FieldType::Field,
+                                                    &[DataType::Entrykey,
+                                                    DataType::Key,
+                                                    DataType::Integer,
+                                                    DataType::Literal,
+                                                    DataType::Code,
+                                                    DataType::Verbatim], None) {
       let $val = $be->get_field($field);
       if ( length($val) || // length() catches '0' values, which we want
           ($dm->field_is_nullok($field) &&
@@ -393,7 +394,8 @@ impl BblXML {
     }
 
     // Date parts
-    for field in (sort $dm->get_fields_of_type("field", "datepart")->@*) {
+    // NOTE: already sorted
+    for field in dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None) {
       let $val = $be->get_field($field);
 
       if ( length($val) || // length() catches '0' values, which we want

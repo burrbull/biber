@@ -196,18 +196,18 @@ let %internal_dispatch_label = (
                 "labelday"          =>  [\&_label_basic,            ["labelday"]],
                 "labelyear"         =>  [\&_label_basic,            ["labelyear"]]);
 
-fn _dispatch_table_label(field, dm) {
+fn _dispatch_table_label(field: &str, dm: &DataModel) {
   // internal fields not part of the data model
   if (let $id = $internal_dispatch_label{$field}) {
     return $id;
   }
   // Label elements which aren't fields
-  if !($dm->is_field($field)) {
+  if !(dm.is_field(field)) {
     return undef;
   }
   // Fields which are part of the datamodel
-  let $dmf = $dm->get_dm_for_field($field);
-  if ($dmf->{fieldtype} == "list" && $dmf->{datatype} == "name") {
+  let dmf = dm.get_dm_for_field(field);
+  if dmf.fieldtype == Some(FieldType::List) && dmf.datatype == Some(DataType::Name) {
     return [\&_label_name, [$field]];
   }
   else {
@@ -261,8 +261,8 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
       if ($f == "labelname") {
         $f = (be.get_labelname_info() || "");
       }
-      if ( first {$f == $_} $dm->get_fields_of_type("list", "name")->@*) {
-        let $name = $be->get_field($f)
+      if dm.get_fields_of_type(FieldType::List, &[DataType::Name], None).contains(f) {
+        let name = be.get_field(f)
         if !name {
           continue;// just in case there is no labelname etc.
         }
@@ -1006,34 +1006,36 @@ fn _dispatch_table_sorting(field, dm) {
     return $id;
   }
   // Sorting elements which aren't fields
-  if !($dm->is_field($field)) {
+  if !dm.is_field(field) {
     return undef;
   }
   // Fields which are part of the datamodel
-  let $dmf = $dm->get_dm_for_field($field);
-  if ($dmf->{fieldtype} == "list" && $dmf->{datatype} == "name") {
-    return [\&_sort_name, [$field]];
-  }
-  else if ($dmf->{datatype} == "verbatim" || $dmf->{datatype} == "uri") {
-    return [\&_sort_verbatim, [$field]];
-  }
-  else if ($dmf->{fieldtype} == "field" && $dmf->{datatype} == "literal" ) {
-    return [\&_sort_literal, [$field]];
-  }
-  else if ($dmf->{fieldtype} == "field" &&
-         ($dmf->{datatype} == "integer" || $dmf->{datatype} == "datepart")) {
-    return [\&_sort_integer, [$field]];
-  }
-  else if ($dmf->{fieldtype} == "list" &&
-         ($dmf->{datatype} == "literal" || $dmf->{datatype} == "key")) {
-    return [\&_sort_list, [$field]];
-  }
-  else if ($dmf->{fieldtype} == "list" &&
-         ($dmf->{datatype} == "verbatim" || $dmf->{datatype} == "uri")) {
-    return [\&_sort_list_verbatim, [$field]];
-  }
-  else if ($dmf->{fieldtype} == "field" && $dmf->{datatype} == "key") {
-    return [\&_sort_literal, [$field]];
+  let dmf = dm.get_dm_for_field(field);
+  if let (Some(fieldtype), Some(datatype)) = (dmf.fieldtype, dmf.datatype) {
+    match (fieldtype, datatype) {
+      (FieldType::List, DataType::Name) => {
+        return [\&_sort_name, [$field]];
+      }
+      (_, DataType::Verbatim | DataType::Uri) => { // NOTE: Should be FieldType::Field?
+        return [\&_sort_verbatim, [$field]];
+      }
+      (FieldType::Field, DataType::Literal) => {
+        return [\&_sort_literal, [$field]];
+      }
+      (FieldType::Field, DataType::Integer | DataType::Datepart) => {
+        return [\&_sort_integer, [$field]];
+      }
+      (FieldType::List, DataType::Literal | DataType::Key) => {
+        return [\&_sort_list, [$field]];
+      }
+      (FieldType::List, DataType::Verbatim | DataType::Uri) => {
+        return [\&_sort_list_verbatim, [$field]];
+      }
+      (FieldType::Field, DataType::Key) => {
+        return [\&_sort_literal, [$field]];
+      }
+      _ => {}
+    }
   }
 }
 
@@ -1376,7 +1378,7 @@ fn _sort_sortname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementat
 
   // sortname is ignored if no use<name> option is defined - see biblatex manual
   if ($be->get_field("sortname") &&
-      grep {crate::Config->getblxoption($secnum, format!("use{}", $_), $be->get_field("entrytype"), $citekey)} $dm->get_fields_of_type("list", "name")->@*) {
+      grep {crate::Config->getblxoption($secnum, format!("use{}", $_), $be->get_field("entrytype"), $citekey)} dm.get_fields_of_type(FieldType::List, &[DataType::Name], None)->@*) {
     let $string = $self->_namestring($citekey, "sortname", $dlist);
     return _translit("sortname", $be, _process_sort_attributes($string, $sortelementattributes));
   }

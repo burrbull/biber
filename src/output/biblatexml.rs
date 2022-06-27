@@ -127,7 +127,7 @@ impl BibLaTeXML {
     }
 
     // Output name fields
-    for namefield in ($dm->get_fields_of_type("list", "name")->@*) {
+    for namefield in dm.get_fields_of_type(FieldType::List, &[DataType::Name], None) {
 
       // Name loop
       if (let $nf = $be->get_field($namefield)) {
@@ -234,14 +234,15 @@ impl BibLaTeXML {
     }
 
     // Standard fields
-    for field in (sort $dm->get_fields_of_type("field",
-                                                    ["entrykey",
-                                                    "key",
-                                                    "literal",
-                                                    "code",
-                                                    "integer",
-                                                    "verbatim",
-                                                    "uri"])->@*) {
+    // NOTE: already sorted
+    for field in dm.get_fields_of_type(FieldType::Field,
+                                                    &[DataType::Entrykey,
+                                                    DataType::Key,
+                                                    DataType::Literal,
+                                                    DataType::Code,
+                                                    DataType::Integer,
+                                                    DataType::Verbatim,
+                                                    DataType::Uri]) {
       let $val = $be->get_field($field);
 
       // XDATA is special
@@ -270,7 +271,8 @@ impl BibLaTeXML {
     }
 
     // xsv fields
-    for xsvf in ($dm->get_fields_of_type("field", "xsv")->@*) {
+    // NOTE: BUG? incorrect function
+    for xsvf in ($dm->get_fields_of_type(FieldType::Field, "xsv")->@*) {
       if (let $f = $be->get_field($xsvf)) {
         if $xsvf == "ids" { // IDS is special
           continue;
@@ -293,7 +295,8 @@ impl BibLaTeXML {
     }
 
     // Range fields
-    for rfield in (sort $dm->get_fields_of_datatype("range")->@*) {
+    // NOTE: already sorted
+    for rfield in dm.get_fields_of_datatype(&[DataType::Range]) {
       if ( let $rf = $be->get_field($rfield) ) {
 
         // XDATA is special
@@ -328,7 +331,8 @@ impl BibLaTeXML {
 
     // Date fields
     let %dinfo;
-    for datefield in (sort $dm->get_fields_of_datatype("date")->@*) {
+    // NOTE: already sorted
+    for datefield in dm.get_fields_of_datatype(&[DataType::Date]) {
       let @attrs;
       let @start;
       let @end;

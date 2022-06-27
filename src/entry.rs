@@ -391,6 +391,7 @@ impl Entry {
 
   /// Returns a sorted array of the fields which came from the data source
   fn datafields(&self) -> Vec<&String> {
+    // use locale;
     let mut fields = self.datafields.keys().collect();
     fields.sort();
     fields
@@ -403,7 +404,7 @@ impl Entry {
 
   /// Returns a sorted array of the fields which were added during processing
   fn derivedfields(self) {
-    use locale;
+    // use locale;
     return sort keys %{$self->{derivedfields}};
   }
 
@@ -411,6 +412,7 @@ impl Entry {
   /// added during processing which are not necessarily fields
   /// which came from the data file
   fn fields(&self) -> Vec<&String> {
+    // use locale;
     let mut v: Vec<_> = self.derivedfields().keys().extend(self.datafields().keys()).collect();
     v.sort();
     v
@@ -478,8 +480,8 @@ impl Entry {
     // validation checks which may occur later
     for df in ($dmh->{datefields}->@*) {
       $df =~ s/date$//;
-      if (let $ds = $parent->get_field("${df}datesplit")) {
-        $self->set_field("${df}datesplit", $ds);
+      if (let $ds = $parent->get_field(format!("{df}datesplit"))) {
+        $self->set_field(format!("{df}datesplit"), $ds);
       }
     }
     return;
@@ -568,8 +570,8 @@ impl Entry {
               let $reffielddm = $dm->get_dm_for_field($reffield);
               let $xdatafielddm = $dm->get_dm_for_field($xdatafield);
 
-              if !($reffielddm->{fieldtype} == $xdatafielddm->{fieldtype} &&
-                      $reffielddm->{datatype} == $xdatafielddm->{datatype}) {
+              if !(reffielddm.fieldtype == xdatafielddm.fieldtype &&
+                      reffielddm.datatype == xdatafielddm.datatype) {
                 biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
                 $xdatum->{resolved} = 0;
                 continue;
@@ -582,7 +584,7 @@ impl Entry {
               }
 
               // Name lists
-              if ($dm->field_is_type("list", "name", $reffield)) {
+              if dm.field_is_type(FieldType::List, DataType::Name, reffield) {
                 if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
                   let bibentries = section.bibentries();
                   let be = bibentries.entry($xdatum->{xdataentries}[0]);

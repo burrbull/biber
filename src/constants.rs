@@ -13,9 +13,6 @@ use Unicode::UCD qw(num);
 our @EXPORT = qw{
                   $CONFIG_DEFAULT_BIBER
                   $CONFIG_CSV_PARSER
-                  $BIBER_CONF_NAME
-                  $BCF_VERSION
-                  $BBL_VERSION
                   $BIBER_SORT_FINAL
                   $BIBER_SUPPRESS_FINAL
                   $BIBER_SORT_NULL
@@ -30,31 +27,27 @@ our @EXPORT = qw{
                   %CONFIG_OUTPUT_FIELDREPLACE
                   %DATAFIELD_SETS
                   %DM_DATATYPES
-                  %LOCALE_MAP
-                  %LOCALE_MAP_R
                   %REMOTE_MAP
                   %DS_EXTENSIONS
                   %UNIQUENAME_CONTEXTS
-                  %UNIQUENAME_VALUES
-                  %MONTHS
                   %RSTRINGS
                   %USEDSTRINGS
-                  %YEARDIVISIONS
               };
-
+*/
 // Version of biblatex control file which this release expects. Matched against version
 // passed in control file. Used when checking the .bcf
-our $BCF_VERSION = "3.9";
+pub const BCF_VERSION: &str = "3.9";
 // Format version of the .bbl. Used when writing the .bbl
-our $BBL_VERSION = "3.2";
+pub const BBL_VERSION: &str = "3.2";
 
+/* TODO
 // Global flags needed for sorting
 our $BIBER_SORT_FINAL;
 our $BIBER_SORT_NULL;
 
 // the name of the Biber configuration file, which should be
 // either returned by kpsewhich or located at "$HOME/.$BIBER_CONF_NAME"
-our $BIBER_CONF_NAME = "biber.conf";
+pub const BIBER_CONF_NAME: &str = "biber.conf";
 
 // Biber CONFIGURATION DEFAULTS
 
@@ -68,67 +61,75 @@ if !($locale) {
     $locale = "en_US.UTF-8";
   }
 }
-
+*/
 // ISO8601-2 4.8 year divisions
-our %YEARDIVISIONS = ( 21 => "spring",
-                       22 => "summer",
-                       23 => "autumn",
-                       24 => "winter",
-                       25 => "springN",
-                       26 => "summerN",
-                       27 => "autumnN",
-                       28 => "winterN",
-                       29 => "springS",
-                       30 => "summerS",
-                       31 => "autumnS",
-                       32 => "winterS",
-                       33 => "Q1",
-                       34 => "Q2",
-                       35 => "Q3",
-                       36 => "Q4",
-                       37 => "QD1",
-                       38 => "QD2",
-                       39 => "QD3",
-                       40 => "S1",
-                       41 => "S2" );
 
+pub const YEARDIVISIONS: phf::Map<u32, &'static str> = phf_map! {
+  21_u32 => "spring",
+  22_u32 => "summer",
+  23_u32 => "autumn",
+  24_u32 => "winter",
+  25_u32 => "springN",
+  26_u32 => "summerN",
+  27_u32 => "autumnN",
+  28_u32 => "winterN",
+  29_u32 => "springS",
+  30_u32 => "summerS",
+  31_u32 => "autumnS",
+  32_u32 => "winterS",
+  33_u32 => "Q1",
+  34_u32 => "Q2",
+  35_u32 => "Q3",
+  36_u32 => "Q4",
+  37_u32 => "QD1",
+  38_u32 => "QD2",
+  39_u32 => "QD3",
+  40_u32 => "S1",
+  41_u32 => "S2"
+};
+
+/* TODO
 // Reverse record of macros so we can reverse these for tool mode output
 our %RSTRINGS = ();
 // Record of macros which are actually used in output in tool mode, so that we don't
 // output unused strings.
 our %USEDSTRINGS = ();
+*/
 
-our %MONTHS = ("jan" => "1",
-               "feb" => "2",
-               "mar" => "3",
-               "apr" => "4",
-               "may" => "5",
-               "jun" => "6",
-               "jul" => "7",
-               "aug" => "8",
-               "oct" => "10",
-               "sep" => "9",
-               "nov" => "11",
-               "dec" => "12");
+pub const MONTHS: phf::Map<&'static str, &'static str> = phf_map! {
+  "jan" => "1",
+  "feb" => "2",
+  "mar" => "3",
+  "apr" => "4",
+  "may" => "5",
+  "jun" => "6",
+  "jul" => "7",
+  "aug" => "8",
+  "oct" => "10",
+  "sep" => "9",
+  "nov" => "11",
+  "dec" => "12"
+};
 
+/* TODO
 // datafieldsets
 our %DATAFIELD_SETS = ();
 
 // datatypes for data model validation
 our %DM_DATATYPES = (
-                     integer => fn(v) -> bool {
+                     DataType::Integer => fn(v) -> bool {
                        looks_like_number(num($v =~ s/^-//r))
                      },
-                     name => fn(v) -> bool {
+                     DataType::Name => fn(v) -> bool {
                        blessed($v) && $v->isa("crate::Entry::Names")
                      },
-                     range => fn(v) -> bool {
+                     DataType::Range => fn(v) -> bool {
                        ref($v) == "ARRAY"
                      },
-                     list => fn(v) -> bool {
+                     DataType::List => fn(v) -> bool {
                        ref($v) == "ARRAY"
                      },
-                     datepart => fn(v, f) -> bool {
+                     DataType::Datepart => fn(v, f) -> bool {
                        if ($f =~ /timezone$/) {
                          // ISO 8601
                          // <time>Z
@@ -155,7 +156,7 @@ our %DM_DATATYPES = (
                        }
                        return true;
                      },
-                     isbn => fn(v, f) -> bool {
+                     DataType::Isbn => fn(v, f) -> bool {
                        require Business::ISBN;
 
                        let (vol, dir, _) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
@@ -169,13 +170,13 @@ our %DM_DATATYPES = (
                        let isbn = Business::ISBN->new($v);
                        isbn
                      },
-                     issn => fn(v) -> bool {
+                     DataType::Issn => fn(v) -> bool {
                        require Business::ISSN;
 
                        let $issn = Business::ISSN->new($_);
                        $issn && $issn->is_valid
                      },
-                     ismn => fn(v) -> bool {
+                     DataType::Ismn => fn(v) -> bool {
                        require Business::ISMN;
                        let $ismn = Business::ISMN->new($_);
                        $ismn && $ismn->is_valid
@@ -203,7 +204,7 @@ our %UNIQUENAME_CONTEXTS = ("false" => "none",
                             "minfull" => "initorfull");
 */
 // Mapping of strings to numeric uniquename values for easier biblatex processing
-pub static UNIQUENAME_VALUES: phf::Map<&'static str, usize> = phf_map! {
+pub const UNIQUENAME_VALUES: phf::Map<&'static str, usize> = phf_map! {
   "none" => 0, "init" => 1, "full" => 2
 };
 /* TODO
@@ -342,7 +343,7 @@ define_alias("lutf8"          => "UTF-8"); // Luatex
 define_alias("utf8x"          => "UTF-8"); // UCS (old)
 */
 // maps between bcp47 lang/locales and babel/polyglossia language names
-pub static LOCALE_MAP: phf::Map<&'static str, &'static str> = phf_map! {
+pub const LOCALE_MAP: phf::Map<&'static str, &'static str> = phf_map! {
                    "acadian"         => "fr-CA",
                    "american"        => "en-US",
                    "australian"      => "en-AU",
@@ -458,7 +459,7 @@ pub static LOCALE_MAP: phf::Map<&'static str, &'static str> = phf_map! {
                    "welsh"           => "cy-GB",
 };
 
-pub static LOCALE_MAP_R: phf::Map<&'static str, &'static str> = phf_map! {
+pub const LOCALE_MAP_R: phf::Map<&'static str, &'static str> = phf_map! {
                      "af"         => "afrikaans",
                      "af-ZA"      => "afrikaans",
                      "am"         => "ethiopia",

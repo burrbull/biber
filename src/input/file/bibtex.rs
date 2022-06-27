@@ -43,38 +43,6 @@ fn init_cache {
 
 // Determine handlers from data model
 let $dm = crate::config::get_dm();
-let $handlers = {
-                "custom" => {"annotation" => \&_annotation},
-                "field" => {
-                            "default"  => {
-                                           "code"     => \&_literal,
-                                           "date"     => \&_datetime,
-                                           "datepart" => \&_literal,
-                                           "entrykey" => \&_literal,
-                                           "integer"  => \&_literal,
-                                           "key"      => \&_literal,
-                                           "literal"  => \&_literal,
-                                           "range"    => \&_range,
-                                           "verbatim" => \&_verbatim,
-                                           "uri"      => \&_uri
-                                          },
-                            "xsv"      => {
-                                           "entrykey" => \&_xsv,
-                                           "literal"  => \&_xsv,
-                                           "keyword"  => \&_xsv,
-                                           "option"   => \&_xsv,
-                                          }
-                           },
-                "list" => {
-                           "default"   => {
-                                           "key"      => \&_list,
-                                           "literal"  => \&_list,
-                                           "name"     => \&_name,
-                                           "verbatim" => \&_list,
-                                           "uri"      => \&_urilist
-                                          }
-                          }
-};
 
 /// Signal handler to catch fatal Text::BibTex SEGFAULTS. It has bugs
 /// and we want to say at least something if it coredumps
@@ -862,8 +830,62 @@ fn _create_entry(k, e) {
     if ($dm->is_field($fc)) {
       // Check the Text::BibTeX field in case we have e.g. date = {}
       if ($e->get(encode("UTF-8", NFC($f))) != "") {
-        let $handler = _get_handler(fc);
-        let $v = $handler->($bibentry, $e, $f, $k);
+        let $ann = $CONFIG_META_MARKERS{annotation};
+        let $nam = $CONFIG_META_MARKERS{namedannotation};
+        let v = if ($fc =~ m/$ann(?:$nam.+)?$/) {
+          _annotation(&mut bibentry, e, f, k)
+        }
+        else {
+          let typ = dm.get_fieldtype(fc).unwrap();
+          let fmt = dm.get_fieldformat(fc).unwrap_or(Format::Default);
+          let dtype = dm.get_datatype(fc).unwrap();
+          match typ {
+            FieldType::Field => {
+              match fmt {
+                Format::Default => {
+                  match dtype => {
+                    DataType::Code
+                    | DataType::Datepart
+                    | DataType::Entrykey
+                    | DataType::Integer
+                    | DataType::Key
+                    | DataType::Literal => _literal(&mut bibentry, e, f, k),
+                    DataType::Date => _datetime(&mut bibentry, e, f, k),
+                    DataType::Range => _range(&mut bibentry, e, f, k),
+                    DataType::Verbatim => _verbatim(&mut bibentry, e, f, k),
+                    DataType::Uri => _uti(&mut bibentry, e, f, k),
+                    _ => unreachable!(),
+                  }
+                }
+                Format::Xsv => {
+                  match dtype => {
+                    DataType::Entrykey
+                    | DataType::Literal
+                    | DataType::Keyword
+                    | DataType::Option => _xsv(bibentry, e, f, k),
+                    _ => unreachable!(),
+                  }
+                }
+              }
+            }
+            FieldType::List => {
+              match fmt {
+                Format::Default => {
+
+                  match dtype => {
+                    DataType::Key
+                    | DataType::Literal
+                    | DataType::Verbatim => _list(&mut bibentry, e, f, k),
+                    DataType::Name => _name(&mut bibentry, e, f, k),
+                    DataType::Uri => _urilist(&mut bibentry, e, f, k),
+                    _ => unreachable!(),
+                  }
+                }
+                _ => unreachable!(),
+              }
+            }
+          }
+        };
         if (defined($v)) {
           if ($v == "BIBER_SKIP_ENTRY") {// field data is bad enough to cause entry to be skipped
             return 0;
@@ -1013,13 +1035,13 @@ fn _uri(bibentry, entry, field) {
 }
 
 // xSV field form
-fn _xsv(bibentry, entry, field) {
+fn _xsv(bibentry: &mut Entry, entry, field) {
   let $Srx = crate::Config->getoption("xsvsep");
   let $S = qr/$Srx/;
   let $value = [ split(/$S/, $entry->get(encode("UTF-8", NFC($field)))) ];
 
   // Record any XDATA
-  $bibentry->add_xdata_ref($field, $value);
+  bibentry.add_xdata_ref(field, $value);
 
   return $value ;
 }
@@ -1849,17 +1871,6 @@ fn _hack_month(in_month) {
   }
   else {
     return $in_month;
-  }
-}
-
-fn _get_handler(field) {
-  let $ann = $CONFIG_META_MARKERS{annotation};
-  let $nam = $CONFIG_META_MARKERS{namedannotation};
-  if ($field =~ m/$ann(?:$nam.+)?$/) {
-    return $handlers->{custom}{annotation};
-  }
-  else {
-    return $handlers->{$dm->get_fieldtype($field)}{$dm->get_fieldformat($field) || "default"}{$dm->get_datatype($field)};
   }
 }
 
