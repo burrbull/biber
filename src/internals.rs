@@ -20,7 +20,7 @@ use Unicode::UCD qw(num);
 // Hashes should not care about use* or sorting name key template etc. We want to generate hashes
 // unique to a name, not a particular representation of a name. So, always statically concatenate
 // nameparts from the data model list of valid nameparts
-fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
+fn _getnamehash(&self, citekey: &str, names: &Names, dlist: &DataList, bib: bool) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let be = section.bibentry(citekey);
@@ -39,13 +39,14 @@ fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
   // namehash obeys list truncations but not uniquename
   for n in names.first_n_names(visible) {
     for nt in nps {// list type so returns list
-      if (let $np = n.get_namepart(nt)) {
+      let np = n.get_namepart(nt);
+      if !np.is_empty() {
         hashkey.push_str(np);
       }
     }
   }
 
-  let $nho = crate::Config->getblxoption($secnum, "nohashothers", $bee, $citekey);
+  let $nho = crate::Config->getblxoption(secnum, "nohashothers", bee, citekey);
 
   // Per-namelist nohashothers
   if (defined($names->get_nohashothers)) {
@@ -60,34 +61,35 @@ fn _getnamehash(self, citekey: &str, $names, $dlist, $bib) {
   }
 
   // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
-  return md5_hex(encode_utf8(NFC(normalise_string_hash($hashkey))));
+  return md5_hex(encode_utf8(NFC(normalise_string_hash(&hashkey))));
 }
 
-fn _getfullhash(self, $citekey, $names) {
-  let $hashkey = "";
-  let $dm = crate::config::get_dm();
-  let @nps = $dm->get_constant_value("nameparts");
+fn _getfullhash(self, citekey: &str, names: &Names) {
+  let mut hashkey = String::new();
+  let dm = crate::config::get_dm();
+  let nps = dm.get_constant_value("nameparts");
 
-  for n names.names() {
+  for n in names.names() {
     for nt in &nps {// list type so returns list
-      if (let $np = $n->get_namepart($nt)) {
-        $hashkey .= strip_nonamestring($np, names.get_type());
+      let np = n.get_namepart(nt);
+      if !np.is_empty() {
+        hashkey.push_str(strip_nonamestring(np, names.get_type()));
       }
     }
   }
 
   // If we had an "and others"
   if names.get_morenames() {
-    $hashkey .= '+'
+    hashkey.push('+');
   }
 
   // Digest::MD5 can't deal with straight UTF8 so encode it first (via NFC as this is "output")
-  return md5_hex(encode_utf8(NFC(normalise_string_hash($hashkey))));
+  return md5_hex(encode_utf8(NFC(normalise_string_hash(&hashkey))));
 }
 
 // Same as _getnamehash but takes account of uniquename setting for firstname
 // It's used for extra* tracking only
-fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
+fn _getnamehash_u(&self, citekey: &str, names: &Names, dlist: &DataList) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let be = section.bibentry(citekey);
@@ -121,7 +123,8 @@ fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
       }
       let $npn = $nps->{namepart};
 
-      if (let $np = n.get_namepart(npn)) {
+      let np = n.get_namepart(npn);
+      if !np.is_empty() {
         if ($nps->{base}) {
           hashkey.push_str(np);
         }
@@ -160,14 +163,15 @@ fn _getnamehash_u(self, citekey: &str, $names, $dlist) {
 }
 
 // Special hash to track per-name information
-fn _genpnhash(self, $citekey, $n) {
-  let $hashkey = "";
-  let $dm = crate::config::get_dm();
-  let @nps = $dm->get_constant_value("nameparts");
+fn _genpnhash(self, citekey: &str, $n) {
+  let hashkey = String::new();
+  let dm = crate::config::get_dm();
+  let nps = dm.get_constant_value("nameparts");
 
-  for nt in (@nps) {// list type so returns list
-    if (let $np = $n->get_namepart($nt)) {
-      $hashkey .= $np;
+  for nt in nps {// list type so returns list
+    let np = n.get_namepart(nt);
+    if !np.is_empty() {
+      hashkey.push_str(np);
     }
   }
 
@@ -256,10 +260,10 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
     // ifnames only uses this label template part if the list it is applied to is a certain
     // length
     if (let $inc = $part->{ifnames}) {
-      let $f = $part->{content};
+      let f = $part->{content};
       // resolve labelname
-      if ($f == "labelname") {
-        $f = (be.get_labelname_info() || "");
+      if f == "labelname" {
+        f = be.get_labelname_info().unwrap_or("");
       }
       if dm.get_fields_of_type(FieldType::List, &[DataType::Name], None).contains(f) {
         let name = be.get_field(f)
@@ -1040,7 +1044,7 @@ fn _dispatch_table_sorting(field, dm) {
 }
 
 // Main sorting dispatch method
-fn _dispatch_sorting(self, $sortfield, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
+fn _dispatch_sorting(self, sortfield: &str, citekey: &str, secnum: u32, section: &Section, $be, $dlist, $sortelementattributes) {
   let $code_ref;
   let $code_args_ref;
   let $dm = crate::config::get_dm();
@@ -1144,12 +1148,12 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
 }
 
 // Process sorting set
-fn _sortset(self, $sortset, $citekey, $secnum, $section, $be, $dlist) {
+fn _sortset(self, $sortset, citekey: &str, secnum: u32, $section, $be, $dlist) {
   let $dm = crate::config::get_dm();
   for sortelement in ($sortset->@[1..$sortset->$#*]) {
     let ($sortelementname, $sortelementattributes) = %$sortelement;
     $BIBER_SORT_NULL = 0; // reset this per sortset
-    let $out = $self->_dispatch_sorting($sortelementname, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
+    let $out = self._dispatch_sorting(sortelementname, citekey, secnum, section, be, dlist, sortelementattributes);
     if ($out) { // sort returns something for this key
       if ($sortset->[0]{final}) {
         // If we encounter a "final" element, we return an empty sort
@@ -1255,11 +1259,11 @@ fn _sort_labelalpha(self, $citekey, $secnum, $section, $be, $dlist, $sortelement
   return _process_sort_attributes($string, $sortelementattributes);
 }
 
-fn _sort_labelname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_labelname(self, citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
   // re-direct to the right sorting routine for the labelname
-  if (let $lni = be.get_labelname_info()) {
+  if let Some(lni) = be.get_labelname_info().skip_empty() {
     // Don't process attributes as they will be processed in the real sub
-    return $self->_dispatch_sorting($lni, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
+    return self._dispatch_sorting(lni, citekey, secnum, section, be, dlist, sortelementattributes);
   }
   else {
     return "";

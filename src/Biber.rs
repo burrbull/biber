@@ -1018,7 +1018,7 @@ impl Biber {
           bib_section.set_allkeys(true);
         }
         else {
-          bib_section->add_citekeys($section.get_citekeys());
+          bib_section.add_citekeys(section.get_citekeys());
         }
         for ds in (section->get_datasources->@*) {
           bib_section->add_datasource($ds);
@@ -1194,10 +1194,10 @@ impl Biber {
   fn process_citekey_aliases(self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    for citekey in ($section.get_citekeys()) {
-      if (let $a = $section->get_citekey_alias($citekey)) {
+    for citekey in section.get_citekeys() {
+      if (let $a = section.get_citekey_alias(citekey)) {
           debug!("Pruning citekey alias '{}' from citekeys", citekey);
-        $section->del_citekey($citekey);
+        section.del_citekey(citekey);
       }
     }
   }
@@ -1245,7 +1245,7 @@ impl Biber {
     }
 
     // Instantiate any related entry clones we need from regular entries
-    for citekey in ($section.get_citekeys()) {
+    for citekey in section.get_citekeys() {
       section.bibentry(citekey).relclone();
     }
 
@@ -1291,46 +1291,45 @@ impl Biber {
 
       debug!("Adding set members to citekeys for section {}", secnum);
 
-    for citekey in ($section.get_citekeys()) {
+    for citekey in section.get_citekeys() {
       let be = section.bibentry(citekey);
 
       // promote indirectly cited inset set members to fully cited entries
-      if ($be->get_field("entrytype") == "set" &&
-          $be->get_field("entryset")) {
-        let $inset_keys = $be->get_field("entryset");
+      if be.get_field("entrytype") == "set" && be.get_field("entryset") {
+        let inset_keys = be.get_field("entryset");
 
         // Ignore empty sets (likely this means that they contained only
         // non-existent keys that were removed)
-        if !($inset_keys->@*) {
+        if inset_keys.is_empty() {
           continue;
         }
 
-        let $realmems;
-        for mem in ($inset_keys->@*) {
-          push $realmems->@*, $section->get_citekey_alias($mem).unwrap_or($mem);
+        let mut realmems = Vec::new();
+        for mem in inset_keys {
+          realmems.push(section.get_citekey_alias(mem).unwrap_or(mem));
         }
-        $inset_keys = $realmems;
-        $be->set_datafield("entryset", $inset_keys);
+        let inset_keys = realmems;
+        be.set_datafield("entryset", $inset_keys);
 
-        for inset_key in ($inset_keys->@*) {
+        for inset_key in &inset_keys {
             debug!("Adding set member '{}' to the citekeys (section {})", inset_key, secnum);
-          $section->add_citekeys($inset_key);
+          section.add_citekeys(inset_key);
 
           // Save graph information if requested
           if (crate::Config->getoption("output_format") == "dot") {
-            crate::Config->set_graph("set", $citekey, $inset_key);
+            crate::Config->set_graph("set", citekey, inset_key);
           }
         }
 
         // Set parents inherit first child member data so that they get sensible
         // sorting/labelling defaults. Most of these inherited fields will not be output
         // in the .bbl
-        $be->set_inherit_from(section.bibentry($inset_keys->[0]), $section);
+        be.set_inherit_from(section.bibentry(inset_keys[0]), section);
 
         // warning for the old pre-Biber way of doing things
-        if ($be->get_field("crossref")) {
-          biber_warn("Field "crossref" is no longer needed in set entries in Biber - ignoring in entry '$citekey'", $be);
-          $be->del_field("crossref");
+        if be.get_field("crossref") {
+          biber_warn("Field "crossref" is no longer needed in set entries in Biber - ignoring in entry '$citekey'", be);
+          be.del_field("crossref");
         }
       }
     }
@@ -1353,7 +1352,7 @@ impl Biber {
 
       debug!("Recording set information");
 
-    for citekey in ($section.get_citekeys()) {
+    for citekey in section.get_citekeys() {
       let be = section.bibentry(citekey);
 
       // Record set information
@@ -1388,7 +1387,7 @@ impl Biber {
 
       debug!("Calculating explicit and implicit xref/crossrefs for section {}", secnum);
 
-    for citekey in ($section.get_citekeys()) {
+    for citekey in section.get_citekeys() {
       let be = section.bibentry(citekey);
 
       // Loop over cited keys and count the cross/xrefs
@@ -1426,7 +1425,7 @@ impl Biber {
         if !section.has_citekey(k) {
           section.bibentry(k).set_field("crossrefsource", 1);
         }
-        $section->add_citekeys($k);
+        section.add_citekeys(k);
       }
     }
 
@@ -1441,7 +1440,7 @@ impl Biber {
         if !section.has_citekey(k) {
           section.bibentry(k).set_field("xrefsource", 1);
         }
-        $section->add_citekeys($k);
+        section.add_citekeys(k);
       }
     }
   }
@@ -1465,13 +1464,13 @@ impl Biber {
 
     // This must come after doing implicit inclusion based on minref/mincrossref
     // otherwise cascading xref->crossref wont' work
-    for citekey in ($section.get_citekeys()) {
+    for citekey in section.get_citekeys() {
       let be = section.bibentry(citekey);
 
       // Do crossref inheritance
-      if (let $cr = $be->get_field("crossref")) {
+      if (let $cr = be.get_field("crossref")) {
         // Skip inheritance if we've already done it
-        if crate::Config->get_inheritance("crossref", $cr, $be->get_field("citekey")) {
+        if crate::Config->get_inheritance("crossref", $cr, be.get_field("citekey")) {
           continue;
         }
         let parent = section.bibentry(cr);
@@ -1553,7 +1552,7 @@ impl Biber {
   /// Generate name strings and disambiguation schema. Has to be in the context
   /// of a data list (reference context) because uniquenametemplate can be specified
   /// per-list/context
-  fn process_namedis(self, citekey: &str, $dlist) {
+  fn process_namedis(&self, citekey: &str, dlist: &DataList) -> HashMap<(Id, Id), Unknown> {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
@@ -1572,7 +1571,7 @@ impl Biber {
 
     // Instead of setting this directly in here, we save the data and pass it out as we need
     // to use this method to get data without setting it in the list object (in uniqueprimaryauthor())
-    let $namedis;
+    let mut namedis = HashMap;
 
   'MAIN:  for pn in &dmh.namelistsall {
       let nl = be.get_field(pn);
@@ -1596,7 +1595,7 @@ impl Biber {
         let nid = n.get_id();
 
         let namestring = String::new();
-        let $namestrings = [];
+        let namestrings = Vec::new();
         let $namedisschema = [];
 
         // per-name uniquenametemplatename
@@ -1614,7 +1613,7 @@ impl Biber {
         let $nameun = $un;
 
         // First construct base part ...
-        let $base = ""; // Might not be any base parts at all so make sure it's not undefined
+        let mut base = String::new(); // Might not be any base parts at all so make sure it's not undefined
         let $baseparts;
 
         for np in (crate::Config->getblxoption(None, "uniquenametemplate")->{untname}->@*) {
@@ -1641,13 +1640,13 @@ impl Biber {
                 continue;
               }
             }
-            $base .= $p;
+            base.push_str(p);
             push $baseparts->@*, $npn;
           }
         }
 
-        $namestring .= $base;
-        push $namestrings->@*, $base;
+        namestring.push_str(&base);
+        namestrings.push(base);
         if defined($baseparts) {
           push $namedisschema->@*, ["base" => $baseparts];
         }
@@ -1664,72 +1663,73 @@ impl Biber {
           let $npn = $np->{namepart};
 
           let $level = $np->{disambiguation}.unwrap_or($UNIQUENAME_CONTEXTS{$un.unwrap_or("false")});
-          let $lastns = $namestrings->[$namestrings->$#*];
+          let lastns = namestrings.last().unwrap();
 
-          if (let $p = $n->get_namepart($npn)) {
-            let $pi = $n->get_namepart_initial($npn);
+          let p = n.get_namepart(npn);
+          if !p.is_empty() {
+            let pi = n.get_namepart_initial(npn);
             if ($np->{use}) {     // only ever defined as 1
               let $method = format!("get_use{npn}");
-              let $useok = crate::Config->getblxoption(secnum, &format!("use{npn}"), bee, citekey);
+              let mut useok = crate::Config->getblxoption(secnum, &format!("use{npn}"), bee, citekey);
               // Override with per-namelist setting - only for extended name format
               if (defined($nl->$method)) {
-                $useok = $nl->$method;
+                useok = $nl->$method;
               }
               // Override with per-name setting - only for extended name format
               if (defined($n->$method)) {
-                $useok = $n->$method;
+                useok = $n->$method;
               }
               if !$useok {
                 continue;
               }
             }
 
-            $namestring .= $p;
+            namestring.push_str(p);
 
             // per-namepart disambiguation level
             // Here we incrementally add disambiguation possibilities to an array and simultaneously
             // record a schema of what each incremental disambiguation is
             if unicase::eq(level, "full") { // only full disambiguation
-              push $namestrings->@*, $lastns . $p;
+              namestrings.push(format!("{lastns}{p}"));
               push $namedisschema->@*, [$npn => "fullonly"];
             }
             if unicase::eq(level, "initorfull") { // initials or full disambiguation
-              push $namestrings->@*, $lastns . join("", $pi->@*);
+              namestrings.push(format!("{lastns}{}", pi.join(""));
               push $namedisschema->@*, [$npn => "init"];
-              push $namestrings->@*, $lastns . $p;
+              namestrings.push(format!("{lastns}{p}"));
               push $namedisschema->@*, [$npn => "full"];
             }
             else if unicase::eq(level, "init") { // inits only
-              push $namestrings->@*, $lastns . join("", $pi->@*);
+              namestrings.push(format!("{lastns}{}", pi.join(""));
               push $namedisschema->@*, [$npn => "init"];
             }
           }
         }
 
-          trace!("namestrings in '{}': {}", citekey, join (',', $namestrings->@*));
+          trace!("namestrings in '{citekey}': {}", namestrings.join(','));
 
         // namelistul is the option value of the effective uniquelist option at the level
         // of the list in which the name occurs. It's useful to know this where the results
         // of the sub are used
-        $namedis->{$nlid}{$nid} = {nameun        => $nameun,
-                                  namelistul    => $ul,
+        namedis.insert((nlid, nid), {nameun        => $nameun,
+                                  namelistul    => ul,
                                   namestring    => strip_nonamestring($namestring, nl.get_type()),
-                                  namestrings   => [map {strip_nonamestring($_, nl.get_type())} $namestrings->@*],
-                                  namedisschema => $namedisschema};
+                                  namestrings   => namestrings.iter().map(|s| strip_nonamestring(s, nl.get_type())).collect::<Vec<_>>(),
+                                  namedisschema => $namedisschema});
       }
     }
 
-    return $namedis;
+    namedis
   }
 
   /// Adds required per-entry options etc. to sets
   fn postprocess_sets(self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    for citekey in ( $section.get_citekeys() ) {
+    for citekey in section.get_citekeys() {
 
       // process set entries
-      $self->process_sets($citekey);
+      self.process_sets(citekey);
     }
 
     return;
@@ -1741,59 +1741,52 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Processing static entry information in section {}", secnum);
-    for citekey in ( $section.get_citekeys() ) {
+    for citekey in section.get_citekeys() {
 
       // generate nocite information
-      $self->process_nocite($citekey);
+      self.process_nocite(citekey);
 
       // generate labelname name
-      $self->process_labelname($citekey);
+      self.process_labelname(citekey);
 
       // generate labeldate name
-      $self->process_labeldate($citekey);
+      self.process_labeldate(citekey);
 
       // generate labeltitle name
-      $self->process_labeltitle($citekey);
+      self.process_labeltitle(citekey);
 
       // generate fullhash
-      $self->process_fullhash($citekey);
+      self.process_fullhash(citekey);
 
       // push entry-specific presort fields into the presort state
-      $self->process_presort($citekey);
+      self.process_presort(citekey);
     }
   }
 
   /// Main processing operations, to generate metadata and entry information
   /// This method is automatically called by C<prepare>.
   /// Runs prior to uniqueness processing
-  fn process_entries_pre(self, $dlist) {
+  fn process_entries_pre(self, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Processing entries in section {} (before uniqueness)", secnum);
-    for citekey in ( $section.get_citekeys() ) {
+    for citekey in section.get_citekeys() {
 
       let be = section.bibentry(citekey);
 
       // process name disambiguation schemata
-      let $namedis = $self->process_namedis($citekey, $dlist);
+      let namedis = self.process_namedis(citekey, dlist);
 
-      for nlid in (keys $namedis->%*) {
-        for nid in (keys $namedis->{$nlid}->%*) {
-          // process_namedis() has to record uniquelist/uniquename as it has access to
-          // namelist-scope and name-scope uniquelist/uniquename and makes this visible
-          // here so that they can be checked
-          // We only don't set name disambiguation data if both uniquelist/uniquename
-          // effective options are "false". If either are not false, we need the information
-          if ($namedis->{$nlid}{$nid}{nameun} == "false" &&
-              $namedis->{$nlid}{$nid}{namelistul} == "false") {
-            continue;
-          }
-          $dlist->set_namedis($nlid,
-                              $nid,
-                              $namedis->{$nlid}{$nid}{namestring},
-                              $namedis->{$nlid}{$nid}{namestrings},
-                              $namedis->{$nlid}{$nid}{namedisschema});
+      for ((nlid, nid), val) in namedis {
+        // process_namedis() has to record uniquelist/uniquename as it has access to
+        // namelist-scope and name-scope uniquelist/uniquename and makes this visible
+        // here so that they can be checked
+        // We only don't set name disambiguation data if both uniquelist/uniquename
+        // effective options are "false". If either are not false, we need the information
+        if (val.nameun == "false" && val.namelistul == "false") {
+          continue;
         }
+        dlist.set_namedis(nlid, nid, val.namestring, val.namestrings, val.namedisschema);
       }
     }
 
@@ -1805,41 +1798,41 @@ impl Biber {
   /// More processing operations, to generate things which require uniqueness
   /// information like namehash
   /// Runs after uniqueness processing
-  fn process_entries_post(self, $dlist) {
+  fn process_entries_post(&self, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Postprocessing entries in section {} (after uniqueness)", secnum);
-    for citekey in ( $section.get_citekeys() ) {
+    for citekey in section.get_citekeys() {
 
       // generate labelalpha information
-      $self->process_labelalpha($citekey, $dlist);
+      self.process_labelalpha(citekey, dlist);
 
       // generate information for tracking extraalpha
-      $self->process_extraalpha($citekey, $dlist);
+      self.process_extraalpha(citekey, dlist);
 
       // generate information for tracking extradate
-      $self->process_extradate($citekey, $dlist);
+      self.process_extradate(citekey, dlist);
 
       // generate information for tracking extraname
-      $self->process_extraname($citekey, $dlist);
+      self.process_extraname(citekey, dlist);
 
       // generate information for tracking extratitle
-      $self->process_extratitle($citekey, $dlist);
+      self.process_extratitle(citekey, dlist);
 
       // generate information for tracking extratitleyear
-      $self->process_extratitleyear($citekey, $dlist);
+      self.process_extratitleyear(citekey, dlist);
 
       // generate information for tracking singletitle, uniquetitle, uniquebaretitle and uniquework
-      $self->process_workuniqueness($citekey, $dlist);
+      self.process_workuniqueness(citekey, dlist);
 
       // generate namehash
-      $self->process_namehash($citekey, $dlist);
+      self.process_namehash(citekey, dlist);
 
       // generate per-name hashes
-      $self->process_pername_hashes($citekey, $dlist);
+      self.process_pername_hashes(citekey, dlist);
 
       // generate information for tracking uniqueprimaryauthor
-      $self ->process_uniqueprimaryauthor($citekey, $dlist);
+      self/process_uniqueprimaryauthor(citekey, dlist);
 
     }
 
@@ -1849,63 +1842,63 @@ impl Biber {
   }
 
   /// Final processing operations which depend on all previous processing
-  fn process_entries_final(self, $dlist) {
+  fn process_entries_final(&self, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Final processing for entries in section {}", secnum);
-    for citekey in ( $section.get_citekeys() ) {
+    for citekey in section.get_citekeys() {
 
       // Generate singletitle field if requested
-      $self->generate_singletitle($citekey, $dlist);
+      self.generate_singletitle(citekey, dlist);
 
       // Generate uniquetitle field if requested
-      $self->generate_uniquetitle($citekey, $dlist);
+      self.generate_uniquetitle(citekey, dlist);
 
       // Generate uniquebaretitle field if requested
-      $self->generate_uniquebaretitle($citekey, $dlist);
+      self.generate_uniquebaretitle(citekey, dlist);
 
       // Generate uniquework field if requested
-      $self->generate_uniquework($citekey, $dlist);
+      self.generate_uniquework(citekey, dlist);
 
       // Generate uniqueprimaryauthor if requested
-      $self->generate_uniquepa($citekey, $dlist);
+      self.generate_uniquepa(citekey, dlist);
     }
   }
 
   /// Track seen primary author base names for generation of uniqueprimaryauthor
-  fn process_uniqueprimaryauthor(self, citekey: &str, $dlist) {
+  fn process_uniqueprimaryauthor(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
     let bee = be.get_field("entrytype");
 
-    if (let $lni = be.get_labelname_info()) {
-      if (crate::Config->getblxoption(None, "uniqueprimaryauthor", $bee, $citekey)) {
-        let $nl = $be->get_field($lni);
+    if let Some(lni) = be.get_labelname_info().skip_empty() {
+      if (crate::Config->getblxoption(None, "uniqueprimaryauthor", bee, citekey)) {
+        let nl = be.get_field(lni);
           trace!("Creating uniqueprimaryauthor information for '{}'", citekey);
 
-        let $namedis = $self->process_namedis($citekey, $dlist);
+        let namedis = self.process_namedis(citekey, dlist);
 
-        let $nds = $namedis->{nl.get_id()}{nl.nth_name(1).get_id()}{namedisschema};
-        let $nss = $namedis->{nl.get_id()}{nl.nth_name(1).get_id()}{namestrings};
-        let $pabase;
+        let val = namedis.get((nl.get_id(), nl.nth_name(1).get_id())).unwrap();
+        let nds = val.namedisschema;
+        let nss = val.namestrings;
+        let mut pabase = None;
 
-        for (let $i=0;$i<=$nds->$#*;$i++) {
-          let $se = $nds->[$i];
-          if ($se->[0] == "base") {
-            $pabase = $nss->[$i];
+        for (i, se) in nds.iter().enumerate() {
+          if se[0] == "base" {
+            pabase = nss[i];
           }
         }
 
-        $dlist->set_entryfield($citekey, "seenprimaryauthor", $pabase);
-        $dlist->incr_seenpa($pabase, $nl->nth_name(1)->get_hash);
+        dlist.set_entryfield(citekey, "seenprimaryauthor", pabase);
+        dlist.incr_seenpa(pabase, nl.nth_name(1).get_hash());
       }
     }
   }
 
   /// Track seen work combination for generation of singletitle, uniquetitle, uniquebaretitle and
   /// uniquework
-  fn process_workuniqueness(self, citekey: &str, dlist: &mut DataList) {
+  fn process_workuniqueness(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
@@ -2076,7 +2069,7 @@ impl Biber {
 
       let namehash = "";
       if let Some(lni) = be.get_labelname_info().skip_empty() {
-        namehash = self->_getnamehash_u(citekey, be.get_field(lni), dlist);
+        namehash = self._getnamehash_u(citekey, be.get_field(lni), dlist);
       }
 
       let lti = be.get_labeltitle_info();
@@ -2460,7 +2453,7 @@ impl Biber {
   }
 
   /// Generate namehash
-  fn process_namehash(self, citekey: &str, dlist) {
+  fn process_namehash(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
@@ -2469,10 +2462,10 @@ impl Biber {
     // namehash is generated from the labelname
     // This can't be resolved nicely by biblatex because it depends on use* options
     // and also SHORT* fields etc.
-    if (let $lni = be.get_labelname_info()) {
-      if (let $ln = $be->get_field($lni)) {
-        $dlist->set_entryfield($citekey, "namehash", $self->_getnamehash($citekey, $ln, $dlist));
-        $dlist->set_entryfield($citekey, "bibnamehash", $self->_getnamehash($citekey, $ln, $dlist, 1));
+    if let Some(lni) = be.get_labelname_info().skip_empty() {
+      if (let $ln = be.get_field(lni)) {
+        dlist.set_entryfield(citekey, "namehash", self._getnamehash(citekey, ln, dlist, false));
+        dlist.set_entryfield(citekey, "bibnamehash", self._getnamehash(citekey, ln, dlist, true));
       }
     }
 
@@ -2482,26 +2475,26 @@ impl Biber {
       if !nv {
         continue;
       }
-      $dlist->set_entryfield($citekey, "${n}namehash", $self->_getnamehash($citekey, nv, $dlist));
-      $dlist->set_entryfield($citekey, "${n}bibnamehash", $self->_getnamehash($citekey, nv, $dlist, 1));
+      dlist.set_entryfield(citekey, &format!("{n}namehash"), self._getnamehash(citekey, nv, dlist, false));
+      dlist.set_entryfield(citekey, &format!("{n}bibnamehash"), self._getnamehash(citekey, nv, dlist, true));
     }
 
     return;
   }
 
   /// Generate per_name_hashes
-  fn process_pername_hashes(self, citekey: &str, $dlist) {
+  fn process_pername_hashes(self, citekey: &str, $dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
-    let $dmh = crate::config::get_dm_helpers();
+    let dmh = crate::config::get_dm_helpers();
 
     for pn in ($dmh->{namelistsall}->@*) {
       let nl = $be->get_field($pn);
       if !nl {
         continue;
       }
-      for n in ($nl->names->@*) {
+      for n in nl.names() {
         let $pnhash = $self->_genpnhash($citekey, $n);
         n.set_hash($pnhash);
         dlist.set_namehash(nl.get_id(), n.get_id(), pnhash);
@@ -2632,7 +2625,7 @@ impl Biber {
   }
 
   /// Generate the labelalpha and also the variant for sorting
-  fn process_labelalpha(self, citekey: &str, $dlist) {
+  fn process_labelalpha(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
@@ -2642,21 +2635,21 @@ impl Biber {
       return;
     }
     if ( let $la = crate::Config->getblxoption(None, "labelalpha", bee, citekey) ) {
-      let ($label, $sortlabel) = $self->_genlabel($citekey, $dlist)->@*;
-      $dlist->set_entryfield($citekey, "labelalpha", $label);
-      $dlist->set_entryfield($citekey, "sortlabelalpha", $sortlabel);
+      let (label, sortlabel) = $self->_genlabel(citekey, dlist)->@*;
+      dlist.set_entryfield(citekey, "labelalpha", label);
+      dlist.set_entryfield(citekey, "sortlabelalpha", sortlabel);
     }
   }
 
   /// Generate the extraalpha information
-  fn process_extraalpha(self, citekey: &str, $dlist) {
+  fn process_extraalpha(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
     let bee = be.get_field("entrytype");
     if (crate::Config->getblxoption(None, "labelalpha", bee, citekey)) {
-      if (let $la = $dlist->get_entryfield($citekey, "labelalpha")) {
-        $dlist->incr_la_disambiguation($la);
+      if (let $la = dlist.get_entryfield(citekey, "labelalpha")) {
+        dlist.incr_la_disambiguation(la);
       }
     }
   }
@@ -2697,7 +2690,7 @@ impl Biber {
       if !($list->get_labelalphanametemplatename) {
         $list->set_labelalphanametemplatename("global");
       }
-      $list->set_keys([ $section.get_citekeys() ]);
+      list.set_keys([ section.get_citekeys() ]);
         debug!("Populated datalist '{}' of type '{}' with attributes '{}' in section {} with keys: {}", lname, ltype, lattrs, secnum, list.get_keys().join(", "));
 
       // A datalist represents a biblatex refcontext
@@ -4110,40 +4103,40 @@ impl Biber {
     // We still do this even in tool mode which is implicitly allkeys=1 because it
     // prunes things like missing crossrefs etc. which otherwise would cause problems
     // later on
-    get_dependents($self, [$section.get_citekeys()]);
-      debug!("Citekeys for section '{}' after fetching data: {}", secnum, join(', ', $section.get_citekeys()));
+    self.get_dependents(section.get_citekeys());
+      debug!("Citekeys for section '{}' after fetching data: {}", secnum, section.get_citekeys().join(", "));
     return;
   }
 
   /// Get dependents of the entries for a given list of citekeys. Is called recursively
   /// until there are no more dependents to look for.
-  fn get_dependents(self, $keys, $keyswithdeps, $missing) {
+  fn get_dependents(self, keys: &[String], $keyswithdeps, $missing) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $new_deps;
+    let new_deps = Vec::new();
 
     $keyswithdeps = $keyswithdeps.unwrap_or([]);
     $missing = $missing.unwrap_or([]);
 
     no strict "refs"; // symbolic references below ...
 
-    for citekey in ($keys->@*) {
+    for citekey in keys {
       // aliases need resolving here and are treated as dependents
-      if (let $real = $section->get_citekey_alias($citekey)) {
+      if (let $real = section.get_citekey_alias(citekey)) {
           debug!("Alias '{}' requires real key '{}'", citekey, real);
-        push $new_deps->@*, $real;
-        if !(first {$real == $_} $keyswithdeps->@*) {
-          push $keyswithdeps->@*, $real;
+        new_deps.push(real);
+        if !keyswithdeps.contains(real) {
+          keyswithdeps.push(real);
         }
       }
       // Dynamic sets don't exist yet but their members do
-      else if (let @dmems = $section->get_dynamic_set($citekey)) {
+      else if (let @dmems = section.get_dynamic_set(citekey)) {
         // skip looking for dependent if it's already there
         for dm in (@dmems) {
-          if !section.bibentry($dm) {
-            push $new_deps->@*, $dm;
-            if !(first {$citekey == $_} $keyswithdeps->@*) {
-              push $keyswithdeps->@*, $citekey;
+          if !section.bibentry(dm) {
+            new_deps.push(dm);
+            if !keyswithdeps.contains(citekey) {
+              keyswithdeps.push(citekey);
             }
           }
         }
@@ -4159,11 +4152,11 @@ impl Biber {
             for xdref in ($xdatum->{xdataentries}->@*) {
               // skip looking for dependent if it's already there (loop suppression)
               if !section.bibentry(xdref) {
-                push $new_deps->@*, $xdref;
+                new_deps.push(xdref);
               }
                 debug!("Entry '{}' has xdata '{}'", citekey, xdref);
-              if !(first {$citekey == $_} $keyswithdeps->@*) {
-                push $keyswithdeps->@*, $citekey;
+              if !keyswithdeps.contains(citekey) {
+                keyswithdeps.push(citekey);
               }
             }
           }
@@ -4176,8 +4169,8 @@ impl Biber {
             new_deps.push(refkey);
           }
             debug!("Entry '{}' has xref '{}'", citekey, refkey);
-          if !(first {$citekey == $_} $keyswithdeps->@*) {
-            push $keyswithdeps->@*, $citekey;
+          if !keyswithdeps.contains(citekey) {
+            keyswithdeps.push(citekey);
           }
         }
 
@@ -4194,34 +4187,34 @@ impl Biber {
         }
 
         // static sets
-        if ($be->get_field("entrytype") == "set") {
-          let $smems = $be->get_field("entryset");
+        if be.get_field("entrytype") == "set" {
+          let smems = be.get_field("entryset");
           // skip looking for dependent if it's already there (loop suppression)
-          for sm in ($smems->@*) {
+          for sm in smems {
             if !section.has_citekey(sm) {
-              push $new_deps->@*, $sm;
-              if !(first {$citekey == $_} $keyswithdeps->@*) {
-                push $keyswithdeps->@*, $citekey;
+              new_deps.push(sm);
+              if !keyswithdeps.contains(citekey) {
+                keyswithdeps.push(citekey);
               }
             }
           }
-            debug!("Static set entry '{}' has members: {}", citekey, join(', ', $smems->@*));
+            debug!("Static set entry '{}' has members: {}", citekey, smems.join(", "));
         }
 
         // Related entries
-        if (let $relkeys = $be->get_field("related")) {
+        if (let $relkeys = be->get_field("related")) {
           // skip looking for dependent if it's already there (loop suppression)
-          for rm in ($relkeys->@*) {
+          for rm in relkeys {
             if !(section.has_citekey(rm) || section.is_related(rm)) {
               // record that $rm is used as a related entry key
-              $section->add_related($rm);
-              push $new_deps->@*, $rm;
-              if !(first {$citekey == $_} $keyswithdeps->@*) {
-                push $keyswithdeps->@*, $citekey;
+              section.add_related(rm);
+              new_deps.push(rm);
+              if !keyswithdeps.contains(citekey) {
+                keyswithdeps.push(citekey);
               }
             }
           }
-            debug!("Entry '{}' has related entries: {}", citekey, join(', ', $relkeys->@*));
+            debug!("Entry '{}' has related entries: {}", citekey, relkeys.join(", "));
         }
       }
     }
@@ -4229,16 +4222,16 @@ impl Biber {
     // Remove repeated keys which are dependents of more than one entry
     $new_deps->@* = uniq $new_deps->@*;
 
-    if ($new_deps->@*) {
+    if !new_deps.is_empty() {
       // Now look for the dependents of the directly cited keys
-        debug!("Looking for dependent keys: {}", join(', ', $new_deps->@*));
+        debug!("Looking for dependent keys: {}", new_deps.join(", "));
 
       // No need to go back to the datasource if allkeys, just see if the keys
       // are in section
       if section.is_allkeys() {
-        for dk in ($new_deps->@*) {
+        for dk in &new_deps {
           if !section.has_citekey(dk) {
-            push $missing->@*, $dk;
+            missing.push(dk);
           }
         }
       }
@@ -4246,14 +4239,14 @@ impl Biber {
         $missing->@* = $new_deps->@*;
         for datasource in ($section->get_datasources->@*) {
           // shortcut if we have found all the keys now
-          if !($missing->@*) {
+          if missing.is_empty() {
             break;
           }
           let $type = $datasource->{type};
           let $name = $datasource->{name};
           let $encoding = $datasource->{encoding};
           let $datatype = $datasource->{datatype};
-          let $package = 'crate::Input::' . $type . '::' . $datatype;
+          let $package = "crate::Input::" . $type . "::" . $datatype;
           eval "require $package" ||
             biber_error("Error loading data source package '$package': $@");
           $missing->@* = "${package}::extract_entries"->(locate_data_file($name), $encoding, $missing);
@@ -4263,15 +4256,15 @@ impl Biber {
         debug!("Dependent keys not found for section '{}': {}", secnum, join(', ', $missing->@*));
       for missing_key in ($missing->@*) {
         // Remove the missing key from the list to recurse with
-        $new_deps->@* = grep { $_ != $missing_key } $new_deps->@*;
+        new_deps.retain(|k| k!= $missing_key);
       }
     }
 
     // recurse if there are more things to find
-      trace!("Recursing in get_dependents with: {}", join(', ', $new_deps->@*));
+      trace!("Recursing in get_dependents with: {}", new_deps.join(", "));
 
-    if $new_deps->@* {
-      get_dependents($self, $new_deps, $keyswithdeps);
+    if !new_deps.is_empty() {
+      self.get_dependents(new_deps, $keyswithdeps);
     }
 
     // Now remove any missing entries from various places in all entries we have flagged
@@ -4288,13 +4281,14 @@ impl Biber {
 
   /// Remove undefined dependent keys from an entry using a map of
   /// dependent keys to entries
-  fn remove_undef_dependent(self, citekey, missing_key) {
+  fn remove_undef_dependent(&mut self, citekey: &str, missing_key: &str) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
       debug!("Removing dependency on missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
 
     // remove from any dynamic keys
-    if (let @dmems = $section->get_dynamic_set($citekey)){
+    let dmems = section.get_dynamic_set(citekey);
+    if !dmems.is_empty() {
       if dmems.contains(missing_key) {
         section.set_dynamic_set(citekey, dmems.iter().filter(|s| s != missing_key).map(|s| s.as_str()));
           trace!("Removed dynamic set dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
@@ -4311,7 +4305,7 @@ impl Biber {
           trace!("Removed xref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
 
         if (!crate::Config->getoption("tool_noremove_missing_dependants")) {
-          $be->del_field("xref");
+          be.del_field("xref");
         }
       }
 
@@ -4322,41 +4316,41 @@ impl Biber {
           trace!("Removed crossref dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
 
         if (!crate::Config->getoption("tool_noremove_missing_dependants")) {
-          $be->del_field("crossref");
+          be.del_field("crossref");
         }
       }
 
       // remove xdata
-      if (let $xdata = $be->get_field("xdata")) {
-        if (first {$missing_key == $_} $xdata->@*) {
+      if (let xdata = be.get_field("xdata")) {
+        if xdata.contains(missing_key) {
           biber_warn("I didn't find a database entry for xdata entry '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
         }
 
           trace!("Removed xdata dependency for missing key '$missing_key' from '$citekey' in section '$secnum'");
 
         if (!crate::Config->getoption("tool_noremove_missing_dependants")) {
-          $be->set_datafield("xdata", [ grep {$_ != $missing_key} $xdata->@* ]);
+          be.set_datafield("xdata", xdata.iter().filter(|k| k != missing_key));
         }
       }
 
       // remove static sets
-      if ($be->get_field("entrytype") == "set") {
-        let $smems = $be->get_field("entryset");
-        if (first {$missing_key == $_} $smems->@*) {
-          $be->set_datafield("entryset", [ grep {$_ != $missing_key} $smems->@* ]);
+      if (be.get_field("entrytype") == "set") {
+        let $smems = be.get_field("entryset");
+        if smems.contains(missing_key) {
+          be.set_datafield("entryset", smems.iter().filter(|k| k != missing_key));
             trace!("Removed static set dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
           biber_warn("I didn't find a database entry for static set member '$missing_key' in entry '$citekey' - ignoring (section $secnum)");
         }
       }
 
       // remove related entries
-      if (let $relkeys = $be->get_field("related")) {
-        if (first {$missing_key == $_} $relkeys->@*) {
-          $be->set_datafield("related", [ grep {$_ != $missing_key} $relkeys->@* ]);
+      if (let relkeys = be.get_field("related")) {
+        if relkeys.contains(missing_key) {
+          be.set_datafield("related", relkeys.iter().filter(|k| k != missing_key));
           // If no more related entries, remove the other related fields
-          if !($be->get_field("related")) {
-            $be->del_field("relatedtype");
-            $be->del_field("relatedstring");
+          if !(be.get_field("related")) {
+            be.del_field("relatedtype");
+            be.del_field("relatedstring");
               trace!("Removed related entry dependency for missing key '{}' from '{}' in section '{}'", missing_key, citekey, secnum);
           }
           biber_warn("I didn't find a database entry for related entry '$missing_key' in entry '$citekey' - ignoring (section $secnum)");

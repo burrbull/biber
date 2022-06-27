@@ -350,10 +350,13 @@ impl Name {
     }
 
     for np in ["prefix", "family", "suffix", "given"] {
-      if ($parts->{$np} = self.get_namepart($np)) {
-        $parts->{$np} =~ s/~/ /g;
-        if (self.was_stripped($np)) {
-          $parts->{$np} = crate::utils::add_outer($parts->{$np});
+      let namepart = self.get_namepart(np);
+      parts.insert(np, namepart);
+      if !namepart.is_empty() {
+        let namepart = namepart.replace("~", " ");
+        parts.insert(np, namepart);
+        if (self.was_stripped(np)) {
+          parts.insert(np, crate::utils::add_outer(&namepart));
         }
       }
     }
@@ -385,9 +388,12 @@ impl Name {
     let $xns = crate::Config->getoption("output_xnamesep");
 
     for np in (sort $dm->get_constant_value("nameparts")) {// list type so returns list
-      if ($parts->{$np} = self.get_namepart(np)) {
-        $parts->{$np} =~ s/~/ /g;
-        namestring.push(format!("{np}{xns}{}", parts.np));
+      let namepart = self.get_namepart(np);
+      parts.insert(np, namepart);
+      if !namepart.is_empty() {
+        let namepart = namepart.replace("~", " ");
+        namestring.push(format!("{np}{xns}{}", &namepart));
+        parts.insert(np, namepart);
       }
     }
 

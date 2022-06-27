@@ -161,12 +161,12 @@ fn extract_entries(filename, _encoding, keys) {
     // keys from the bibentries hash because we need to preserver the original order of
     // the .bib as in this case the sorting sub "citeorder" means "bib order" as there are
     // no explicitly cited keys
-    $section->add_citekeys(@{$orig_key_order->{$filename}});
-      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section.get_citekeys()));
+    section.add_citekeys(@{$orig_key_order->{$filename}});
+      debug!("Added all citekeys to section '{secnum}': {}", section.get_citekeys().join(", "));
   }
   else {
     // loop over all keys we're looking for and create objects
-      debug!("Wanted keys: {}", join(', ', $keys->@*));
+      debug!("Wanted keys: {}", keys.join(", "));
     for wanted_key in ($keys->@*) {
 
         debug!("Looking for key '{}' in BibLaTeXML file '{}'", wanted_key, filename);
@@ -174,7 +174,7 @@ fn extract_entries(filename, _encoding, keys) {
         // Check to see if there is more than one entry with this key and warn if so
         if ($#entries > 0) {
           biber_warn("Found more than one entry for key '$wanted_key' in '$filename': " .
-                       join(',', map {$_->getAttribute("id")} @entries) . ' - skipping duplicates ...');
+          entries.iter().map(|e| e->getAttribute("id")).join(",") . ' - skipping duplicates ...');
         }
         let $entry = $entries[0];
 
@@ -212,7 +212,7 @@ fn extract_entries(filename, _encoding, keys) {
         // found a key, remove it from the list of keys we want
         rkeys.retain(|k| wanted_key != k);
       }
-        debug!("Wanted keys now: ", join(', ', @rkeys));
+        debug!("Wanted keys now: ", rkeys.join(", "));
     }
   }
 
