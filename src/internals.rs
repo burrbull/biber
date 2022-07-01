@@ -1255,8 +1255,8 @@ fn _sort_intciteorder(self, $citekey, $secnum, $section, $be, $dlist, $sorteleme
 }
 
 fn _sort_labelalpha(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
-  let $string = $dlist->get_entryfield($citekey, "sortlabelalpha").unwrap_or("");
-  return _process_sort_attributes($string, $sortelementattributes);
+  let string = dlist.get_entryfield(citekey, "sortlabelalpha").unwrap_or("");
+  return _process_sort_attributes(string, sortelementattributes);
 }
 
 fn _sort_labelname(self, citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {

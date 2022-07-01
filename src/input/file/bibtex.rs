@@ -1123,13 +1123,11 @@ fn _name(bibentry, entry, field, key) {
                                      undef,
                                      {binmode => "UTF-8", normalization => "NFD"});
 
-  for (let $i = 0; $i <= $#tmp; $i++) {
-    let $name = $tmp[$i];
-
+  for (i, name) in tmp.iter().enumerate() {
     // Record any XDATA and skip if we did
-    if ($bibentry->add_xdata_ref($field, $name, $i)) {
+    if ($bibentry.add_xdata_ref(field, name, i)) {
       // Add special xdata ref empty name as placeholder
-      $names->add_name(crate::Entry::Name->new(xdata => $name));
+      names.add_name(crate::Entry::Name->new(xdata => $name));
       continue;
     }
 
@@ -1165,7 +1163,7 @@ fn _name(bibentry, entry, field, key) {
       // uniquename defaults to 'false' just in case we are in tool mode otherwise
       // there are spurious uninitialised warnings
 
-      if !($no = parsename_x($section, $name, $fc, $key)) {
+      if !($no = parsename_x(section, name, fc, key)) {
         continue;
       }
     }
@@ -1180,9 +1178,9 @@ fn _name(bibentry, entry, field, key) {
         }
 
         // Consecutive commas cause Text::BibTeX::Name to segfault
-        if ($name =~ /,,/) {
+        if name.contains(",,") {
           biber_error("Name \"$name\" is malformed (consecutive commas): skipping entry '$key'", true);
-          $section->del_citekey($key);
+          section.del_citekey(key);
           return "BIBER_SKIP_ENTRY";
         }
       }
@@ -1190,24 +1188,24 @@ fn _name(bibentry, entry, field, key) {
       // Skip names that don't parse for some reason
       // unique name defaults to 0 just in case we are in tool mode otherwise there are spurious
       // uninitialised warnings
-      if !($no = parsename($section, $name, $fc)) {
+      if !($no = parsename(section, name, fc)) {
         continue;
       }
     }
 
     // Deal with implied "et al" in data source
-    if (lc($no->get_rawstring) == crate::Config->getoption("others_string")) {
-      $names->set_morenames;
+    if no.get_rawstring().to_lowercase() == crate::Config->getoption("others_string") {
+      names.set_morenames();
     }
     else {
       if $no {
-        $names->add_name($no);
+        names.add_name(no);
       }
     }
   }
 
   // Don't set if there were no valid names due to special errors above
-  return $names->count ? $names : undef;
+  return if names.count() { $names } else { None };
 }
 
 // Dates

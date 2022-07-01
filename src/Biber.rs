@@ -7,6 +7,8 @@
 //! $biber->prepare;
 //! ```
 
+use crate::section::{DataSource, DataSourceType};
+
 use parent qw(Class::Accessor crate::Internals);
 
 use constant {
@@ -180,10 +182,13 @@ impl Biber {
     let $bib_section = crate::Section::new(99999);
     let mut ifs = Vec::new();
     for i_f in (@ARGV) {
-      ifs.push({type => "file",
-                      name => i_f,
-                      datatype => crate::Config->getoption("input_format"),
-                      encoding => crate::Config->getoption("input_encoding")});
+      ifs.push(DataSource {
+        type: DataSourceType::File,
+        name: i_f,
+        datatype: crate::Config->getoption("input_format"),
+        encoding: crate::Config->getoption("input_encoding"),
+        glob: None,
+      });
     }
     bib_section.set_datasources(ifs);
 
@@ -202,14 +207,16 @@ impl Biber {
     self.add_sections(bib_sections);
 
     let datalists = crate::DataLists::new();
-    let seclist = crate::DataList->new(section => 99999,
-                                      sortingtemplatename        => "tool",
-                                      sortingnamekeytemplatename => "global",
-                                      uniquenametemplatename     => "global",
-                                      labelalphanametemplatename => "global",
-                                      labelprefix                => "",
-                                      name                       => "tool/global//global/global");
-    seclist.set_type("entry");
+    let seclist = crate::DataList::new(
+      99999,
+      "tool/global//global/global",
+      "entry",
+      "tool",
+      "global",
+      "global",
+      "global",
+      "",
+    );
     // Locale just needs a default here - there is no biblatex option to take it from
     crate::Config->setblxoption(None, "sortlocale", "en_US");
       debug!("Adding "entry" list "tool" for pseudo-section 99999");
@@ -762,14 +769,17 @@ impl Biber {
     let %bibdatasources = ();
     for data in ($bcfxml->{bibdata}->@*) {
       for datasource in ($data->{datasource}->@*) {
-        if !(first {$_->{type} == $datasource->{type} &&
-              $_->{datatype} == $datasource->{datatype} &&
-                $_->{name} == $datasource->{content}} $bibdatasources{$data->{section}[0]}->@*) {
-          push $bibdatasources{$data->{section}[0]}->@*, { type     => $datasource->{type},
-                                                          name     => $datasource->{content},
-                                                          datatype => $datasource->{datatype},
-                                                          encoding => $datasource->{encoding}.unwrap_or(crate::Config->getoption("input_encoding")),
-                                                          glob     => $datasource->{glob}.unwrap_or(crate::Config->getoption("glob_datasources")});
+        if !bibdatasources{$data->{section}[0]}.iter().any(|d|
+          d.typ == $datasource->{type} &&
+          d.datatype == $datasource->{datatype} &&
+          d.name == $datasource->{content}
+        ) {
+          bibdatasources{$data->{section}[0]}.push(DataSource{ type     => $datasource->{type},
+            name: $datasource->{content},
+            datatype: $datasource->{datatype},
+            encoding: $datasource->{encoding}.unwrap_or(crate::Config->getoption("input_encoding")),
+            glob: $datasource->{glob}.unwrap_or(crate::Config->getoption("glob_datasources"),
+          });
         }
       }
     }
@@ -796,8 +806,8 @@ impl Biber {
 
       // Set the data files for the section unless we've already done so
       // (for example, for multiple section 0 entries)
-      if !$bib_section->get_datasources {
-        $bib_section->set_datasources($bibdatasources{$secnum});
+      if bib_section.get_datasources().skip_empty().is_none() {
+        bib_section.set_datasources(bibdatasources{secnum});
       }
 
       let @prekeys = ();
@@ -924,28 +934,29 @@ impl Biber {
           continue;
       }
 
-      let $datalist = crate::DataList->new(section                    => $lsection,
-                                          sortingtemplatename        => $lstn,
-                                          sortingnamekeytemplatename => $lsnksn,
-                                          uniquenametemplatename     => $luntn,
-                                          labelalphanametemplatename => $llantn,
-                                          labelprefix                => $lpn,
-                                          name                       => $lname);
-      $datalist->set_type($ltype || "entry"); // lists are entry lists by default
-      $datalist->set_name($lname || format!("{lstn}/{lsnksn}/{lpn}/{luntn}/{llantn}")); // default to ss+snkss+pn+untn+lantn
+      let datalist = crate::DataList::new(
+        lsection,
+        lname || format!("{lstn}/{lsnksn}/{lpn}/{luntn}/{llantn}"), // default to ss+snkss+pn+untn+lantn
+        ltype.to_lowercase() || "entry", // lists are entry lists by default
+        lstn,
+        lsnksn,
+        luntn,
+        llantn,
+        lpn,
+      );
       for filter in ($list->{filter}->@*) {
-        $datalist->add_filter({"type"  => $filter->{type},
+        datalist.add_filter({"type"  => $filter->{type},
                               "value" => $filter->{content}});
       }
       // disjunctive filters are an array ref of filter hashes
       for orfilter in ($list->{filteror}->@*) {
-        let $orfilts = [];
+        let mut orfilts = Vec::new();
         for filter in ($orfilter->{filter}->@*) {
-          push $orfilts->@*, {type  => $filter->{type},
-                              value => $filter->{content}};
+          orfilts.push({type  => $filter->{type},
+                              value => $filter->{content}});
         }
-        if $orfilts {
-          $datalist->add_filter($orfilts);
+        if !orfilts.is_empty() {
+          datalist.add_filter(&orfilts);
         }
       }
 
@@ -954,7 +965,7 @@ impl Biber {
       // Potentially, the locale could be different for the first field in the sort spec in which
       // case that might give wrong results but this is highly unlikely as it is only used to
       // determine sortinithash in DataList.pm and that only changes \bibinitsep in biblatex.
-      $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
+      datalist.set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{datalist.get_sortingtemplatename()}->{locale}, level => 1));
 
         debug!("Adding datalist of type '{}' with sortingtemplate '{}', sortingnamekeytemplatename '{}', labelprefix '{}', uniquenametemplate '{}', labelalphanametemplate '{}' and name '{}' for section {}", ltype, lstn, lsnksn, lpn, luntn, llantn, lname, lsection);
       datalists.add_list(datalist);
@@ -964,7 +975,7 @@ impl Biber {
     // We have to make sure in case sortcites is used which uses the global order.
     for section in ($bcfxml->{section}->@*) {
       let $globalss = crate::Config->getblxoption(None, "sortingtemplatename");
-      let $secnum = $section->{number};
+      let secnum = section.number();
 
       if !($datalists->get_lists_by_attrs(section                    => $secnum,
                                             type                       => "entry",
@@ -974,18 +985,20 @@ impl Biber {
                                             labelalphanametemplatename => "global",
                                             labelprefix                => "",
                                             name                       => format!("{globalss}/global//global/global"))) {
-        let $datalist = crate::DataList->new(section                    => $secnum,
-                                            type                       => "entry",
-                                            sortingtemplatename        => $globalss,
-                                            sortingnamekeytemplatename => "global",
-                                            uniquenametemplatename     => "global",
-                                            labelalphanametemplatename => "global",
-                                            labelprefix                => "",
-                                            name                       => format!("{globalss}/global//global/global"));
+        let datalist = crate::DataList::new(
+          secnum,
+          &format!("{globalss}/global//global/global"),
+          "entry",
+          globalss,
+          "global",
+          "global",
+          "global",
+          "",
+        );
         datalists.add_list(datalist);
         // See comment above
 
-        $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
+        datalist.set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{datalist.get_sortingtemplatename()}->{locale}, level => 1));
       }
     }
 
@@ -1020,21 +1033,23 @@ impl Biber {
         else {
           bib_section.add_citekeys(section.get_citekeys());
         }
-        for ds in (section->get_datasources->@*) {
-          bib_section->add_datasource($ds);
+        for ds in section.get_datasources() {
+          bib_section.add_datasource(ds);
         }
       }
 
       self.sections().add_section(bib_section);
 
-      let $datalist = crate::DataList->new(section => 99999,
-                                          sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"),
-                                          sortingnamekeytemplatename => "global",
-                                          uniquenametemplatename     => "global",
-                                          labelalphanametemplatename => "global",
-                                          labelprefix => "",
-                                          name => crate::Config->getblxoption(None, "sortingtemplatename") . "/global//global/global");
-      $datalist->set_type("entry");
+      let datalist = crate::DataList::new(
+        99999,
+        crate::Config->getblxoption(None, "sortingtemplatename") . "/global//global/global",
+        "entry",
+        crate::Config->getblxoption(None, "sortingtemplatename"),
+        "global",
+        "global",
+        "global",
+        "",
+      );
         debug!("Adding "entry" list "none" for pseudo-section 99999");
       self.datalists.add_list(datalist);
     }
@@ -1063,18 +1078,20 @@ impl Biber {
     for section in &self.sections().get_sections() {
       let secnum = section.number();
 
-      if !($self->datalists->has_lists_of_type_for_section(secnum, "entry")) {
-        let $datalist = crate::DataList->new(sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"),
-                                            sortingnamekeytemplatename => "global",
-                                            uniquenametemplatename     => "global",
-                                            labelalphanametemplatename => "global",
-                                            labelprefix => "",
-                                            name => crate::Config->getblxoption(None, "sortingtemplatename") . "/global//global/global");
-        $datalist->set_type("entry");
-        $datalist->set_section(secnum);
+      if !(self.datalists.has_lists_of_type_for_section(secnum, "entry")) {
+        let datalist = crate::DataList::new(
+          secnum,
+          &format!("{}/global//global/global", crate::Config->getblxoption(None, "sortingtemplatename")),
+          "entry",
+          crate::Config->getblxoption(None, "sortingtemplatename"),
+          "global",
+          "global",
+          "global",
+          "",
+        );
         self.datalists.add_list(datalist);
         // See comment for same call in .bcf instantiation of datalists
-        $datalist->set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{$datalist->get_sortingtemplatename}->{locale}, level => 1));
+        datalist.set_sortinit_collator(Unicode::Collate::Locale->new(locale => crate::Config->getblxoption(None, "sortingtemplate")->{datalist.get_sortingtemplatename()}->{locale}, level => 1));
       }
     }
 
@@ -2107,18 +2124,18 @@ impl Biber {
         trace!("Creating extratitleyear information for '{}'", citekey);
 
       let lti = be.get_labeltitle_info();
-      let $title_string = $be->get_field($lti).unwrap_or("");
+      let title_string = be.get_field(lti).unwrap_or("");
 
       // Takes into account the labelyear which can be a range
-      let $year_string = $be->get_field("labelyear") || $be->get_field("year") || "";
+      let year_string = be.get_field("labelyear") || be.get_field("year") || "";
 
-      let $titleyear_string = "$title_string,$year_string";
+      let titleyear_string = format!("{title_string},{year_string}");
         trace!("Setting titleyear to '{}' for entry '{}'", titleyear_string, citekey);
 
-      $dlist->set_entryfield($citekey, "titleyear", $titleyear_string);
+      dlist.set_entryfield(citekey, "titleyear", titleyear_string);
 
         trace!("Incrementing titleyear for '{}'", title_string);
-      $dlist->incr_seen_titleyear($title_string, $year_string);
+      dlist.incr_seen_titleyear(title_string, year_string);
     }
   }
 
@@ -2855,8 +2872,8 @@ impl Biber {
     let $schema;
 
     // Check if sorting templatename for the list contains anything ...
-    if (keys crate::Config->getblxoption(None, "sortingtemplate")->{$list->get_sortingtemplatename}->%*) {
-      $schema = crate::Config->getblxoption(None, "sortingtemplate")->{$list->get_sortingtemplatename};
+    if (keys crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()}->%*) {
+      $schema = crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()};
     }
     else {
       // ... fall back to global default if named template does not exist
@@ -3694,7 +3711,7 @@ impl Biber {
     let $sortingtemplate = $dlist->get_sortingtemplate;
     let $lsds  = $dlist->get_sortdataschema;
     let keys = dlist.get_keys();
-    let $lstn = $dlist->get_sortingtemplatename;
+    let lstn = dlist.get_sortingtemplatename();
     let ltype = dlist.get_type();
     let lname = dlist.get_name();
     let $llocale = locale2bcp47($sortingtemplate->{locale} || crate::Config->getblxoption(None, "sortlocale"));
@@ -3898,7 +3915,7 @@ impl Biber {
 
     for in section in &self.sections().get_sections() {
       // shortcut - skip sections that don't have any keys
-      if !(section.get_citekeys() || section.is_allkeys()) {
+      if section.get_citekeys().is_empty() && !section.is_allkeys() {
         continue;
       }
       let secnum = section.number();
@@ -3947,17 +3964,17 @@ impl Biber {
     crate::config::_init();   // (re)initialise Config object
     self.set_current_section(secnum); // Set the section number we are working on
     self.preprocess_options();           // Preprocess any options
-    $self->fetch_data;      // Fetch cited key and dependent data from sources
+    self.fetch_data();      // Fetch cited key and dependent data from sources
 
-    $self->resolve_alias_refs;   // Resolve xref/crossref/xdata aliases to real keys
-    $self->preprocess_sets;      // Record set information
-    $self->calculate_interentry; // Calculate crossrefs/xrefs etc.
-    $self->process_interentry;   // Process crossrefs/xrefs etc.
-    $self->resolve_xdata;        // Resolve xdata entries
+    self.resolve_alias_refs();   // Resolve xref/crossref/xdata aliases to real keys
+    self.preprocess_sets();      // Record set information
+    self.calculate_interentry(); // Calculate crossrefs/xrefs etc.
+    self.process_interentry();   // Process crossrefs/xrefs etc.
+    self.resolve_xdata();        // Resolve xdata entries
 
-    $self->validate_datamodel;   // Check against data model
-    $self->process_lists;        // process the output lists (sort and filtering)
-    $out->create_output_section; // Generate and push the section output into the
+    self.validate_datamodel();   // Check against data model
+    self.process_lists();        // process the output lists (sort and filtering)
+    out.create_output_section(); // Generate and push the section output into the
                                 // into the output object ready for writing
     return;
   }
@@ -4005,31 +4022,34 @@ impl Biber {
       debug!("Looking for directly cited keys: {}", remaining_keys.join(", "));
 
     // Process datasource globs
-    let $ds;
-    for datasource in ($section->get_datasources->@*) {
-      if !($datasource->{type} == "file") {
-        push $ds->@*, $datasource;
+    let mut ds = Vec::new();
+    for datasource in section.get_datasources() {
+      if datasource.typ != DataSourceType::File {
+        ds.push(datasource);
       }
-      for gds in (glob_data_file($datasource->{name}, $datasource->{glob})) {
-        push $ds->@*, { type     => $datasource->{type},
-                        name     => $gds,
-                        datatype => $datasource->{datatype},
-                        encoding => $datasource->{encoding}};
+      for gds in (glob_data_file(datasource.name, datasource.glob)) {
+        ds.push(DataSource {
+          typ: datasource.typ,
+          name: gds,
+          datatype: datasource.datatype,
+          encoding: datasource.encoding,
+          glob: None,
+        });
       }
     }
-    $section->set_datasources($ds);
+    section.set_datasources(ds);
 
     // Now actually fetch data with expanded list of data sources
-    for datasource in ($section->get_datasources->@*) {
+    for datasource in section.get_datasources() {
       // shortcut if we have found all the keys now
       if !(@remaining_keys || section.is_allkeys()) {
-        bleak;
+        break;
       }
-      let $type = $datasource->{type};
-      let $name = $datasource->{name};
-      let $encoding = $datasource->{encoding};
-      let $datatype = $datasource->{datatype};
-      if ($datatype == "biblatexml") {
+      let typ = datasource.typ;
+      let name = datasource.name;
+      let encoding = datasource.encoding;
+      let datatype = datasource.datatype;
+      if datatype == InputFormat::BibLaTeXML {
         let $outfile;
         if (crate::Config->getoption("tool")) {
           let $exts = join('|', values %DS_EXTENSIONS);
@@ -4048,7 +4068,7 @@ impl Biber {
           validate_biber_xml($name, "bltx", "http://biblatex-biber.sourceforge.net/biblatexml", $outfile);
         }
       }
-      let $package = "crate::Input::" . $type . "::" . $datatype;
+      let $package = "crate::Input::" . typ . "::" . $datatype;
       if !(eval "require $package") {
 
         let (vol, mut dir, _) = File::Spec->splitpath( $INC{"Biber.pm"} );
@@ -4072,16 +4092,16 @@ impl Biber {
           }
         }
 
-        biber_error("Error loading data source package '{package}' for '{datatype}' '{type}' datasource. Valid type/datatypes are: {}", vts.join(","));
+        biber_error("Error loading data source package '{package}' for '{datatype}' '{typ}' datasource. Valid type/datatypes are: {}", vts.join(","));
 
       }
 
       // Slightly different message for tool mode
       if (crate::Config->getoption("tool")) {
-        info!("Looking for {datatype} {type} '{name}'");
+        info!("Looking for {datatype} {typ} '{name}'");
       }
       else {
-        info!("Looking for {datatype} {type} '{name}' for section {secnum}");
+        info!("Looking for {datatype} {typ} '{name}' for section {secnum}");
       }
 
       @remaining_keys = "${package}::extract_entries"->(locate_data_file($name), $encoding, \@remaining_keys);
@@ -4140,7 +4160,7 @@ impl Biber {
             }
           }
         }
-          debug!("Dynamic set entry '{}' has members: {}", citekey, join(', ', @dmems));
+          debug!("Dynamic set entry '{}' has members: {}", citekey, dmems.join(", "));
       }
       else {
         // This must exist for all but dynamic sets
@@ -4237,7 +4257,7 @@ impl Biber {
       }
       else {
         $missing->@* = $new_deps->@*;
-        for datasource in ($section->get_datasources->@*) {
+        for datasource in section.get_datasources() {
           // shortcut if we have found all the keys now
           if missing.is_empty() {
             break;

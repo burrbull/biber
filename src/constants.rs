@@ -130,7 +130,7 @@ our %DM_DATATYPES = (
                        ref($v) == "ARRAY"
                      },
                      DataType::Datepart => fn(v, f) -> bool {
-                       if ($f =~ /timezone$/) {
+                       if f.ends_with("timezone") {
                          // ISO 8601
                          // <time>Z
                          // <time>±hh:mm
@@ -140,11 +140,11 @@ our %DM_DATATYPES = (
                                  $v =~ m|^[+-]\d\d(?:\\bibtzminsep\s)?(?:\d\d)?$|) {
                            return false;
                          }
-                       } else if ($f =~ /season$/) { // LEGACY
+                       } else if f.ends_with("season") { // LEGACY
                          if !($v =~ m/(?:winter|spring|summer|autumn)/) {
                           return false;
                          } 
-                       } else if ($f =~ /yeardivision$/) {
+                       } else if f.ends_with("yeardivision") {
                          if !(grep {$v == $_} values %YEARDIVISIONS) {
                           return false;
                          }

@@ -4,8 +4,22 @@ use std::{
   path::{Path, PathBuf},
 };
 use bimap::BiHashMap;
-use crate::{Entries, Unknown, SkipEmpty};
+use crate::{InputFormat, Entries, Unknown, SkipEmpty};
 use crate::utils::reduce_array;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DataSourceType {
+  File,
+  //
+}
+
+pub struct DataSource {
+  pub(crate) typ: DataSourceType,
+  pub(crate) name: String,
+  pub(crate) datatype: InputFormat,
+  pub(crate) encoding: String,
+  pub(crate) glob: Option<String>,
+} 
 
 struct StateSet {
   pc: HashMap<String, HashSet<String>>,
@@ -492,7 +506,7 @@ impl Section {
   }
 
   /// Adds a data source to a section
-  fn add_datasource(&mut self, source: Unknown) {
+  fn add_datasource(&mut self, source: DataSource) {
     match &mut self.datasources {
       Some(ds) => ds.push(source),
       None => self.datasources = Some(vec![source]),
@@ -500,12 +514,12 @@ impl Section {
   }
 
   /// Sets the data sources for a section
-  fn set_datasources(&mut self, sources: Vec<Unknown>) {
+  fn set_datasources(&mut self, sources: Vec<DataSource>) {
     self.datasources = Some(sources);
   }
 
   /// Gets an array of data sources for this section
-  fn get_datasources(&self) -> &Option<Vec<Unknown>> {
+  fn get_datasources(&self) -> &Option<Vec<DataSource>> {
     &self.datasources
   }
 

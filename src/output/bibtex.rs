@@ -200,19 +200,21 @@ impl BibTeX {
     }
 
     // Date fields
-    for d in ($dmh->{datefields}->@*) {
-      $d =~ s/date$//;
-      if !($be->get_field("${d}year")) {
+    for mut d in ($dmh->{datefields}->@*) {
+      if let Some(val) = d.strip_suffix("date") {
+        d = val;
+      }
+      if !(be.get_field(format!("{d}year"))) {
         continue;
       }
 
       // Output legacy dates for YEAR/MONTH if requested
       if (!$d && crate::Config->getoption("output_legacy_dates")) {
-        if (let $val = $be->get_field("year")) {
-          if (!$be->get_field("day") &&
-              !$be->get_field("endyear")) {
+        if (let $val = be.get_field("year")) {
+          if (!be.get_field("day") &&
+              !be.get_field("endyear")) {
             $acc{$outmap->("year")} = $val;
-            if (let $mval = $be->get_field("month")) {
+            if (let $mval = be.get_field("month")) {
               if (crate::Config->getoption("nostdmacros")) {
                 $acc{$outmap->("month")} = $mval;
               }
@@ -234,13 +236,13 @@ impl BibTeX {
 
     // If CROSSREF and XDATA have been resolved, don't output them
     if (crate::Config->getoption("output_resolve_crossrefs")) {
-      if ($be->get_field("crossref")) {
-        $be->del_field("crossref");
+      if (be.get_field("crossref")) {
+        be.del_field("crossref");
       }
     }
     if (crate::Config->getoption("output_resolve_xdata")) {
-      if ($be->get_field("xdata")) {
-        $be->del_field("xdata");
+      if (be.get_field("xdata")) {
+        be.del_field("xdata");
       }
     }
 
@@ -262,7 +264,7 @@ impl BibTeX {
     for field in ($dmh->{xsv}->@*) {
       // keywords is by default field/xsv/keyword but it is in fact
       // output with its own special macro below
-      if $field == "keywords" {
+      if field == "keywords" {
         continue;
       }
       if (let $f = be.get_field($field)) {
@@ -309,9 +311,9 @@ impl BibTeX {
     }
 
     // Annotations
-    for f in (keys %acc) {
-      if (crate::Annotation->is_annotated_field($key, lc($f))) {
-        for n in (crate::Annotation->get_annotation_names($key, lc($f))) {
+    for f in acc.keys() {
+      if crate::Annotation->is_annotated_field(key, f.to_lowercase()) {
+        for n in (crate::Annotation->get_annotation_names(key, f.to_lowercase())) {
           $acc{$outmap->($f) . crate::Config->getoption("output_annotation_marker") .
               crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation($key, lc($f), $n);
         }

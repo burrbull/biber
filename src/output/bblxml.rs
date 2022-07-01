@@ -661,8 +661,8 @@ impl BblXML {
 
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit the global context list so that we can add this last
-      for list in (sort {$a->get_sortingtemplatename cmp $b->get_sortingtemplatename} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-        if ($list->get_sortingtemplatename == crate::Config->getblxoption(undef, "sortingtemplatename") &&
+      for list in (sort {a.get_sortingtemplatename() cmp b.get_sortingtemplatename()} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
+        if (list.get_sortingtemplatename() == crate::Config->getblxoption(undef, "sortingtemplatename") &&
             list.get_sortingnamekeytemplatename() == "global" &&
             list.get_labelprefix() == "" &&
             list.get_type() == "entry") {
@@ -683,7 +683,7 @@ impl BblXML {
         if list.count_keys() == 0 { // skip empty lists
           continue;
         }
-        let $listssn = $list->get_sortingtemplatename;
+        let listssn = list.get_sortingtemplatename();
         let listsnksn = list.get_sortingnamekeytemplatename();
         let listpn = list.get_labelprefix();
         let listtype = list.get_type();
@@ -691,7 +691,7 @@ impl BblXML {
 
           debug!("Writing entries in '{}' list of type '{}' with sortingtemplatename '{}', sort name key scheme '{}' and labelprefix '{}'", listname, listtype, listssn, listsnksn, listpn);
 
-        $xml->startTag([$xml_prefix, "datalist"], type => $listtype, id => $listname);
+        $xml->startTag([$xml_prefix, "datalist"], type => listtype, id => listname);
         $xml->raw("\n");
 
         // The order of this array is the sorted order

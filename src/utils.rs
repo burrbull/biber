@@ -810,7 +810,7 @@ pub fn filter_entry_options($secnum, $be) {
 
   for opt in (sort crate::Config->getblxentryoptions($secnum, $citekey)) {
 
-    let $val = crate::Config->getblxoption($secnum, $opt, undef, $citekey);
+    let $val = crate::Config->getblxoption($secnum, $opt, None, $citekey);
     let $cfopt = $CONFIG_BIBLATEX_OPTIONS{ENTRY}{$opt}{OUTPUT};
     $val = map_boolean($opt, $val, "tostring");
 
@@ -878,7 +878,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
   // nowhere near to these files. You know what I mean if you've dealt with pp
   if !($schema) {
     // we assume that unspecified schema files are in the same dir as Biber.pm:
-    (let $vol, let $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
+    (let $vol, let $biber_path, _) = File::Spec->splitpath( $INC{"Biber.pm"} );
     $biber_path =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
 
     if ($biber_path =~ m|/par\-| && $biber_path !~ m|/inc|) { // a mangled PAR @INC path
@@ -1063,7 +1063,7 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
 
   // Very bad date format, something like '2006/05/04' catch early
   if !($sd || $ed) {
-    return (undef, undef, undef, undef);
+    return (None, None, None, None);
   }
 
   let $unspec;
@@ -1156,12 +1156,12 @@ fn parse_date($obj, $string) {
   // "1565" could be "1564" or "1565" in Julian, depending on the month/day of the Gregorian date
   // For example, "1565-01-01" (which is what DateTime will default to for bare years), is
   // "1564-12-22" Julian but 1564-01-11" and later is "1565" Julian year.
-  if (crate::Config->getblxoption(undef,"julian") &&
+  if (crate::Config->getblxoption(None,"julian") &&
       !$obj->missing("month") &&
       !$obj->missing("day")) {
 
     // There is guaranteed to be an end point since biblatex has a default
-    let $gs = crate::Config->getblxoption(undef,"gregorianstart");
+    let $gs = crate::Config->getblxoption(None,"gregorianstart");
     let ($gsyear, $gsmonth, $gsday) = $gs =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}(\d{2})$/;
     let $dtgs = DateTime->new( year  => $gsyear,
                               month => $gsmonth,
@@ -1364,27 +1364,28 @@ pub fn get_transliterator(target: &str, from: &str, to: &str) {
   let target = target.to_lowercase();
   let from = from.to_lowercase();
   let to = to.to_lowercase();
-  let @valid_from = ("iast", "russian");
-  let @valid_to   = ("devanagari", "ala-lc", "bgn/pcgn-standard");
-  if !(first {$from == $_} @valid_from &&
-          first {$to == $_} @valid_to) {
+  let valid_from = ["iast", "russian"];
+  let valid_to   = ["devanagari", "ala-lc", "bgn/pcgn-standard")]
+  if !(valid_from.contains(&from) &&
+          valid_to.contains(&to)) {
     biber_warn("Invalid transliteration from/to pair ($from/$to)");
   }
   require Lingua::Translit;
     debug!("Using '{} -> {}' transliteration for sorting '{}'", from, to, target);
 
   // List pairs explicitly as we don't expect there to be to many of these ever
-  if ($from == "iast" && $to == "devanagari") {
-    return new Lingua::Translit("IAST Devanagari");
+  match (&from, &to) {
+    ("iast", "devanagari") =>{
+       new Lingua::Translit("IAST Devanagari");
+    }
+    ("russian", "ala-lc") => {
+      new Lingua::Translit("ALA-LC RUS");
+    }
+    ("russian", "bgn/pcgn-standard") => {
+      new Lingua::Translit("BGN/PCGN RUS Standard");
+    }
+    _ => None,
   }
-  else if ($from == "russian" && $to == "ala-lc") {
-    return new Lingua::Translit("ALA-LC RUS");
-  }
-  else if ($from == "russian" && $to == "bgn/pcgn-standard") {
-    return new Lingua::Translit("BGN/PCGN RUS Standard");
-  }
-
-  return undef;
 }
 
 /// Run a transliterator on passed text. Hides call semantics of transliterator
@@ -1433,18 +1434,20 @@ pub fn gen_initials(@strings) {
 /// 2. Before the family part
 pub fn join_name_parts($parts) {
   // special case - 1 part
-  if ($#{$parts} == 0) {
-    return $parts->[0];
+  if parts.len() == 1 {
+    return parts[0];
   }
   // special case - 2 parts
-  if ($#{$parts} == 1) {
-    return $parts->[0] . '~' . $parts->[1];
+  if parts.len() == 2 {
+    return format!("{}~{}", parts[0], parts[1]);
   }
-  let $namestring = $parts->[0];
-  $namestring .= Unicode::GCString->new($parts->[0])->length < 3 ? '~' : ' ';
-  $namestring .= join(' ', $parts->@[1 .. ($#{$parts} - 1)]);
-  $namestring .= '~' . $parts->[$#{$parts}];
-  return $namestring;
+  format!(
+    "{}{}{}~{}",
+    parts[0],
+    if Unicode::GCString->new(parts[0]).length < 3 { '~' } else { ' ' },
+    parts[1..parts().len()-1].join(" "),
+    parts[parts().len()-1]
+  )
 }
 
 /// Split an xsv using Text::CSV because it is fast and can handle quoting

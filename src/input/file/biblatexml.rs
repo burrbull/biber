@@ -1151,29 +1151,27 @@ fn _name(bibentry, entry, f, key) {
     }
   }
 
-  let @names = $node->findnodes("./$NS:name");
-  for (let $i = 0; $i <= $#names; $i++) {
-    let $namenode = $names[$i];
-
+  let @names = node.findnodes("./$NS:name");
+  for (i, namenode) in names().iter().enumerate() {
     // XDATA is special, if found, set it
-    if (let $xdatav = $namenode->getAttribute("xdata")) {
-      $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
-      if ($bibentry->add_xdata_ref(_norm($f), $xdatav, $i)) {
+    if (let $xdatav = namenode.getAttribute("xdata")) {
+      $xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
+      if (bibentry.add_xdata_ref(_norm(f), xdatav, i)) {
         // Add special xdata ref empty name as placeholder
-        $names->add_name(crate::Entry::Name->new(xdata => $xdatav));
+        names.add_name(crate::Entry::Name->new(xdata => $xdatav));
         continue;
       }
     }
 
-    $names->add_name(parsename($section, $namenode, $f, $key, $i+1));
+    names.add_name(parsename(section, namenode, f, key, i+1));
   }
 
   // Deal with explicit "moreenames" in data source
-  if ($node->getAttribute("morenames")) {
-    $names->set_morenames;
+  if (node.getAttribute("morenames")) {
+    names.set_morenames();
   }
 
-  $bibentry->set_datafield(_norm($f), $names);
+  bibentry.set_datafield(_norm(f), names);
 
   return;
 }
@@ -1199,37 +1197,37 @@ fn _name(bibentry, entry, f, key) {
 fn parsename(section, node, fieldname, key, count) {
     debug!("Parsing BibLaTeXML name object {}", $node->nodePath);
 
-  let %namec;
+  let mut namec = HashMap::<String, Vec<String>>::new();
 
   for n in ($dm->get_constant_value("nameparts")) { // list type so returns list
     // If there is a namepart node for this component ...
     if (let $npnode = $node->findnodes("./$NS:namepart[\@type='$n']")->get_node(1)) {
 
       // name component with parts
-      if (let @npnodes =  $npnode->findnodes("./$NS:namepart")) {
-        let @parts = map {$_->textContent()} @npnodes;
-        $namec{$n} = join_name_parts(\@parts);
-          debug!("Found namepart '{}': {}", n, $namec{$n});
-        let @partinits;
-        for part in (@npnodes) {
-          if (let $pi = $part->getAttribute("initial")) {
-            push @partinits, $pi;
+      if (let @npnodes =  npnode.findnodes("./$NS:namepart")) {
+        let parts = npnodes.iter().map(|node| node.textContent());
+        namec.insert(n, join_name_parts(parts));
+          debug!("Found namepart '{}': {}", n, namec.get(n).unwrap());
+        let partinits = Vec::new();
+        for part in npnodes {
+          if (let $pi = part.getAttribute("initial")) {
+            partinits.push(pi);
           }
           else {
-            push @partinits, gen_initials($part->textContent());
+            partinits.push(gen_initials(part.textContent()));
           }
         }
-        $namec{"${n}-i"} = \@partinits;
+        namec.insert(format!("{n}-i"), partinits);
       }
       // with no parts
-      else if (let $t = $npnode->textContent()) {
-        $namec{$n} = $t;
+      else if (let $t = npnode.textContent()) {
+        namec.insert(n, t);
           debug!("Found namepart '{}': {}", n, t);
-        if (let $ni = $node->getAttribute("initial")) {
-          $namec{"${n}-i"} = [$ni];
+        if (let $ni = node.getAttribute("initial")) {
+          namec.insert(format!("{n}-i"), vec![ni]);
         }
         else {
-          $namec{"${n}-i"} = [gen_initials($t)];
+          namec.insert(format!("{n}-i"), vec![gen_initials(t)]);
         }
       }
     }

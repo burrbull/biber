@@ -6,18 +6,51 @@ use Data::Compare;
 use Digest::MD5 qw( md5_hex );
 use List::Util qw( first );
 
-pub struct DataList;
+struct State {
+  seenpa: HashMap<String, HashSet<String>>,
+}
+
+pub struct DataList {
+  section: u32,
+  name: String,
+  typ: String,
+  sortingtemplatename: String,
+  sortingnamekeytemplatename: String,
+  uniquenametemplatename: Option<String>,
+  labelalphanametemplatename: String,
+  labelprefix: String,
+  state: State,
+  //
+}
 
 impl DataList {
   /// Initialize a crate::DataList object
-  fn new(%params) -> Self {
-    let $self = bless {%params}, $class;
-    return $self;
+  pub fn new(
+    section: u32,
+    name: &str,
+    typ: &str,
+    sortingtemplatename: &str,
+    sortingnamekeytemplatename: &str,
+    uniquenametemplatename: Option<String>,
+    labelalphanametemplatename: &str,
+    labelprefix: &str,
+  ) -> Self {
+    Self {
+      section,
+      name: name.into(),
+      typ: typ.into(),
+      sortingtemplatename: sortingtemplatename.into(),
+      sortingnamekeytemplatename: sortingnamekeytemplatename.into(),
+      uniquenametemplatename,
+      labelalphanametemplatename: labelalphanametemplatename.into(),
+      labelprefix: labelprefix.into(),
+      state: State::new(),
+    }
   }
 
   /// Sets the section of a data list
   fn set_section(&mut self, section: u32) {
-    self.section = section//lc($section);
+    self.section = section;//lc($section)
   }
 
   /// Gets the section of a data list
@@ -34,21 +67,26 @@ impl DataList {
   /// Increment the count of occurrences of a primary author base name
   /// if it has a different non-base part. How many variants of the basename
   /// are there in the dlist?
-  fn incr_seenpa(self, $base, $hash) {
-    $self->{state}{seenpa}{$base}{$hash} = 1; // increment the number of base variants
-    return;
+  fn incr_seenpa(&mut self, base: &str, hash: &str) {
+    // increment the number of base variants
+    match self.state.seenpa.get_mut(base) {
+      Some(v) => v.insert(hash),
+      None => {
+        let mut s = HashSet::new();
+        s.insert(hash);
+        self.state.seenpa.insert(base.into(), s);
+      }
   }
 
   /// Get the count of unique (i.e. with different hash) occurrences of a primary
   /// author base name
-  fn get_seenpa(self, $base) {
-    return scalar keys %{$self->{state}{seenpa}{$base}};
+  fn get_seenpa(&self, base: &str) -> u32 {
+    self.state.seenpa.get(base).map(|m| m.len() as u32).unwrap_or(0)
   }
 
   /// Resets all entryfield data in a list
-  fn reset_entryfields(self) {
+  fn reset_entryfields(&mut self) {
     self.state.fields.clear();
-    return;
   }
 
   /// Retrieves per-list datafield information for an entry
@@ -57,7 +95,7 @@ impl DataList {
   }
 
   /// Records per-list datafield information for an entry
-  fn set_entryfield(self, $citekey, $f, $v) {
+  fn set_entryfield(&mut self, citekey: &str, $f, $v) {
     $self->{state}{fields}{$citekey}{$f} = $v;
     return;
   }
@@ -496,8 +534,8 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a name component. Otherwise, extradate gets defined for all
   /// entries with no name but the same year etc.
-  fn incr_seen_namedateparts(self, $ns, $ys) {
-    let $tmp = "$ns,$ys";
+  fn incr_seen_namedateparts(self, ns: &str, ys: &str) {
+    let $tmp = format!("{ns},{ys}");
     // We can always increment this to 1
     if !(exists($self->{state}{seen_namedateparts}{$tmp})) {
       $self->{state}{seen_namedateparts}{$tmp}++;
@@ -516,14 +554,14 @@ impl DataList {
   }
 
   /// Get the count of a labelname hash for tracking extraname
-  fn get_seen_labelname(self, $ln) {
-    return $self->{state}{seen_labelname}{$ln}.unwrap_or(0);
+  fn get_seen_labelname(&self, ln: &str) -> u32 {
+    self.state.seen_labelname.get(ln).unwrap_or(0);
   }
 
   /// Get the count of an labelname/labeltitle combination for tracking
   /// extratitle.
-  fn get_seen_nametitle(self, $nt) {
-    return $self->{state}{seen_nametitle}{$nt}.unwrap_or(0);
+  fn get_seen_nametitle(self, nt: &str) {
+    self.state.seen_nametitle.get(nt).unwrap_or(0);
   }
 
   /// Increment the count of an labelname/labeltitle combination for extratitle
@@ -532,8 +570,8 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a title component. Otherwise, extratitle gets defined for all
   /// entries with no title.
-  fn incr_seen_nametitle(self, $ns, $ts) {
-    let $tmp = "$ns,$ts";
+  fn incr_seen_nametitle(self, ns: &str, ts: &str) {
+    let tmp = format!("{ns},{ts}");
     // We can always increment this to 1
     if !($self->{state}{seen_nametitle}{$tmp}) {
       $self->{state}{seen_nametitle}{$tmp}++;
@@ -542,7 +580,7 @@ impl DataList {
     // this counter is used to create extratitle which doesn't mean anything for
     // entries with no title
     else {
-      if ($ts) {
+      if !ts.is_empty() {
         $self->{state}{seen_nametitle}{$tmp}++;
       }
     }
@@ -551,7 +589,7 @@ impl DataList {
 
   /// Get the count of an labeltitle/labelyear combination for tracking
   /// extratitleyear
-  fn get_seen_titleyear(self, $ty) {
+  fn get_seen_titleyear(&self, ty: &str) {
     return $self->{state}{seen_titleyear}{$ty}.unwrap_or(0);
   }
 
@@ -561,8 +599,8 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a title component. Otherwise, extratitleyear gets defined for all
   /// entries with no title.
-  fn incr_seen_titleyear(self, $ts, $ys) {
-    let $tmp = "$ts,$ys";
+  fn incr_seen_titleyear(self, ts: &str, ys: &str) {
+    let $tmp = format!("{ts},{ys}");
     // We can always increment this to 1
     if !($self->{state}{seen_titleyear}{$tmp}) {
       $self->{state}{seen_titleyear}{$tmp}++;
@@ -579,21 +617,20 @@ impl DataList {
   }
 
   /// Reset various work uniqueness counters
-  fn reset_workuniqueness(self) {
-    $self->{state}{seenname} = {};
-    $self->{state}{seentitle} = {};
-    $self->{state}{seenbaretitle} = {};
-    $self->{state}{seenwork} = {};
-    return;
+  fn reset_workuniqueness(&mut self) {
+    self.state.seenname.reset();
+    self.state.seentitle.reset();
+    self.state.seenbaretitle.reset();
+    self.state.seenwork.reset();
   }
 
   /// Get the count of occurrences of a labelname or labeltitle
-  fn get_seenname(self, $identifier) {
+  fn get_seenname(&self, identifier: &str) -> u32 {
     return $self->{state}{seenname}{$identifier};
   }
 
   /// Increment the count of occurrences of a labelname or labeltitle
-  fn incr_seenname(self, $identifier) {
+  fn incr_seenname(&mut self, identifier: &str) {
     $self->{state}{seenname}{$identifier}++;
     return;
   }
@@ -661,7 +698,7 @@ impl DataList {
   }
 
   /// Gets the sortingtemplatename of a data list
-  fn get_sortingtemplatename(self) {
+  fn get_sortingtemplatename(&self) {
     return $self->{sortingtemplatename};
   }
 
@@ -698,7 +735,7 @@ impl DataList {
   }
 
   /// Sets the sortinit collator for this list
-  fn set_sortinit_collator(self, collator) {
+  fn set_sortinit_collator(&mut self, collator) {
     $self->{sortinitcollator} = collator;
     return;
   }
@@ -1158,7 +1195,7 @@ impl DataList {
       }
 
       // sortinit + sortinithash
-      let $sinit = $self->get_sortinit_for_key($key);
+      let sinit = self.get_sortinit_for_key(key);
       if (defined($sinit)) {
         let $str = "\\field{sortinit}{$sinit}";
         $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
@@ -1174,7 +1211,7 @@ impl DataList {
       }
 
       // singletitle
-      if ($self->get_entryfield($key, "singletitle")) {
+      if self.get_entryfield(key, "singletitle") {
         let $str = "\\true{singletitle}";
         $entry_string =~ s|<BDS>SINGLETITLE</BDS>|$str|gxms;
       }
@@ -1183,7 +1220,7 @@ impl DataList {
     // .bblxml output
     if fmt == OutputFormat::BblXML {
       // entryset
-      if (let $es = $self->get_entryfield($key, "entryset")) {
+      if (let $es = self.get_entryfield(key, "entryset")) {
         let $str = "<bbl:set>\n";
         for m in ($es->@*) {
           $str .= "    <bbl:member>$m</bbl:member>\n";
@@ -1193,7 +1230,7 @@ impl DataList {
       }
 
       // uniqueprimaryauthor
-      if ($self->get_entryfield($key, "uniqueprimaryauthor")) {
+      if self.get_entryfield(key, "uniqueprimaryauthor") {
         let $str = "true";
         $entry_string =~ s|\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]|$str|gxms;
       }
@@ -1202,7 +1239,7 @@ impl DataList {
       }
 
       // uniquework
-      if ($self->get_entryfield($key, "uniquework")) {
+      if self.get_entryfield(key, "uniquework") {
         let $str = "true";
         $entry_string =~ s|\[BDS\]UNIQUEWORK\[/BDS\]|$str|gxms;
       }
@@ -1211,7 +1248,7 @@ impl DataList {
       }
 
       // uniquebaretitle
-      if ($self->get_entryfield($key, "uniquebaretitle")) {
+      if self.get_entryfield(key, "uniquebaretitle") {
         let $str = "true";
         $entry_string =~ s|\[BDS\]UNIQUEBARETITLE\[/BDS\]|$str|gxms;
       }
@@ -1220,7 +1257,7 @@ impl DataList {
       }
 
       // uniquetitle
-      if ($self->get_entryfield($key, "uniquetitle")) {
+      if self.get_entryfield(key, "uniquetitle") {
         let $str = "true";
         $entry_string =~ s|\[BDS\]UNIQUETITLE\[/BDS\]|$str|gxms;
       }
@@ -1229,13 +1266,13 @@ impl DataList {
       }
 
       // extraalpha
-      if (let $e = $self->get_extraalphadata_for_key($key)) {
+      if (let $e = self.get_extraalphadata_for_key(key)) {
         let $str = "<bbl:field name=\"extraalpha\">$e</bbl:field>";
         $entry_string =~ s|<BDS>EXTRAALPHA</BDS>|$str|gxms;
       }
 
       // labelalpha
-      if (let $e = $self->get_labelalphadata_for_key($key)) {
+      if (let $e = self.get_labelalphadata_for_key(key)) {
         let $str = "<bbl:field name=\"labelalpha\">$e</bbl:field>";
         $entry_string =~ s|<BDS>LABELALPHA</BDS>|$str|gxms;
       }
@@ -1289,13 +1326,13 @@ impl DataList {
       }
 
       // extratitleyear
-      if (let $e = $self->get_extratitleyeardata_for_key($key)) {
+      if (let $e = self.get_extratitleyeardata_for_key(key)) {
         let $str = "<bbl:field name=\"extratitleyear\">$e</bbl:field>";
         $entry_string =~ s|<BDS>EXTRATITLEYEAR</BDS>|$str|gxms;
       }
 
       // extratitle
-      if (let $e = $self->get_extratitledata_for_key($key)) {
+      if (let $e = self.get_extratitledata_for_key(key)) {
         let $str = "<bbl:field name=\"extratitle\">$e</bbl:field>";
         $entry_string =~ s|<BDS>EXTRATITLE</BDS>|$str|gxms;
       }
@@ -1304,26 +1341,26 @@ impl DataList {
       for namefield in ($dmh->{namelists}->@*) {
 
         // per-namelist bibnamehash
-        if (let $e = $self->get_entryfield($key, "${namefield}bibnamehash")) {
+        if (let $e = self.get_entryfield(key, "${namefield}bibnamehash")) {
           let $str = "<bbl:field name=\"${namefield}bibnamehash\">$e</bbl:field>";
           $entry_string =~ s|<BDS>${namefield}BIBNAMEHASH</BDS>|$str|gxms;
         }
 
         // per-namelist namehash
-        if (let $e = $self->get_entryfield($key, "${namefield}namehash")) {
+        if (let $e = self.get_entryfield(key, "${namefield}namehash")) {
           let $str = "<bbl:field name=\"${namefield}namehash\">$e</bbl:field>";
           $entry_string =~ s|<BDS>${namefield}NAMEHASH</BDS>|$str|gxms;
         }
       }
 
       // bibnamehash
-      if (let $e = $self->get_entryfield($key, "bibnamehash")) {
+      if (let $e = self.get_entryfield(key, "bibnamehash")) {
         let $str = "<bbl:field name=\"bibnamehash\">$e</bbl:field>";
         $entry_string =~ s|<BDS>BIBNAMEHASH</BDS>|$str|gxms;
       }
 
       // namehash
-      if (let $e = $self->get_entryfield($key, "namehash")) {
+      if (let $e = self.get_entryfield(key, "namehash")) {
         let $str = "<bbl:field name=\"namehash\">$e</bbl:field>";
         $entry_string =~ s|<BDS>NAMEHASH</BDS>|$str|gxms;
       }
@@ -1359,7 +1396,7 @@ impl DataList {
       }
 
       // sortinit + sortinithash
-      let $sinit = $self->get_sortinit_for_key($key);
+      let sinit = self.get_sortinit_for_key(key);
       if (defined($sinit)) {
         let $str = "<bbl:field name=\"sortinit\">$sinit</bbl:field>";
         $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
@@ -1407,16 +1444,16 @@ impl DataList {
   /// namelist_differs_index([a]) -> 1
   /// ```
   fn namelist_differs_index(self, @list) {
-    let $index;
+    let mut index = None;
     for l_s in (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
       let @l = split("\x{10FFFD}", $l_s);
       if Compare(\@list, \@l) {// Ignore identical lists
         continue;
       }
-      for (let $i=0;$i<=$#list;$i++) {
-        if (defined($list[$i]) && defined($l[$i]) && ($list[$i] == $l[$i])) {
-          if (!defined($index) || $i > $index) {
-            $index = $i;
+      for (i, val) in list.iter().enumerate() {
+        if (defined(val) && defined(l[i]) && (val == l[i])) {
+          if (!defined(index) || i > index) {
+            index = Some(i);
           }
         }
         else {
@@ -1425,16 +1462,15 @@ impl DataList {
       }
     }
 
-    if (defined($index)) { // one or more similar lists
-      if ($index == $#list) { // There is another list which is a superset, return last index
-        return $index;
-      }
-      else { // Differs with some list, return index of where difference begins
-        return $index+1;
+    if let Some(index) = index { // one or more similar lists
+      if index == list.len() - 1 { // There is another list which is a superset, return last index
+        return index;
+      } else { // Differs with some list, return index of where difference begins
+        return index+1;
       }
     }
     else { // no similar lists
-      return undef;
+      return None;
     }
   }
 
@@ -1442,7 +1478,7 @@ impl DataList {
   /// and is at least as long
   ///
   /// ```
-  /// namelist_differs_nth([a, b, c, d, e], 3) = 1
+  /// namelist_differs_nth([a, b, c, d, e], 3) = true
   /// ```
   ///
   /// if there is another name list like any of these:
@@ -1451,7 +1487,7 @@ impl DataList {
   /// [a, b, d, e, f]
   /// [a, b, e, z, z, y]
   /// ```
-  fn namelist_differs_nth(self, list, n, ul: &str, labelyear) {
+  fn namelist_differs_nth(self, list, n, ul: &str, labelyear) -> bool {
     let @list_one = $list->@*;
     // Loop over all final lists, looking for ones which match:
     // * up to n - 1
@@ -1479,8 +1515,8 @@ impl DataList {
       if !Compare([@list_one[0 .. $n-2]], [@l[0 .. $n-2]]) {
         continue;
       }
-      return 1;
+      return true;
     }
-    return 0;
+    return false;
   }
 }
