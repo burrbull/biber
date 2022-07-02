@@ -161,7 +161,7 @@ impl Entry {
     }
 
     // Clone annotations
-    crate::Annotation->copy_annotations($self->get_field("citekey"), $newkey);
+    crate::annotation::copy_annotations($self->get_field("citekey"), $newkey);
 
     // Need to add entrytype and datatype
     $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
@@ -413,7 +413,7 @@ impl Entry {
   /// which came from the data file
   fn fields(&self) -> Vec<&String> {
     // use locale;
-    let mut v: Vec<_> = self.derivedfields().keys().extend(self.datafields().keys()).collect();
+    let mut v: Vec<_> = self.derivedfields().keys().chain(self.datafields().keys()).collect();
     v.sort();
     v
   }

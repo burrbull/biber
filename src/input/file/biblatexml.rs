@@ -1,5 +1,4 @@
 use Carp;
-use crate::Annotation;
 use crate::Constants;
 use crate::DataModel;
 use crate::Entries;
@@ -776,25 +775,26 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 // Annotations are special - there is a literal field and also more complex annotations
 fn _annotation(bibentry: &mut Entry, entry, f, key) {
   for node in ($entry->findnodes("./$f")) {
-    let $field = $node->getAttribute("field");
-    let $name = $node->getAttribute("name") || "default";
-    let $literal = $node->getAttribute("literal") || '0';
-    let $ann = $node->textContent();
-    let $item = $node->getAttribute("item");
-    let $part = $node->getAttribute("part");
+    let field = $node->getAttribute("field");
+    let name = $node->getAttribute("name") || "default";
+    let literal = $node->getAttribute("literal") || '0';
+    let ann = $node->textContent();
+    let item = $node->getAttribute("item");
+    let part = $node->getAttribute("part");
+    let ann = &mut crate::annotation::ANN.lock().unwrap();
     if ($field) {// Complex metadata annotation for another field
       if ($part) {
-        crate::Annotation->set_annotation("part", $key, $field, $name, $ann, $literal, $item, $part);
+        ann.set_part_annotation(key, field, name, ann, literal, item, part);
       }
       else if ($item) {
-        crate::Annotation->set_annotation("item", $key, $field, $name, $ann, $literal, $item);
+        ann.set_item_annotation(key, field, name, ann, literal, item);
       }
       else {
-        crate::Annotation->set_annotation("field", $key, $field, $name, $ann, $literal);
+        ann.set_field_annotation(key, field, name, ann, literal);
       }
     }
     else {// Generic entry annotation
-      $bibentry->set_datafield(_norm($f), $node->textContent());
+      bibentry.set_datafield(_norm($f), $node->textContent());
     }
   }
   return;

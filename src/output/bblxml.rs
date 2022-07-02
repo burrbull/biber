@@ -558,59 +558,59 @@ impl BblXML {
     }
 
     // Output annotations
-    for f in (crate::Annotation->get_annotated_fields("field", $key)) {
-      for n in (crate::Annotation->get_annotations("field", $key, $f)) {
-        let $v = crate::Annotation->get_annotation("field", $key, $f, $n);
-        let $l = crate::Annotation->is_literal_annotation("field", $key, $f, $n);
+    let ann = &crate::annotation::ANN.lock().unwrap();
+    for f in (ann.get_annotated_fields(Scope::Field, key)) {
+      for n in (ann.get_annotations(Scope::Field, key, f)) {
+        let annot = ann.get_field_annotation(key, f, n).unwrap();
+        let v = annot.value();
+        let l = annot.is_literal();
         $xml->dataElement([$xml_prefix, "annotation"],
                           scope => "field",
-                          field => _bblxml_norm($f),
-                          name  => bblxml_norm($n),
-                          literal => $l,
-                          value => _bblxml_norm($v)
+                          field => _bblxml_norm(f),
+                          name  => bblxml_norm(n),
+                          literal => l,
+                          value => _bblxml_norm(v)
                         );
       }
     }
 
-    for f in (crate::Annotation->get_annotated_fields("item", $key)) {
-      for n in (crate::Annotation->get_annotations("item", $key, $f)) {
-        for c in (crate::Annotation->get_annotated_items("item", $key, $f)) {
-          let $v = crate::Annotation->get_annotation("item", $key, $f, $c);
-          let $l = crate::Annotation->is_literal_annotation("item", $key, $f, $n, $c);
+    for f in (ann.get_annotated_fields(Scope::Item, key)) {
+      for n in (ann.get_annotations(Scope::Item, key, f)) {
+        for (c, annot) in (ann.get_annotated_items(key, f)) {
+          let v = annot.value();
+          let l = annot.is_literal();
           $xml->dataElement([$xml_prefix, "annotation"],
                             scope => "item",
-                            field => _bblxml_norm($f),
-                            name  => bblxml_norm($n),
-                            literal => $l,
-                            item  => _bblxml_norm($c),
-                            value => _bblxml_norm($v)
+                            field => _bblxml_norm(f),
+                            name  => bblxml_norm(n),
+                            literal => l,
+                            item  => _bblxml_norm(c),
+                            value => _bblxml_norm(v)
                           );
         }
       }
     }
 
-    for f in (crate::Annotation->get_annotated_fields("part", $key)) {
-      for n in (crate::Annotation->get_annotations("part", $key, $f)) {
-        for c in (crate::Annotation->get_annotated_items("part", $key, $f)) {
-          for p in (crate::Annotation->get_annotated_parts("part", $key, $f, $c)) {
-            let $v = crate::Annotation->get_annotation("part", $key, $f, $c, $p);
-            let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
+    for f in (ann.get_annotated_fields(Scope::Part, key)) {
+      for n in (ann.get_annotations(Scope::Part, key, f)) {
+        for (c, p, annot) in (ann.get_annotated_parts(key, f)) { // n?
+            let v = annot.value();
+            let l = annot.is_literal();
             $xml->dataElement([$xml_prefix, "annotation"],
                               scope => "part",
-                              field => _bblxml_norm($f),
-                              name  => bblxml_norm($n),
+                              field => _bblxml_norm(f),
+                              name  => bblxml_norm(n),
                               literal => $l,
-                              item  => _bblxml_norm($c),
-                              part  => _bblxml_norm($p),
-                              value => _bblxml_norm($v)
+                              item  => _bblxml_norm(c),
+                              part  => _bblxml_norm(p),
+                              value => _bblxml_norm(v)
                             );
           }
-        }
       }
     }
 
     // Append any warnings to the entry, if any
-    if (let $w = $be->get_field("warnings")) {
+    if (let $w = be.get_field("warnings")) {
       for warning in ($w->@*) {
         $xml->dataElement([$xml_prefix, "warning"], _bblxml_norm($warning));
       }

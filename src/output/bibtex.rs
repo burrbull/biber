@@ -1,6 +1,5 @@
 use parent qw(crate::Output::base);
 
-use crate::Annotation;
 use crate::Config;
 use crate::Constants;
 use crate::Utils;
@@ -311,11 +310,12 @@ impl BibTeX {
     }
 
     // Annotations
+    let ann = &crate::annotation::ANN.lock().unwrap();
     for f in acc.keys() {
-      if crate::Annotation->is_annotated_field(key, f.to_lowercase()) {
-        for n in (crate::Annotation->get_annotation_names(key, f.to_lowercase())) {
+      if ann.is_annotated_field(key, f.to_lowercase()) {
+        for n in (ann.get_annotation_names(key, f.to_lowercase())) {
           $acc{$outmap->($f) . crate::Config->getoption("output_annotation_marker") .
-              crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation($key, lc($f), $n);
+              crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation(ann, key, f.to_lowercase(), n);
         }
       }
     }
@@ -333,9 +333,9 @@ impl BibTeX {
 
 
     for field in (split(/\s*,\s*/, crate::Config->getoption("output_field_order"))) {
-      if ($field == "names" ||
-          $field == "lists" ||
-          $field == "dates") {
+      if (field == "names" ||
+          field == "lists" ||
+          field == "dates") {
         let @donefields;
         for key in (sort keys %acc) {
           if (first {unicase::eq($_, strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
@@ -532,24 +532,22 @@ impl BibTeX {
   }
 
   /// Construct a field annotation
-  fn construct_annotation(key, field, name) {
-    let @annotations;
+  fn construct_annotation(ann: &crate::annotation::Ann, key: &str, field: &str, name: &str) -> String {
+    let mut annotations = Vec::new();
 
-    if (let $fa = crate::Annotation->get_field_annotation($key, $field, $name)) {
-      push @annotations, "=$fa";
+    if let Some(fa) = ann.get_field_annotation(key, field, name).map(|ann| ann.value()).skip_empty() {
+       annotations.push(format!("={fa}"));
     }
 
-    for item in (crate::Annotation->get_annotated_items("item", $key, $field, $name)) {
-      push @annotations, "$item=" . crate::Annotation->get_annotation("item", $key, $field, $name, $item);
+    for (item, annot) in (ann.get_annotated_items(key, field, name)) {
+      annotations.push(format!("{item}={}", annot.value()));
     }
 
-    for item in (crate::Annotation->get_annotated_items("part", $key, $field, $name)) {
-      for part in (crate::Annotation->get_annotated_parts("part", $key, $field, $name, $item)) {
-        push @annotations, "$item:$part=" . crate::Annotation->get_annotation("part", $key, $field, $name, $item, $part);
-      }
+    for (item, part, annot) in (ann.get_annotated_parts(key, field, name)) {
+      annotations.push(format!("{item}:{part}={}", annot.value()));
     }
 
-    return join(';', @annotations);
+    return annotations.join(";");
   }
 
   /// Construct a range field from its components

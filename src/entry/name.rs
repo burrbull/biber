@@ -5,7 +5,6 @@
 use crate::Id;
 
 use Regexp::Common qw( balanced );
-use crate::Annotation;
 use crate::Config;
 use crate::Constants;
 use Data::Dump qw( pp );
@@ -154,7 +153,8 @@ impl Name {
     }
 
     // name scope annotation
-    if (let $ann = crate::Annotation->get_annotation("item", $key, $namefield, $count)) {
+    let ann = &crate::annotation::ANN.lock().unwrap();
+    if let Some(ann) = ann.get_item_annotation(key, namefield, count).map(|ann| ann.value()).skip_empty() {
       push @attrs, ("annotation" => $ann);
     }
 
@@ -176,7 +176,8 @@ impl Name {
       let @attrs;
 
       // namepart scope annotation
-      if (let $ann = crate::Annotation->get_annotation("part", $key, $namefield, $count, $npn)) {
+      let ann = &crate::annotation::ANN.lock().unwrap();
+      if let Some(ann) = ann.get_part_annotation(key, namefield, count, npn).map(|ann| ann.value()).skip_empty() {
         push @attrs, ("annotation" => $ann);
       }
 

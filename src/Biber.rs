@@ -3589,7 +3589,7 @@ impl Biber {
                 // Find where uniqueness is established, determine un settings up to this point
                 let dis = namedisschema.[1..i-1].iter()
                   .filter(|v| v[0] != "base" && v[1] != "full")
-                  .extend(namedisschema[i].iter());
+                  .chain(namedisschema[i].iter());
                 // normalise "fullonly" to "full" now that we have stripped all non-disambiguating elements
                 pnun = dis.map(|v| (v[0], if v[1] == "fullonly" { "full" } else {v[1]})).collect();
                 break;

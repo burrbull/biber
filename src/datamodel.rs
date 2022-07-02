@@ -1537,7 +1537,7 @@ impl DataModel {
     $writer->startTag("attribute", "name" => "name");
 
     $writer->startTag("choice");
-    for f in fs1.iter().extend(fs2).extend(fs3.iter()).extend(fs4.iter()) {
+    for f in fs1.iter().chain(fs2).chain(fs3.iter()).chain(fs4.iter()) {
       $writer->dataElement("value", f);
     }
     $writer->endTag();    // choice

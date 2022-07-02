@@ -1,6 +1,5 @@
 use parent qw(crate::Output::base);
 
-use crate::Annotation;
 use crate::Config;
 use crate::Constants;
 use crate::Entry;
@@ -545,32 +544,32 @@ impl Bbl {
     }
 
     // Output annotations
-    for f in (crate::Annotation->get_annotated_fields("field", key)) {
-      for n in (crate::Annotation->get_annotations("field", key, f)) {
-        let v = crate::Annotation->get_annotation("field", key, f, n);
-        let l = crate::Annotation->is_literal_annotation("field", key, f, n);
+    let ann = &crate::annotation::ANN.lock().unwrap();
+    for f in (ann.get_annotated_fields(Scope::Field, key)) {
+      for n in (ann.get_annotations(Scope::Field, key, f)) {
+        let annot = ann.get_field_annotation(key, f, n).unwrap();
+        let v = annot.value();
+        let l = annot.is_literal();
         acc.push_str(&format!("      \\annotation{{field}}{{{f}}}{{{n}}}{{}}{{}}{{{l}}}{{{v}}}\n"));
       }
     }
 
-    for f in (crate::Annotation->get_annotated_fields("item", key)) {
-      for n in (crate::Annotation->get_annotations("item", key, f)) {
-        for c in (crate::Annotation->get_annotated_items("item", key, f, n)) {
-          let $v = crate::Annotation->get_annotation("item", key, f, n, c);
-          let $l = crate::Annotation->is_literal_annotation("item", key, f, n, c);
+    for f in (ann.get_annotated_fields(Scope::Item, key)) {
+      for n in (ann.get_annotations(Scope::Item, key, f)) {
+        for (c, annot) in (ann.get_annotated_items(key, f, n)) {
+          let v = annot.value();
+          let l = annot.is_literal();
           acc.push_str(&format!("      \\annotation{{item}}{{{f}}}{{{n}}}{{{c}}}{{}}{{{l}}}{{{v}}}\n"));
         }
       }
     }
 
-    for f in (crate::Annotation->get_annotated_fields("part", $key)) {
-      for n in (crate::Annotation->get_annotations("part", $key, $f)) {
-        for c in (crate::Annotation->get_annotated_items("part", $key, $f, $n)) {
-          for p in (crate::Annotation->get_annotated_parts("part", $key, $f, $n, $c)) {
-            let $v = crate::Annotation->get_annotation("part", $key, $f, $n, $c, $p);
-            let $l = crate::Annotation->is_literal_annotation("part", $key, $f, $n, $c, $p);
-            acc.push_str(&format!("      \\annotation{{part}}{{{f}}}{{{n}}}{{{c}}}{{{p}}}{{{l}}}{{{v}}}\n"));
-          }
+    for f in (ann.get_annotated_fields(Scope::Part, key)) {
+      for n in (ann.get_annotations(Scope::Part, key, f)) {
+        for (c, p, annot) in (ann.get_annotated_parts(key, f, n)) {
+          let v = annot.value();
+          let l = annot.is_literal();
+          acc.push_str(&format!("      \\annotation{{part}}{{{f}}}{{{n}}}{{{c}}}{{{p}}}{{{l}}}{{{v}}}\n"));
         }
       }
     }

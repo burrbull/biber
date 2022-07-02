@@ -3,6 +3,7 @@
 use core::fmt;
 use uuid::Uuid;
 
+mod annotation;
 //mod section;
 mod constants;
 mod utils;
@@ -11,6 +12,91 @@ mod utils;
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Unknown;
 
+use std::collections::{hash_map, HashMap};
+use core::borrow::Borrow;
+use std::hash::Hash;
+
+/// Iterates over optional iterator
+pub struct OptIter<I>(Option<I>)
+where
+    I: Iterator;
+
+impl<I> OptIter<I>
+where
+    I: Iterator,
+{
+    /// Create new optional iterator
+    pub fn new(o: Option<I>) -> Self {
+        Self(o)
+    }
+}
+
+impl<'a, I> Iterator for OptIter<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut().and_then(I::next)
+    }
+}
+
+/// Sugar
+pub trait NestedMap<K1, K2, V> {
+    fn contains_key2<Q1: ?Sized, Q2: ?Sized>(&self, k1: &Q1, k2: &Q2) -> bool where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq;
+    fn get2<Q1: ?Sized, Q2: ?Sized>(&self, k1: &Q1, k2: &Q2) -> Option<&V> where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq;
+    fn get_mut2<Q1: ?Sized, Q2: ?Sized>(&mut self, k1: &Q1, k2: &Q2) -> Option<&mut V> where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq;
+    fn insert2(&mut self, k1: K1, k2: K2, v: V) -> Option<V>;
+}
+
+impl<K1: Hash + Eq, K2: Hash + Eq, V> NestedMap<K1, K2, V> for HashMap<K1, HashMap<K2, V>> {
+    fn contains_key2<Q1: ?Sized, Q2: ?Sized>(&self, k1: &Q1, k2: &Q2) -> bool where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq
+    {
+        self.get(k1).map(|h| h.contains_key(k2)).unwrap_or(false)
+    }
+    fn get2<Q1: ?Sized, Q2: ?Sized>(&self, k1: &Q1, k2: &Q2) -> Option<&V>
+    where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq, 
+    {
+        self.get(k1).and_then(|h| h.get(k2))
+    }
+    fn get_mut2<Q1: ?Sized, Q2: ?Sized>(&mut self, k1: &Q1, k2: &Q2) -> Option<&mut V> where
+        K1: Borrow<Q1>,
+        Q1: Hash + Eq, 
+        K2: Borrow<Q2>,
+        Q2: Hash + Eq, 
+    {
+        self.get_mut(k1).and_then(|h| h.get_mut(k2))
+    }
+    fn insert2(&mut self, k1: K1, k2: K2, v: V) -> Option<V> {
+        match self.entry(k1) {
+            hash_map::Entry::Occupied(mut e) => e.get_mut().insert(k2, v),
+            hash_map::Entry::Vacant(e) => {
+                e.insert(HashMap::from([(k2, v)]));
+                None
+            }
+        }
+    }
+}
 
 #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]

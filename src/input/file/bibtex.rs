@@ -7,7 +7,6 @@ use Digest::MD5 qw( md5_hex );
 use Text::BibTeX qw(:nameparts :joinmethods :metatypes);
 use Text::BibTeX::Name;
 use Text::BibTeX::NameFormat;
-use crate::Annotation;
 use crate::Constants;
 use crate::DataModel;
 use crate::Entries;
@@ -932,14 +931,15 @@ fn _annotation(bibentry, entry, field, key) {
       $literal = 1;
       $annotations = $1;
     }
+    let ann = &mut crate::annotation::ANN.lock().unwrap();
     if ($part) {
-      crate::Annotation->set_annotation("part", $key, $fc, $name, $annotations, $literal, $count, $part);
+      ann.set_part_annotation(key, fc, name, annotations, literal, count, part);
     }
     else if ($count) {
-      crate::Annotation->set_annotation("item", $key, $fc, $name, $annotations, $literal, $count);
+      ann.set_item_annotation(key, fc, name, annotations, literal, count);
     }
     else {
-      crate::Annotation->set_annotation("field", $key, $fc, $name, $annotations, $literal);
+      ann.set_field_annotation(key, fc, name, annotations, literal);
     }
   }
   return;
