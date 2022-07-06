@@ -8,15 +8,6 @@ use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use unicase::UniCase;
 
-/*use crate::Config;
-use crate::Constants;
-use Data::Dump;
-use crate::Utils;
-use Log::Log4perl qw( :no_extra_logdie_message );
-use List::Util qw( first );
-use Storable qw(dclone);
-no autovivification;*/
-
 // Static class data
 pub(crate) static ANN: Lazy<Mutex<Ann>> = Lazy::new(|| Mutex::new(Ann::new()));
 

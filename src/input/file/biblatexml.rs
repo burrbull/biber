@@ -19,7 +19,6 @@ use XML::LibXML;
 use XML::LibXML::Simple;
 use Data::Dump qw(dump);
 use Unicode::Normalize;
-use Unicode::GCString;
 use URI;
 
 let $orig_key_order = {};
@@ -948,7 +947,7 @@ fn _datetime(bibentry, entry, f, key) {
 
       // Start of range
       // Using high-level range parsing sub in order to get unspec
-      if (let ($sdate, undef, undef, $unspec) = parse_date_range($bibentry,
+      if (let ($sdate, _, _, $unspec) = parse_date_range($bibentry,
                                                                 $datetype,
                                                                 $start->get_node(1)->textContent())) {
 
@@ -1065,7 +1064,7 @@ fn _datetime(bibentry, entry, f, key) {
     }
     else { // Simple date
       // Using high-level range parsing sub in order to get unspec
-      if (let ($sdate, undef, undef, $unspec) = parse_date_range($bibentry,
+      if (let ($sdate, _, _, $unspec) = parse_date_range($bibentry,
                                                                 $datetype,
                                                                 $node->textContent())) {
 
@@ -1139,7 +1138,7 @@ fn _name(bibentry, entry, f, key) {
   let $names = crate::Entry::Names->new("type" => $f);
 
   // per-namelist options
-  for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+  for nlo in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
     if ($node->hasAttribute($nlo)) {
       let $nlov = $node->getAttribute($nlo);
       let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
@@ -1227,7 +1226,7 @@ fn parsename(section, node, fieldname, key, count) {
           namec.insert(format!("{n}-i"), vec![ni]);
         }
         else {
-          namec.insert(format!("{n}-i"), vec![gen_initials(t)]);
+          namec.insert(format!("{n}-i"), vec![gen_initials(t)]); // TODO: check braces
         }
       }
     }
@@ -1251,7 +1250,7 @@ fn parsename(section, node, fieldname, key, count) {
                                        );
 
   // per-name options
-  for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+  for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
     if ($node->hasAttribute($no)) {
       let $nov = $node->getAttribute($no);
       let $oo = expand_option_input($no, $nov, $CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{INPUT});
@@ -1434,7 +1433,7 @@ fn _changenode(e, xp_target_s, value, error) {
 
 fn _getpath(string) {
   if !($string) {
-    return undef;
+    return None;
   }
   let $dm = crate::config::get_dm();
   if ($string =~ m|/|) {

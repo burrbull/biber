@@ -77,11 +77,11 @@ fn init_sets(set_d, set_e) {
     else {
       biber_error("Can't run kpsewhich to look for output_safechars data file: $err");
     }
-    info!("Using user-defined recode data file '{}'", mapdata);
+    info!("Using user-defined recode data file '{mapdata}'");
   }
   else {
     // we assume that the data file is in the same dir as the module
-    (let $vol, let $data_path, undef) = File::Spec->splitpath( $INC{'Biber/LaTeX/Recode.pm'} );
+    (let $vol, let $data_path, undef) = File::Spec->splitpath( $INC{"Biber/LaTeX/Recode.pm"} );
 
     // Deal with the strange world of Par::Packer paths, see similar code in Biber.pm
 
@@ -89,7 +89,7 @@ fn init_sets(set_d, set_e) {
       $mapdata = File::Spec->catpath($vol, "$data_path/inc/lib/Biber/LaTeX/recode_data.xml");
     }
     else {
-      $mapdata = File::Spec->catpath($vol, $data_path, 'recode_data.xml');
+      $mapdata = File::Spec->catpath($vol, $data_path, "recode_data.xml");
     }
   }
 
@@ -98,50 +98,48 @@ fn init_sets(set_d, set_e) {
   let $doc = XML::LibXML->load_xml(string => $xml);
   let $xpc = XML::LibXML::XPathContext->new($doc);
 
-  let @types = qw(letters diacritics punctuation symbols negatedsymbols superscripts cmdsuperscripts dings greek);
+  let types = ["letters", "diacritics", "punctuation", "symbols", "negatedsymbols", "superscripts", "cmdsuperscripts", "dings", "greek"];
 
   // Have to have separate loops for decode/recode or you can't have independent decode/recode
   // sets
 
   // Construct decode set
-  for type in (@types) {
-    for maps in ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
-      let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
-      if !(first {$set_d == $_} @set) {
+  for tp in types {
+    for maps in ($xpc->findnodes("/texmap/maps[\@type='$tp']")) {
+      if !Regex::new(r"\s*,\s*").unwrap().split(maps.getAttribute("set")).any(set_d) {
         continue;
       }
       for map in ($maps->findnodes("map")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
-        $remap_d->{$type}{map}{NFD($from->textContent())} = NFD($to->textContent());
+        $remap_d->{$tp}{map}{NFD($from->textContent())} = NFD($to->textContent());
       }
     }
     // Things we don't want to change when decoding as this breaks some things
     for d in ($xpc->findnodes('/texmap/decode_exclude/char')) {
-      delete($remap_d->{$type}{map}{NFD($d->textContent())});
+      delete($remap_d->{$tp}{map}{NFD($d->textContent())});
     }
   }
 
   // Construct encode set
-  for type in (@types) {
-    for maps in ($xpc->findnodes("/texmap/maps[\@type='$type']")) {
-      let @set = split(/\s*,\s*/, $maps->getAttribute("set"));
-      if !(first {$set_e == $_} @set) {
+  for tp in types {
+    for maps in ($xpc->findnodes("/texmap/maps[\@type='$tp']")) {
+      if !Regex::new(r"\s*,\s*").unwrap().split(maps.getAttribute("set")).any(set_e) {
         continue;
       }
       for map in ($maps->findnodes("map")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
-        $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
+        $remap_e->{$tp}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // There are some duplicates in the data to handle preferred encodings.
-      for map in ($maps->findnodes('map[from[@preferred]]')) {
+      for map in ($maps->findnodes("map[from[@preferred]]")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
-        $remap_e->{$type}{map}{NFD($to->textContent())} = NFD($from->textContent());
+        $remap_e->{$tp}{map}{NFD($to->textContent())} = NFD($from->textContent());
       }
       // Some things might need to be inserted as is rather than wrapped in some macro/braces
-      for map in ($maps->findnodes('map[from[@raw]]')) {
+      for map in ($maps->findnodes("map[from[@raw]]")) {
         let $from = $map->findnodes("from")->shift();
         let $to = $map->findnodes("to")->shift();
         $remap_e_raw->{NFD($to->textContent())} = 1;
@@ -149,7 +147,7 @@ fn init_sets(set_d, set_e) {
 
     }
     // Things we don't want to change when encoding as this would break LaTeX
-    for e in ($xpc->findnodes('/texmap/encode_exclude/char')) {
+    for e in ($xpc->findnodes("/texmap/encode_exclude/char")) {
       delete($remap_e->{$type}{map}{NFD($e->textContent())});
     }
   }
@@ -157,21 +155,31 @@ fn init_sets(set_d, set_e) {
   // Populate the decode regexps
   // sort by descending length of macro name to avoid shorter macros which are substrings
   // of longer ones damaging the longer ones
-  for type in (@types) {
-    if !(exists $remap_d->{$type}) {
-      continue;
+  for tp in types {
+    if let Some(typ) = remap_d.get_mut(tp) {
+      typ.re = {
+        let mut v: Vec<_> = typ.map.keys();
+        v.sort_by(|a, b| b.len().cmp(a.len()));
+        v.iter()
+        .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
+        .join("|")
+      };
+      typ.re = qr|typ.re|;
     }
-    $remap_d->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort {length($b) <=> length($a)} keys $remap_d->{$type}{map}->%*);
-    $remap_d->{$type}{re} = qr|$remap_d->{$type}{re}|;
   }
 
   // Populate the encode regexps
-  for type in (@types) {
-    if !(exists $remap_e->{$type}) {
-      continue;
+  for tp in types {
+    if let Some(typ) = remap_e.get_mut(tp) {
+      typ.re = {
+        let mut v: Vec<_> = typ.map.keys();
+        v.sort();
+        v.iter()
+        .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
+        .join("|")
+      };
+      typ.re = qr|typ.re|;
     }
-    $remap_e->{$type}{re} = join('|', map { /[\.\^\|\+\-\)\(]/ ? '\\' . $_ : $_ } sort keys %{$remap_e->{$type}{map}});
-    $remap_e->{$type}{re} = qr|$remap_e->{$type}{re}|;
   }
 }
 

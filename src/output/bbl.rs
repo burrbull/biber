@@ -50,7 +50,7 @@ impl Bbl {
   fn create_output_misc(&mut self) {
 
     if (let $pa = $crate::MASTER->get_preamble) {
-      $pa = join("%\n", $pa->@*);
+      $pa = pa.join("%\n");
 
       // If requested to convert UTF-8 to macros ...
       if (crate::Config->getoption("output_safechars")) {
@@ -254,7 +254,7 @@ impl Bbl {
           }
 
           // Add per-namelist options
-          for nlo in CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}.keys() {
+          for nlo in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
             if let Some(nlov) = nf.get(\"get_$nlo") {
               if ($CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{OUTPUT}) {
                 plo.push_str(&format!("{nlo}={}", map_boolean(nlo, nlov, "tostring")));
@@ -628,7 +628,7 @@ impl Bbl {
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit global sort lists so that we can add them last
       for list in (sort {a.get_sortingtemplatename() cmp b.get_sortingtemplatename()} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-        if (list.get_sortingtemplatename() == crate::Config->getblxoption(undef, "sortingtemplatename") &&
+        if (list.get_sortingtemplatename() == crate::Config->getblxoption(None, "sortingtemplatename") &&
             list.get_type() == "entry") {
           continue;
         }
@@ -641,7 +641,7 @@ impl Bbl {
       // and sortcites etc. when not using defernumbers
       push @lists, $crate::MASTER->datalists->get_lists_by_attrs(section => $secnum,
                                                                 type    => "entry",
-                                                                sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"))->@*;
+                                                                sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"))->@*;
 
       for list in &lists {
         if !($list->count_keys) { // skip empty lists

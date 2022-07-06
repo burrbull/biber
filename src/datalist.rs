@@ -690,11 +690,11 @@ impl DataList {
 
   /// Gets the attributes of a data list
   fn get_attrs(self) {
-    return join('/', ($self->{sortingtemplatename},
-                      $self->{sortingnamekeytemplatename},
-                      $self->{labelprefix},
-                      $self->{uniquenametemplatename},
-                      $self->{labelalphanametemplatename}));
+    format!("{}/{}/{}/{}/{}", self.sortingtemplatename,
+                      self.sortingnamekeytemplatename,
+                      self.labelprefix,
+                      self.uniquenametemplatename,
+                      self.labelalphanametemplatename);
   }
 
   /// Gets the sortingtemplatename of a data list

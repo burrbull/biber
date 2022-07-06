@@ -45,7 +45,7 @@ impl BblXML {
       $self->{xml_prefix} = $bblxml;
 
       let $schemafile;
-      let $exts = join('|', values %DS_EXTENSIONS);
+      let $exts = DS_EXTENSIONS.values().join("|");
       if ($bblxmlfile =~ m/\.(?:$exts)$/) {
         $schemafile = $bblxmlfile =~ s/\.(?:$exts)$/.rng/r;
       }
@@ -160,7 +160,7 @@ impl BblXML {
       $xml->dataElement("BDS", "ENTRYSET");
 
       // Set parents need this - it is the labelalpha from the first entry
-      if (crate::Config->getblxoption(undef, "labelalpha", $bee, $key)) {
+      if (crate::Config->getblxoption(None, "labelalpha", $bee, $key)) {
         $xml->dataElement("BDS", "LABELALPHA");
         $xml->dataElement("BDS", "EXTRAALPHA");
       }
@@ -222,7 +222,7 @@ impl BblXML {
           }
 
           // Add per-namelist options
-          for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+          for nlo in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
             if (defined($nf->${\"get_$nlo"})) {
               let $nlov = $nf->${\"get_$nlo"};
 
@@ -304,7 +304,7 @@ impl BblXML {
       $xml->dataElement("BDS", "EXTRANAME");
     }
 
-    if ( crate::Config->getblxoption(undef, "labelalpha", $bee, $key) ) {
+    if ( crate::Config->getblxoption(None, "labelalpha", $bee, $key) ) {
       $xml->dataElement("BDS", "LABELALPHA");
     }
 
@@ -312,7 +312,7 @@ impl BblXML {
     $xml->dataElement("BDS", "SORTINITHASH");
 
     // The labeldateparts option determines whether "extradate" is output
-    if (crate::Config->getblxoption(undef, "labeldateparts", $bee, $key)) {
+    if (crate::Config->getblxoption(None, "labeldateparts", $bee, $key)) {
       $xml->dataElement("BDS", "EXTRADATE");
       if (let $edscope = $be->get_field("extradatescope")) {
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($edscope), name => "extradatescope");
@@ -329,17 +329,17 @@ impl BblXML {
     }
 
     // The labeltitle option determines whether "extratitle" is output
-    if (crate::Config->getblxoption(undef, "labeltitle", $bee, $key)) {
+    if (crate::Config->getblxoption(None, "labeltitle", $bee, $key)) {
       $xml->dataElement("BDS", "EXTRATITLE");
     }
 
     // The labeltitleyear option determines whether "extratitleyear" is output
-    if (crate::Config->getblxoption(undef, "labeltitleyear", $bee, $key)) {
+    if (crate::Config->getblxoption(None, "labeltitleyear", $bee, $key)) {
       $xml->dataElement("BDS", "EXTRATITLEYEAR");
     }
 
     // The labelalpha option determines whether "extraalpha" is output
-    if (crate::Config->getblxoption(undef, "labelalpha", $bee, $key)) {
+    if (crate::Config->getblxoption(None, "labelalpha", $bee, $key)) {
       $xml->dataElement("BDS", "EXTRAALPHA");
     }
 
@@ -496,8 +496,7 @@ impl BblXML {
           continue;
         }
         // range fields are an array ref of two-element array refs [range_start, range_end]
-        // range_end can be be empty for open-ended range or undef
-        let @pr;
+        // range_end can be be empty for open-ended range or None
         $xml->startTag([$xml_prefix, "range"], name => $rfield);
         for f in ($rf->@*) {
           $xml->startTag([$xml_prefix, "item"], length => rangelen($rf));
@@ -655,29 +654,29 @@ impl BblXML {
 
       $xml->startTag([$xml_prefix, "refsection"], id => $secnum);
 
-      let $section = $self->get_output_section($secnum);
+      let section = self.get_output_section(secnum);
 
-      let @lists; // Need to reshuffle list to put global sort order list at end, see below
+      let mut lists = Vec::new(); // Need to reshuffle list to put global sort order list at end, see below
 
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit the global context list so that we can add this last
       for list in (sort {a.get_sortingtemplatename() cmp b.get_sortingtemplatename()} $crate::MASTER->datalists->get_lists_for_section($secnum)->@*) {
-        if (list.get_sortingtemplatename() == crate::Config->getblxoption(undef, "sortingtemplatename") &&
+        if (list.get_sortingtemplatename() == crate::Config->getblxoption(None, "sortingtemplatename") &&
             list.get_sortingnamekeytemplatename() == "global" &&
             list.get_labelprefix() == "" &&
             list.get_type() == "entry") {
           continue;
         }
-        push @lists, $list;
+        lists.push(list);
       }
 
       // biblatex requires the last list in the .bbl to be the global sort  list
       // due to its sequential reading of the .bbl as the final list overrides the
       // previously read ones and the global list determines the order of labelnumber
       // and sortcites etc. when not using defernumbers
-      push @lists, $crate::MASTER->datalists->get_lists_by_attrs(section => $secnum,
+      lists.push($crate::MASTER->datalists->get_lists_by_attrs(section => secnum,
                                                                 type    => "entry",
-                                                                sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"))->@*;
+                                                                sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"))->@*);
 
       for list in &lists {
         if list.count_keys() == 0 { // skip empty lists
@@ -739,23 +738,25 @@ impl BblXML {
     $xml->end();
 
 
-    let $schemafile;
-    let $exts = join('|', values %DS_EXTENSIONS);
-    if ($target_string =~ m/\.(?:$exts)$/) {
-      $schemafile = $target_string =~ s/\.(?:$exts)$/.rng/r;
-    }
-    else {
-      // in tests, there is no extension as we are using a temp file
-      $schemafile = $target_string . '.rng';
-    }
+    let $exts = DS_EXTENSIONS.values().join("|");
+    let $schemafile = {
+      let r = Regex::new(r"\.(?:$exts)$").unwrap();
+      if r.is_match(target_string) {
+        r.replace(target_string, ".rng")
+      }
+      else {
+        // in tests, there is no extension as we are using a temp file
+        format!("{target_string}.rng")
+      }
+    };
 
     // Generate schema to accompany output
     if !(crate::Config->getoption("no_bblxml_schema")) {
-      $dm->generate_bblxml_schema($schemafile);
+      dm.generate_bblxml_schema(schemafile);
     }
 
     if (crate::Config->getoption("validate_bblxml")) {
-      validate_biber_xml($target_string, "bbl", "https://sourceforge.net/projects/biblatex/bblxml", $schemafile);
+      validate_biber_xml(target_string, "bbl", "https://sourceforge.net/projects/biblatex/bblxml", $schemafile);
     }
 
     return;

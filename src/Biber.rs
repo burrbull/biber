@@ -395,8 +395,7 @@ impl Biber {
         if (let $bin = process_backendin($bcfscopeopt->{backendin})) {
           $CONFIG_BIBLATEX_OPTIONS{$scope}{$opt}{INPUT} = $bin;
         }
-        $CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope} = 1;
-        $CONFIG_SCOPEOPT_BIBLATEX{$scope}{$opt} = 1;
+        CONFIG_OPT_SCOPE_BIBLATEX.insert(opt, scope);
         if (defined($CONFIG_OPTTYPE_BIBLATEX{$opt}) &&
             lc($CONFIG_OPTTYPE_BIBLATEX{$opt}) != lc($bcfscopeopt->{datatype})) {
           biber_warn("Warning: Datatype for biblatex option '$opt' has conflicting values, probably at different scopes. This is not supported.");
@@ -407,12 +406,12 @@ impl Biber {
       }
     }
     // Now we have the per-namelist options, make the accessors for them in the Names package
-    for nso in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+    for nso in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
       crate::Entry::Names->follow_best_practice;
       crate::Entry::Names->mk_accessors($nso);
     }
     // Now we have the per-name options, make the accessors for them in the Name package
-    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
       crate::Entry::Name->follow_best_practice;
       crate::Entry::Name->mk_accessors($no);
     }
@@ -562,13 +561,13 @@ impl Biber {
     }
 
     // EXTRADATE specification
-    let $ed;
+    let ed = Vec::new();
     for scope in ($bcfxml->{extradatespec}->{scope}->@*) {
-      let $fields;
+      let mut fields = Vec::new();
       for field in (sort {$a->{order} <=> $b->{order}} $scope->{field}->@*) {
-        push $fields->@*, $field->{content};
+        fields.push($field->{content});
       }
-      push $ed->@*, $fields;
+      ed.push(fields);
     }
     crate::Config->setblxoption(None, "extradatespec", $ed);
 
@@ -584,8 +583,8 @@ impl Biber {
       push $noinit->@*, { value => $ni->{value}[0]};
     }
     // There is a default so don't set this option if nothing is in the .bcf
-    if $noinit {
-      crate::Config->setoption("noinit", $noinit);
+    if !noinit.is_empty() {
+      crate::Config->setoption("noinit", noinit);
     }
 
     // NOLABEL
@@ -819,19 +818,17 @@ impl Biber {
 
         if ($keyc->{nocite}) {// \nocite'd
           // Don't add if there is an identical key without nocite since \cite takes precedence
-          if !(first {$key == NFD($_->{content})} @prekeys) {
-            push @prekeys, $keyc;
+          if !prekeys.iter().any(|k| key == NFD(k->{content})) {
+            prekeys.push(keyc);
           }
         }
         else {// \cite'd
           // If there is already a nocite of this key, remove the nocite attribute and don't add
-          if (first {($key == NFD($_->{content})) && $_->{nocite}} @prekeys) {
-            if ($key == NFD($_->{content});$_} @prekeys) {
-              @prekeys = map {delete($_->{nocite});
-            }
+          if prekeys.iter().any(|k| (key == NFD(k->{content})) && k->{nocite}) {
+            @prekeys = map {delete($_->{nocite}) if key == NFD($_->{content});$_} @prekeys;
           }
           else {
-            push @prekeys, $keyc;
+            prekeys.push(keyc);
           }
         }
       }
@@ -2148,7 +2145,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
-    if (let @entrysetkeys = $section->get_set_children($citekey)) {
+    if (let @entrysetkeys = section.get_set_children(citekey)) {
       // Enforce Biber parts of virtual "dataonly" options for set members
       // Also automatically create an "entryset" field for the members
       for member in (@entrysetkeys) {
@@ -2167,14 +2164,14 @@ impl Biber {
       }
 
       if !(@entrysetkeys) {
-        biber_warn("No entryset found for entry $citekey of type "set"", $be);
+        biber_warn(r#"No entryset found for entry $citekey of type "set""#, be);
       }
     }
     // Also set this here for any non-set keys which are in a set and which haven't
     // had skips set by being seen as a member of that set yet
     else {
-      if ($section->get_set_parents($citekey)) {
-        process_entry_options($citekey, [ "skipbib", "skiplab", "skipbiblist", "uniquename=false", "uniquelist=false" ], $secnum);
+      if (section.get_set_parents(citekey)) {
+        process_entry_options(citekey, [ "skipbib", "skiplab", "skipbiblist", "uniquename=false", "uniquelist=false" ], $secnum);
       }
     }
   }
@@ -2216,8 +2213,8 @@ impl Biber {
       }
 
       // If there is a biblatex option which controls the use of this labelname info, check it
-      if ($CONFIG_OPTSCOPE_BIBLATEX{"use$lnameopt"} &&
-        !crate::Config->getblxoption($secnum, "use$lnameopt", $bee, $citekey)) {
+      if CONFIG_OPT_SCOPE_BIBLATEX.contains_left(&format!("use{lnameopt}")) &&
+        !crate::Config->getblxoption(secnum, format!("use{lnameopt}"), bee, citekey) {
         continue;
       }
 
@@ -2242,13 +2239,13 @@ impl Biber {
       }
 
       // If there is a biblatex option which controls the use of this labelname info, check it
-      if ($CONFIG_OPTSCOPE_BIBLATEX{"use$ln"} &&
-        !crate::Config->getblxoption($secnum, "use$ln", $bee, $citekey)) {
+      if CONFIG_OPT_SCOPE_BIBLATEX.contains_left(&format!("use{ln}")) &&
+        !crate::Config->getblxoption(secnum, &format!("use{ln}"), bee, citekey) {
         continue;
       }
 
-      if ($be->get_field($ln)) {
-        $be->set_labelnamefh_info($ln);
+      if (be.get_field(ln)) {
+        be.set_labelnamefh_info(ln);
         break;
       }
     }
@@ -2283,7 +2280,11 @@ impl Biber {
           let ldtz;
 
           // resolve dates
-          let datetype = ld.strip_suffix("date").unwrap();
+          let datetype = if let Some(s) = ld.strip_suffix("date") {
+            s
+          } else {
+            ld
+          };
 
           if dm.field_is_datatype("date", ld) &&
               be.get_field(format!("{datetype}datesplit")) { // real EDTF dates
@@ -2305,109 +2306,111 @@ impl Biber {
           // as that is always present if there is a labeldate
           if (defined(be.get_field(ldy)) || defined(be.get_field(ldey))) {
             // set source to field or date field prefix for a real date field
-            be.set_labeldate_info({"field" => {year       => ldy,
-                                                month      => ldm,
-                                                day        => ldd,
-                                                hour       => ldhour,
-                                                minute     => ldmin,
-                                                second     => ldsec,
-                                                timezone   => ldtz,
-                                                pseudodate => pseudodate,
-                                                source     => if pseudodate { ldy } else { datetype }}});
+            be.set_labeldate_info(LabelDateInfo::Field {
+              year: ldy,
+              month: ldm,
+              day: ldd,
+              hour: ldhour,
+              minute: ldmin,
+              second: ldsec,
+              timezone: ldtz,
+              pseudodate,
+              source: if pseudodate { ldy } else { datetype }
+            });
             break;
           }
         }
         else if ($lds->{"type"} == "string") { // labelyear fallback string
-          $be->set_labeldate_info({"string" => $ld});
+          be.set_labeldate_info(LabelDateInfo::String(ld));
           break;
         }
       }
 
       // Construct label*
       // Might not have been set due to skiplab
-      let ldi = be.get_labeldate_info();
-      if ldi {
-        let df = ldi.get("field");
-        if df { // set labelyear to a field value
-          let pseudodate = df.pseudodate;
-          be.set_field("labelyear", be.get_field(df.year));
-          if df.month {
-            be.set_field("labelmonth", be.get_field(df.month));
-          }
-          if df.day {
-            be.set_field("labelday", be.get_field(df.day));
-          }
-          if df.hour {
-            be.set_field("labelhour", be.get_field(df.hour));
-          }
-          if df.minute {
-            be.set_field("labelminute", be.get_field(df.minute));
-          }
-          if df.second {
-            be.set_field("labelsecond", be.get_field(df.second));
-          }
-          if df.timezone {
-            be.set_field("labeltimezone", be.get_field(df.timezone));
-          }
-          be.set_field("labeldatesource", df.source);
+      if let Some(ldi) = be.get_labeldate_info() {
+        match ldi {
+          LabelDateInfo(df) => { // set labelyear to a field value
+            let pseudodate = df.pseudodate;
+            be.set_field("labelyear", be.get_field(df.year));
+            if df.month {
+              be.set_field("labelmonth", be.get_field(df.month));
+            }
+            if df.day {
+              be.set_field("labelday", be.get_field(df.day));
+            }
+            if df.hour {
+              be.set_field("labelhour", be.get_field(df.hour));
+            }
+            if df.minute {
+              be.set_field("labelminute", be.get_field(df.minute));
+            }
+            if df.second {
+              be.set_field("labelsecond", be.get_field(df.second));
+            }
+            if df.timezone {
+              be.set_field("labeltimezone", be.get_field(df.timezone));
+            }
+            be.set_field("labeldatesource", df.source);
 
-          // ignore endyear if it's the same as year
-          let ytype = df->{year}.strip_suffix("year").unwrap_or(""); // Avoid undef warnings since no match above can make it undef
+            // ignore endyear if it's the same as year
+            let ytype = df.year.strip_suffix("year").unwrap_or(""); // Avoid undef warnings since no match above can make it undef
 
-          // construct labelyear from start/end year field
-          let f = format!("{ytype}endyear");
-          if ($be->field_exists(&f)
-              && ((be.get_field(df.year).unwrap_or("")) != $be->get_field(&f))) {
-            be.set_field(
-              "labelyear",
-              format!(r"{}\bibdatedash {f}", be.get_field("labelyear").unwrap_or(""))
-            );
+            // construct labelyear from start/end year field
+            let f = format!("{ytype}endyear");
+            if (be.field_exists(&f)
+                && ((be.get_field(df.year).unwrap_or("")) != be.get_field(&f))) {
+              be.set_field(
+                "labelyear",
+                format!(r"{}\bibdatedash {f}", be.get_field("labelyear").unwrap_or(""))
+              );
+            }
+            if !pseudodate {
+              // construct labelmonth from start/end month field
+              let f = be.get_field(&format!("{ytype}endmonth"));
+              if f && ((be.get_field(df.month).unwrap_or("")) != f) {
+                be.set_field(
+                  "labelmonth",
+                  format!(r"{}\bibdatedash {f}", be.get_field("labelmonth").unwrap_or(""))
+                );
+              }
+              // construct labelday from start/end month field
+              let f = be.get_field(&format!("{ytype}endday"));
+              if f && ((be.get_field(df.day).unwrap_or("")) != f) {
+                be.set_field(
+                  "labelday",
+                  format!(r"{}\bibdatedash {f}", be.get_field("labelday").unwrap_or(""))
+                );
+              }
+              // construct labelhour from start/end hour field
+              let f = be.get_field(&format!("{ytype}endhour"));
+              if f && ((be.get_field(df.hour).unwrap_or("")) != f) {
+                be.set_field(
+                  "labelhour",
+                  format!(r"{}\bibdatedash {f}", be.get_field("labelhour").unwrap_or(""))
+                );
+              }
+              // construct labelminute from start/end minute field
+              let f = be.get_field(&format!("{ytype}endminute"));
+              if f && ((be.get_field(df.minute).unwrap_or("")) != f) {
+                be.set_field(
+                  "labelminute",
+                  format!(r"{}\bibdatedash {f}", be.get_field("labelminute").unwrap_or(""))
+                );
+              }
+              // construct labelsecond from start/end second field
+              let f = be.get_field(&format!("{ytype}endsecond"));
+              if f && ((be.get_field(df.second).unwrap_or("")) != f) {
+                be.set_field(
+                  "labelsecond",
+                  format!(r"{}\bibdatedash {f}", be.get_field("labelsecond").unwrap_or(""))
+                );
+              }
+            }
           }
-          if !pseudodate {
-            // construct labelmonth from start/end month field
-            let f = be.get_field(&format!("{ytype}endmonth"));
-            if f && ((be.get_field(df.month).unwrap_or("")) != f) {
-              be.set_field(
-                "labelmonth",
-                format!(r"{}\bibdatedash {f}", be.get_field("labelmonth").unwrap_or(""))
-              );
-            }
-            // construct labelday from start/end month field
-            let f = be.get_field(&format!("{ytype}endday"));
-            if f && ((be.get_field(df.day).unwrap_or("")) != f) {
-              be.set_field(
-                "labelday",
-                format!(r"{}\bibdatedash {f}", be.get_field("labelday").unwrap_or(""))
-              );
-            }
-            // construct labelhour from start/end hour field
-            let f = be.get_field(&format!("{ytype}endhour"));
-            if f && ((be.get_field(df.hour).unwrap_or("")) != f) {
-              be.set_field(
-                "labelhour",
-                format!(r"{}\bibdatedash {f}", be.get_field("labelhour").unwrap_or(""))
-              );
-            }
-            // construct labelminute from start/end minute field
-            let f = be.get_field(&format!("{ytype}endminute"));
-            if f && ((be.get_field(df.minute).unwrap_or("")) != f) {
-              be.set_field(
-                "labelminute",
-                format!(r"{}\bibdatedash {f}", be.get_field("labelminute").unwrap_or(""))
-              );
-            }
-            // construct labelsecond from start/end second field
-            let f = be.get_field(&format!("{ytype}endsecond"));
-            if f && ((be.get_field(df.second).unwrap_or("")) != f) {
-              be.set_field(
-                "labelsecond",
-                format!(r"{}\bibdatedash {f}", be.get_field("labelsecond").unwrap_or(""))
-              );
-            }
+          LabelDateInfo::String(ys) { // set labeldatesource to a fallback string
+            be.set_field("labeldatesource", ys);
           }
-        }
-        else if (let $ys = $ldi->{string}) { // set labeldatesource to a fallback string
-          $be->set_field("labeldatesource", $ys);
         }
       }
       else {
@@ -2758,7 +2761,7 @@ impl Biber {
           }
           push $flist->@*, $k;
         }
-          debug!("Keys after filtering list '{}' in section {}: {}", lname, secnum, join(', ', $flist->@*));
+          debug!("Keys after filtering list '{}' in section {}: {}", lname, secnum, flist.join(", "));
         $list->set_keys($flist); // Now save the sorted list in the list object
       }
 
@@ -4052,7 +4055,7 @@ impl Biber {
       if datatype == InputFormat::BibLaTeXML {
         let $outfile;
         if (crate::Config->getoption("tool")) {
-          let $exts = join('|', values %DS_EXTENSIONS);
+          let $exts = DS_EXTENSIONS.values().join("|");
           $outfile = crate::Config->getoption("dsn") =~ s/\.(?:$exts)$/.rng/r;
         }
         else {
@@ -4116,7 +4119,7 @@ impl Biber {
       section.add_undef_citekey(citekey);
     }
 
-      debug!("Building dependents for keys: {}", join(',', $section.get_citekeys()));
+      debug!("Building dependents for keys: {}", section.get_citekeys().join(","));
 
     // dependent key list generation - has to be a sub as it's recursive to catch
     // nested crossrefs, xdata etc.
@@ -4273,7 +4276,7 @@ impl Biber {
         }
       }
 
-        debug!("Dependent keys not found for section '{}': {}", secnum, join(', ', $missing->@*));
+        debug!("Dependent keys not found for section '{}': {}", secnum, missing.join(", "));
       for missing_key in ($missing->@*) {
         // Remove the missing key from the list to recurse with
         new_deps.retain(|k| k!= $missing_key);

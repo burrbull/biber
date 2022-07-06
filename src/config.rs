@@ -114,7 +114,7 @@ fn _initopts(opts) {
       _config_file_set($bc);
     }
     else {
-      (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Biber/Config.pm"} );
+      (let $vol, let $dir, _) = File::Spec->splitpath( $INC{"Biber/Config.pm"} );
       $dir =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
       _config_file_set(File::Spec->catpath($vol, "$dir", "biber-tool.conf"));
     }
@@ -360,18 +360,17 @@ fn _config_file_set(conf) {
       if (let $bin = crate::Utils::process_backendin($bcfscopeopt->{backendin})) {
         $CONFIG_BIBLATEX_OPTIONS{$scope}{$opt}{INPUT} = $bin;
       }
-      $CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope} = 1;
-      $CONFIG_SCOPEOPT_BIBLATEX{$scope}{$opt} = 1;
+      CONFIG_OPT_SCOPE_BIBLATEX.insert(opt, scope);
     }
   }
 
   // Now we have the per-namelist options, make the accessors for them in the Names package
-  for nso in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+  for nso in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
     crate::Entry::Names->follow_best_practice;
     crate::Entry::Names->mk_accessors($nso);
   }
   // Now we have the per-name options, make the accessors for them in the Name package
-  for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+  for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
     crate::Entry::Name->follow_best_practice;
     crate::Entry::Name->mk_accessors($no);
   }
@@ -634,11 +633,11 @@ fn config_file {
     chomp $biberconf;
     $biberconf =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
     if !($biberconf) { // sanitise just in case it's an empty string
-      $biberconf = undef;
+      $biberconf = None;
     }
   }
   else {
-    $biberconf = undef;
+    $biberconf = None;
   }
 
   return $biberconf;
@@ -739,7 +738,7 @@ fn setconfigfileoption(opt, val) {
   $CONFIG->{options}{biber}{$opt} = $CONFIG->{configfileoptions}{$opt} = $val;
 
   // Config file options can also be global biblatex options
-  if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}) {
+  if CONFIG_OPT_SCOPE_BIBLATEX.contains_left(&opt) {
     $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
   }
 
@@ -769,7 +768,7 @@ fn isexplicitoption(self, opt) -> bool {
 
 /// Add to an array global biblatex option
 fn addtoblxoption(secnum, opt, val) {
-  if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
+  if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "GLOBAL") {
     push $CONFIG->{options}{biblatex}{GLOBAL}{$opt}->@*, $val;
   }
   return;
@@ -781,17 +780,17 @@ fn setblxoption(secnum, opt, val, scope, scopeval) {
   $val = Biber::Utils::map_boolean($opt, $val, "tonum");
 
   if (!defined($scope)) { // global is the default
-    if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
+    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "GLOBAL") {
       $CONFIG->{options}{biblatex}{GLOBAL}{$opt} = $val;
     }
   }
   else if ($scope == "ENTRY") {
-    if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope}) {
+    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, &scope) {
       $CONFIG->{options}{biblatex}{$scope}{$scopeval}{$secnum}{$opt} = $val;
     }
   }
   else {
-    if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{$scope}) {
+    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, &scope) {
       $CONFIG->{options}{biblatex}{$scope}{$scopeval}{$opt} = $val;
     }
   }
@@ -809,7 +808,7 @@ fn setblxoption(secnum, opt, val, scope, scopeval) {
 ///
 /// section number needs to be present only for per-entry options as these might
 /// differ between sections
-fn getblxoption(secnum, opt, entrytype, citekey) {
+fn getblxoption(secnum, opt, entrytype, citekey: Option<&str>) {
   no autovivification;
   // Set impossible defaults
   $secnum = secnum.unwrap_or("\x{10FFFD}");
@@ -817,16 +816,16 @@ fn getblxoption(secnum, opt, entrytype, citekey) {
   $entrytype = entrytype.unwrap_or("\x{10FFFD}");
   $citekey = citekey.unwrap_or("\x{10FFFD}");
   if ( defined($citekey) &&
-       $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRY} &&
+  CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "ENTRY") &&
        defined $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRY}{$citekey}{$secnum}{$opt};
   }
   else if (defined($entrytype) &&
-         $CONFIG_OPTSCOPE_BIBLATEX{$opt}{ENTRYTYPE} &&
+  CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "ENTRYTYPE") &&
          defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt}) {
     return $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt};
   }
-  else if ($CONFIG_OPTSCOPE_BIBLATEX{$opt}{GLOBAL}) {
+  else if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "GLOBAL") {
     return $CONFIG->{options}{biblatex}{GLOBAL}{$opt};
   }
 }

@@ -159,7 +159,7 @@ fn extract_entries(filename, encoding, keys) {
     // no explicitly cited keys
     section.add_citekeys($cache->{orig_key_order}{$filename}->@*);
 
-      debug!("Added all citekeys to section '{}': {}", secnum, join(', ', $section.get_citekeys()));
+      debug!("Added all citekeys to section '{secnum}': {}", section.get_citekeys().join(", "));
     // Special case when allkeys but also some dynamic set entries. These keys must also be
     // in the section or they will be missed on output.
     if ($section->has_dynamic_sets) {
@@ -169,8 +169,8 @@ fn extract_entries(filename, encoding, keys) {
   }
   else {
     // loop over all keys we're looking for and create objects
-      debug!("Text::BibTeX cache keys: {}", join(', ', keys $cache->{data}{$filename}->%*));
-      debug!("Wanted keys: {}", join(', ', $keys->@*));
+      debug!("Text::BibTeX cache keys: {}", cache->{data}{$filename}.keys().join(", "));
+      debug!("Wanted keys: {}", keys.join(", "));
     for wanted_key in ($keys->@*) {
         debug!("Looking for key '{}' in Text::BibTeX cache", wanted_key);
 
@@ -223,7 +223,7 @@ fn extract_entries(filename, encoding, keys) {
         biber_warn("Possible typo (case mismatch) between citation and datasource keys: '$wanted_key' and '$okey' in file '$filename'");
       }
 
-        debug!("Wanted keys now: {}", join(', ', @rkeys));
+        debug!("Wanted keys now: {}", rkeys.join(", "));
     }
   }
 
@@ -334,8 +334,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
         }
 
         let $last_type = $entry->type; // defaults to the entrytype unless changed below
-        let $last_field = undef;
-        let $last_fieldval = undef;
+        let last_field = None;
+        let last_fieldval = None;
 
         let @imatches; // For persisting parenthetical matches over several steps
 
@@ -946,9 +946,9 @@ fn _annotation(bibentry, entry, field, key) {
 }
 
 // Literal fields
-fn _literal(bibentry, entry, field, key) {
-  let $fc = UniCase::new($field); // Casefolded field which is what we need internally
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
+  let fc = UniCase::new(field); // Casefolded field which is what we need internally
+  let $value = $entry->get(encode("UTF-8", NFC(field)));
 
   // Record any XDATA and skip if we did
   if ($bibentry->add_xdata_ref($field, $value)) {
@@ -958,7 +958,7 @@ fn _literal(bibentry, entry, field, key) {
   // If we have already split some date fields into literal fields
   // like date -> year/month/day, don't overwrite them with explicit
   // year/month
-  if ($fc == "year") {
+  if fc == UniCase::new("year") {
     if $bibentry->get_datafield("year") {
       return;
     }
@@ -966,7 +966,7 @@ fn _literal(bibentry, entry, field, key) {
       biber_warn("legacy year field '$value' in entry '$key' is not an integer - this will probably not sort properly.");
     }
   }
-  if ($fc == "month") {
+  if fc == UniCase::new("month") {
     if $bibentry->get_datafield("month") {
       return;
     }
@@ -976,7 +976,7 @@ fn _literal(bibentry, entry, field, key) {
   }
 
   // Deal with ISBN options
-  if ($fc == "isbn") {
+  if fc == UniCase::new("isbn") {
     require Business::ISBN;
     let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
     $dir =~ s/\/$//;            // splitpath sometimes leaves a trailing '/'
@@ -1010,13 +1010,13 @@ fn _literal(bibentry, entry, field, key) {
   }
 
   // Try to sanitise months to biblatex requirements
-  if ($fc == "month") {
+  if fc == UniCase::new("month") {
     return _hack_month($value);
   }
   // Rationalise any bcp47 style langids into babel/polyglossia names
   // biblatex will convert these back again when loading .lbx files
   // We need this until babel/polyglossia support proper bcp47 language/locales
-  else if ($fc == "langid" && let $map = $LOCALE_MAP_R{$value}) {
+  else if (fc == UniCase::new("langid") && let $map = $LOCALE_MAP_R{$value}) {
     return $map;
   }
   else {
@@ -1118,9 +1118,9 @@ fn _name(bibentry, entry, field, key) {
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
                                      crate::Config->getoption("namesep"),
-                                     undef,
-                                     undef,
-                                     undef,
+                                     None,
+                                     None,
+                                     None,
                                      {binmode => "UTF-8", normalization => "NFD"});
 
   for (i, name) in tmp.iter().enumerate() {
@@ -1135,7 +1135,7 @@ fn _name(bibentry, entry, field, key) {
     if ($name =~ m/^(\S+)\s*$xnamesep\s*(\S+)?$/) {
       let $nlo = lc($1);
       let $nlov = $2.unwrap_or(1); // bare options are just boolean numerals
-      if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}{$nlo})) {
+      if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&nlo, "NAMELIST") {
         let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
 
         for o in ($oo->@*) {
@@ -1153,7 +1153,7 @@ fn _name(bibentry, entry, field, key) {
       return "BIBER_SKIP_ENTRY";
     }
 
-    let $nps = join('|', $dm->get_constant_value("nameparts"));
+    let $nps = dm.get_constant_value("nameparts").join("|");
     let $no;
 
     // extended name format
@@ -1371,9 +1371,9 @@ fn _list(bibentry, entry, field) {
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
                                      crate::Config->getoption("listsep"),
-                                     undef,
-                                     undef,
-                                     undef,
+                                     None,
+                                     None,
+                                     None,
                                      {binmode => "UTF-8", normalization => "NFD"});
   @tmp = map { (remove_outer($_))[1] } @tmp;
   let @result;
@@ -1397,9 +1397,9 @@ fn _urilist(bibentry, entry, field) {
   // Unicode NFC boundary (passing to external library)
   let @tmp = Text::BibTeX::split_list(NFC($value),
                                      crate::Config->getoption("listsep"),
-                                     undef,
-                                     undef,
-                                     undef,
+                                     None,
+                                     None,
+                                     None,
                                      {binmode => "UTF-8", normalization => "NFD"});
   let result = Vec::new();
 
@@ -1727,7 +1727,7 @@ fn parsename(section, namestr, fieldname) {
       $part = strip_noinit($part);
 
       // split on spaces/tilde outside of brace block
-      $namec{"${np}-i"} = [gen_initials(split(/[\h~]+(?![^{]*\})/, $part))];
+      $namec{"${np}-i"} = [gen_initials(Regex::new(r"[\h~]+(?![^{]*\})").unwrap().split(part))];
     }
   }
 
@@ -1778,7 +1778,7 @@ fn parsename_x(section, namestr, fieldname, key) {
     $npn = lc($npn);
 
     // per-name options
-    if (exists($CONFIG_SCOPEOPT_BIBLATEX{NAME}{$npn})) {
+    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&npn, "NAME") {
       let $oo = expand_option_input($npn, $npv, $CONFIG_BIBLATEX_OPTIONS{NAME}{$npn}{INPUT});
 
       for o in ($oo->@*) {
@@ -1801,7 +1801,7 @@ fn parsename_x(section, namestr, fieldname, key) {
         $namec{$npn} = $npv;
       }
       else {
-        $namec{$npn} = join_name_parts([split(/\s+/,$npv)]);
+        $namec{$npn} = join_name_parts(Regex::new(r"\s+").unwrap().split(npv));
       }
     }
   }
@@ -1822,7 +1822,7 @@ fn parsename_x(section, namestr, fieldname, key) {
 
       // Generate any initials which are missing
       if (!exists($namec{"${np}-i"})) {
-        $namec{"${np}-i"} = [gen_initials(split(/[\s~]+/, $part))];
+        $namec{"${np}-i"} = [gen_initials(Regex::new(r"[\s~]+").unwrap().split(part))];
       }
     }
   }
@@ -1859,16 +1859,15 @@ let %months = (
               "aug" => "8",
               "sep" => "9",
               "oct" => "10",
-              "nov" => "11',
+              "nov" => "11",
               "dec" => "12"
              );
 
 fn _hack_month(in_month) {
   if (let ($m) = $in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
-    return $months{lc(Unicode::GCString->new($m)->substr(0,3)->as_string)};
-  }
-  else {
-    return $in_month;
+    months{m.graphemes(true).take(3).collect::<String>().to_lowercase()}
+  } else {
+    in_month
   }
 }
 

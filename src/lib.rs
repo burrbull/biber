@@ -12,9 +12,91 @@ mod utils;
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Unknown;
 
-use std::collections::{hash_map, HashMap};
-use core::borrow::Borrow;
+use std::borrow::Borrow;
 use std::hash::Hash;
+use std::collections::{hash_map, HashMap, HashSet};
+use std::rc::Rc;
+use std::sync::Arc;
+
+mod mem;
+use mem::{Ref, Wrapper};
+
+
+pub struct BiSet<L: Eq + Hash, R: Eq + Hash> {
+    lr: HashMap<Ref<L>, HashSet<Ref<R>>>,
+    rl: HashMap<Ref<R>, HashSet<Ref<L>>>,
+}
+
+impl<L: Eq + Hash, R: Eq + Hash> BiSet<L, R> {
+    pub fn new() -> Self {
+        Self {
+            lr: HashMap::new(),
+            rl: HashMap::new(),
+        }
+    }
+    pub fn insert(&mut self, left: impl Into<Arc<L>>, right: impl Into<Arc<R>>) {
+        let left = Ref(left.into());
+        let right = Ref(right.into());
+        match self.lr.entry(left.clone()) {
+            hash_map::Entry::Occupied(mut e) => {
+                e.get_mut().insert(right.clone());
+            }
+            hash_map::Entry::Vacant(e) => {
+                e.insert(HashSet::from([right.clone()]));
+            }
+        }
+        match self.rl.entry(right.clone()) {
+            hash_map::Entry::Occupied(mut e) => {
+                e.get_mut().insert(left.clone());
+            }
+            hash_map::Entry::Vacant(e) => {
+                e.insert(HashSet::from([left.clone()]));
+            }
+        }
+    }
+
+    pub fn contains_left<Q>(&self, left: &Q) -> bool
+    where
+        L: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.lr.contains_key(Wrapper::wrap(left))
+    }
+
+    pub fn contains_right<Q>(&self, right: &Q) -> bool
+    where
+        R: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        self.rl.contains_key(Wrapper::wrap(right))
+    }
+
+    pub fn contains_pair<LQ, RQ>(&self, left: &LQ, right: &RQ) -> bool
+    where
+        L: Borrow<LQ>,
+        R: Borrow<RQ>,
+        LQ: Eq + Hash + ?Sized,
+        RQ: Eq + Hash + ?Sized,
+    {
+        self.lr.get(Wrapper::wrap(left)).map(|s| s.contains(Wrapper::wrap(right))).unwrap_or(false)
+    }
+
+    pub fn iter_by_left<Q>(&self, left: &Q) -> impl Iterator<Item = &R>
+    where
+        L: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        OptIter::new(self.lr.get(Wrapper::wrap(left)).map(|e| e.iter().map(|l| &*l.0)))
+    }
+
+    pub fn iter_by_right<Q>(&self, right: &Q) -> impl Iterator<Item = &L>
+    where
+        R: Borrow<Q>,
+        Q: Eq + Hash + ?Sized,
+    {
+        OptIter::new(self.rl.get(Wrapper::wrap(right)).map(|e| e.iter().map(|r| &*r.0)))
+    }
+}
 
 /// Iterates over optional iterator
 pub struct OptIter<I>(Option<I>)

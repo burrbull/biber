@@ -933,7 +933,7 @@ else {
 
 # Set the .bbl path to the output dir, if specified
 if (let $outdir = Biber::Config->getoption('output_directory')) {
-  let (undef, undef, $file) = File::Spec->splitpath($outfile);
+  let (_, _, $file) = File::Spec->splitpath($outfile);
   $outfile = File::Spec->catfile($outdir, $file)
 }
 

@@ -207,7 +207,7 @@ fn _dispatch_table_label(field: &str, dm: &DataModel) {
   }
   // Label elements which aren't fields
   if !(dm.is_field(field)) {
-    return undef;
+    return None;
   }
   // Fields which are part of the datamodel
   let dmf = dm.get_dm_for_field(field);
@@ -587,7 +587,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 // name fields
 fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
   if !($labelattrs) {
-    return join("", map {$_->[0]} $fieldstrings->@*);
+    return fieldstrings.iter().map(|s| s[0]).join("");
   }
   let $rfield_string;
   let secnum = self.get_current_section();
@@ -675,8 +675,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
 
           // Use the global index override if set (substring_width =~ /f/)
           $field_string = ${$lcache->{$field_string}{data}}[$lcache->{globalindices}{$field_string} || $lcache->{$field_string}{index}];
-            trace!("Label disambiguation cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ""), Data::Dump::pp($lcache));
-          $section->set_labelcache_v($field, $lcache);
+            trace!("Label disambiguation cache for '{field}' {}in section {secnum}:\n {lcache:?}", (if !nameparts.is_empty() { format!("({}) ", nameparts.join(",")) } else { "" }));
+          section.set_labelcache_v(field, lcache);
         }
       }
       // dynamically disambiguated width (list disambiguation)
@@ -697,8 +697,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
 
           $field_string = $lcache->{data}[$nindex][$index];
 
-            trace!("Label disambiguation (list) cache for '{}' {}in section $secnum:\n {}", field, ($nameparts ? '(' . join(',', $nameparts->@*) . ') ' : ""), Data::Dump::pp($lcache));
-          $section->set_labelcache_l($field, $lcache);
+            trace!("Label disambiguation (list) cache for '{field}' {}in section {secnum}:\n {lcache:?}", (if !nameparts.is_empty() { format!("({}) ", nameparts.join(",")) } else { "" }));
+          section.set_labelcache_l(field, lcache);
         }
       }
       // static substring width
@@ -845,12 +845,12 @@ fn _label_listdisambiguation(strings) {
   // Cache map says which index are we substr'ing to for each name.
   // Starting default is first char from each
   let $cache->{substr_map} = [map {[map {1} $_->@*]} $strings->@*];
-  let $lcache->{data} = [map {undef} $strings->@*];
+  let lcache->{data} = vec![None; strings.len()];
 
   // First flag any duplicates so we can shortcut setting these later
-  let @dups;
-  for (let $i = 0; $i <= $strings->$#*; $i++) {
-    $dups[$i] = join("", $strings->[$i]->@*);
+  let mut dups = Vec::new();
+  for (i, s) in strings.iter().enumerate() {
+    dups.push(s.join(""));
   }
 
   _do_substr($lcache, $cache, $strings);
@@ -906,11 +906,11 @@ fn _do_substr(lcache, cache, strings) {
       continue;
     }
     let $row = $strings->[$i];
-    let @s;
-    for (let $j = 0; $j <= $row->$#*; $j++) {
-      push @s, Unicode::GCString->new($row->[$j])->substr(0 ,$cache->{substr_map}[$i][$j])->as_string;
+    let mut s = Vec::new();
+    for (j, rowj) in row.iter().enumerate() {
+      s.push(Unicode::GCString->new(rowj)->substr(0 ,$cache->{substr_map}[i][j])->as_string);
     }
-    let $js = join("", @s);
+    let js = s.join("");
     $cache->{keys}{$js}{index} = $i; // index of the last seen $js key - useless for count >1
     push $cache->{keys}{$js}{indices}->@*, $i;
     $cache->{keys}{$js}{count}++;
@@ -1011,7 +1011,7 @@ fn _dispatch_table_sorting(field, dm) {
   }
   // Sorting elements which aren't fields
   if !dm.is_field(field) {
-    return undef;
+    return None;
   }
   // Fields which are part of the datamodel
   let dmf = dm.get_dm_for_field(field);
@@ -1082,7 +1082,7 @@ fn _dispatch_sorting(self, sortfield: &str, citekey: &str, secnum: u32, section:
   }
   else { // Unknown field
     biber_warn("Field '$sortfield' in sorting template is not a sortable field");
-    return undef;
+    return None;
   }
 
   return &{$code_ref}($self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $code_args_ref);
@@ -1130,7 +1130,7 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
   // Record the information needed for sorting later
   // sortstring isn't actually used to sort, it's used to generate sortinit and
   // for debugging purposes
-  let $ss = join($sorting_sep, $sortobj->@*);
+  let $ss = sortobj.join(&sorting_sep);
   $dlist->set_sortdata($citekey, [$ss, $sortobj]);
     debug!("Sorting object for key '{}' -> {}", citekey, Data::Dump::pp($sortobj));
 
@@ -1270,29 +1270,40 @@ fn _sort_labelname(self, citekey, $secnum, $section, $be, $dlist, $sortelementat
   }
 }
 
-fn _sort_labeltitle(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_labeltitle(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   // re-direct to the right sorting routine for the labeltitle
   if (let $lti = be.get_labeltitle_info()) {
     // Don't process attributes as they will be processed in the real sub
-    return $self->_dispatch_sorting($lti, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
+    return $self->_dispatch_sorting($lti, citekey, secnum, section, be, dlist, sortelementattributes);
   }
   else {
     return "";
   }
 }
 
-fn _sort_labeldate($self, citekey, secnum, section, be, dlist, sortelementattributes, args) {
+fn _sort_labeldate(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   no autovivification;
   let $ldc = $args->[0]; // labeldate component
   // re-direct to the right sorting routine for the labeldate component
-  if (let $ldi = $be->get_labeldate_info) {
-    if (let $ldf = $ldi->{field}{$ldc}) {
+  if let Some(LabelDateInfo::Field(field)) be.get_labeldate_info() {
+    if (let $ldf = field{$ldc}) {
       // Don't process attributes as they will be processed in the real sub
-      return $self->_dispatch_sorting($ldf, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes);
+      return self._dispatch_sorting(ldf, citekey, secnum, section, be, dlist, sortelementattributes);
+    } else {
+      ""
     }
-    else if (exists($ldi->{string})) { // labelyear fallback string
-      return "";
-    }
+  } else {
+    ""
+  }
+}
+
+// This is a meta-sub which uses the optional arguments to the dispatch code
+// It's done to avoid having many repetitions of almost identical sorting code
+fn _sort_list(self, citekey, secnum, section, be, dlist, sortelementattributes, args) {
+  let $list = $args->[0]; // get list field
+  if (be.get_field(list)) {
+    let string = self._liststring(citekey, list);
+    return _translit(list, be, _process_sort_attributes(string, sortelementattributes));
   }
   else {
     return "";
@@ -1301,24 +1312,11 @@ fn _sort_labeldate($self, citekey, secnum, section, be, dlist, sortelementattrib
 
 // This is a meta-sub which uses the optional arguments to the dispatch code
 // It's done to avoid having many repetitions of almost identical sorting code
-fn _sort_list(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_list_verbatim(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   let $list = $args->[0]; // get list field
-  if ($be->get_field($list)) {
-    let $string = $self->_liststring($citekey, $list);
-    return _translit($list, $be, _process_sort_attributes($string, $sortelementattributes));
-  }
-  else {
-    return "";
-  }
-}
-
-// This is a meta-sub which uses the optional arguments to the dispatch code
-// It's done to avoid having many repetitions of almost identical sorting code
-fn _sort_list_verbatim(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
-  let $list = $args->[0]; // get list field
-  if ($be->get_field($list)) {
-    let $string = $self->_liststring($citekey, $list, 1);
-    return _process_sort_attributes($string, $sortelementattributes);
+  if (be.get_field(list)) {
+    let string = self._liststring(citekey, list, 1);
+    return _process_sort_attributes(string, sortelementattributes);
   }
   else {
     return "";
@@ -1328,11 +1326,11 @@ fn _sort_list_verbatim(self, $citekey, $secnum, $section, $be, $dlist, $sortelem
 // This is a meta-sub which uses the optional arguments to the dispatch code
 // It's done to avoid having many repetitions of almost identical sorting code
 // for literal strings which need normalising
-fn _sort_literal(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_literal(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   let $literal = $args->[0]; // get actual field
-  if (let $field = $be->get_field($literal)) {
-    let $string = normalise_string_sort($field, $literal);
-    return _translit($literal, $be, _process_sort_attributes($string, $sortelementattributes));
+  if (let $field = be.get_field(literal)) {
+    let string = normalise_string_sort(field, literal);
+    return _translit(literal, be, _process_sort_attributes(string, sortelementattributes));
   }
   else {
     return "";
@@ -1342,11 +1340,11 @@ fn _sort_literal(self, $citekey, $secnum, $section, $be, $dlist, $sortelementatt
 // This is a meta-sub which uses the optional arguments to the dispatch code
 // It's done to avoid having many repetitions of almost identical sorting code
 // for literal strings which need no normalising/translit. Nosort is still honoured.
-fn _sort_verbatim(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_verbatim(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   let $literal = $args->[0]; // get actual field
-  if (let $field = $be->get_field($literal)) {
-    let $string = strip_nosort($field, $literal);
-    return _process_sort_attributes($field, $sortelementattributes);
+  if (let $field = be.get_field(literal)) {
+    let string = strip_nosort(field, literal);
+    return _process_sort_attributes(field, sortelementattributes);
   }
   else {
     return "";
@@ -1356,44 +1354,44 @@ fn _sort_verbatim(self, $citekey, $secnum, $section, $be, $dlist, $sortelementat
 // This is a meta-sub which uses the optional arguments to the dispatch code
 // It's done to avoid having many repetitions of almost identical sorting code
 // for the editor roles
-fn _sort_name(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_name(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   let $name = $args->[0]; // get name field name
   // If there is a biblatex option which controls the use of this name, check it
-  if ($CONFIG_OPTSCOPE_BIBLATEX{"use$name"} &&
-      !crate::Config->getblxoption($secnum, "use$name", $be->get_field("entrytype"), $citekey)) {
+  if CONFIG_OPT_SCOPE_BIBLATEX.contains_left(&format!("use{name}")) &&
+      !crate::Config->getblxoption(secnum, format!("use{name}"), be.get_field("entrytype"), citekey) {
     return "";
     }
-  if ($be->get_field($name)) {
-    let $string = $self->_namestring($citekey, $name, $dlist);
-    return _translit($name, $be, _process_sort_attributes($string, $sortelementattributes));
+  if (be.get_field(name)) {
+    let string = self._namestring(citekey, name, dlist);
+    return _translit(name, be, _process_sort_attributes(string, sortelementattributes));
   }
   else {
     return "";
   }
 }
 
-fn _sort_presort(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
-  let $string = crate::Config->getblxoption($secnum, "presort", $be->get_field("entrytype"), $citekey);
-  return _process_sort_attributes($string, $sortelementattributes);
+fn _sort_presort(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes) {
+  let string = crate::Config->getblxoption(secnum, "presort", be.get_field("entrytype"), citekey);
+  return _process_sort_attributes(string, sortelementattributes);
 }
 
-fn _sort_sortname(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
+fn _sort_sortname(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes) {
   let $dm = crate::config::get_dm();
 
   // sortname is ignored if no use<name> option is defined - see biblatex manual
-  if ($be->get_field("sortname") &&
-      grep {crate::Config->getblxoption($secnum, format!("use{}", $_), $be->get_field("entrytype"), $citekey)} dm.get_fields_of_type(FieldType::List, &[DataType::Name], None)->@*) {
-    let $string = $self->_namestring($citekey, "sortname", $dlist);
-    return _translit("sortname", $be, _process_sort_attributes($string, $sortelementattributes));
+  if (be.get_field("sortname") &&
+  dm.get_fields_of_type(FieldType::List, &[DataType::Name], None).iter().filter(|f| crate::Config->getblxoption(secnum, format!("use{f}"), be.get_field("entrytype"), citekey))) {
+    let string = self._namestring(citekey, "sortname", dlist);
+    return _translit("sortname", be, _process_sort_attributes(string, sortelementattributes));
   }
   else {
     return "";
   }
 }
 
-fn _sort_string(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
+fn _sort_string(self, citekey: &str, secnum: u32, section: &Section, be: &Entry, dlist, sortelementattributes, args) {
   let $string = $args->[0]; // get literal string
-  return _process_sort_attributes($string, $sortelementattributes);
+  return _process_sort_attributes(string, sortelementattributes);
 }
 
 //========================================================
@@ -1439,7 +1437,7 @@ fn _process_sort_attributes(field_string, sortelementattributes) {
         $field_string = ($pad_char x $pad_length) . $field_string;
       }
       else if ($pad_side == "right") {
-        $field_string = $field_string . ($pad_char x $pad_length);
+        $field_string = $field_string . (pad_char.repeat(pad_length));
       }
     }
   }
@@ -1447,21 +1445,21 @@ fn _process_sort_attributes(field_string, sortelementattributes) {
 }
 
 // This is used to generate sorting string for names
-fn _namestring(self, citekey: &str, field, dlist) {
+fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let be = section.bibentry(citekey);
   let bee = be.get_field("entrytype");
-  let $names = $be->get_field($field);
-  let $str = "";
-  let $count = $names->count;
-  let $useprefix = crate::Config->getblxoption($secnum, "useprefix", $bee, $citekey);
+  let names = be.get_field(field);
+  let string = String::new();
+  let count = names.count();
+  let useprefix = crate::Config->getblxoption(secnum, "useprefix", bee, citekey);
 
   // Get the sorting name key template for this list context
-  let snkname = $dlist->get_sortingnamekeytemplatename();
+  let snkname = dlist.get_sortingnamekeytemplatename();
 
   // Override with any entry-specific sorting name key template option
-  let snkname = crate::Config->getblxoption($secnum, "sortingnamekeytemplatename", undef, $citekey).unwrap_or(snkname);
+  let snkname = crate::Config->getblxoption(secnum, "sortingnamekeytemplatename", None, citekey).unwrap_or(snkname);
 
   // Override with any namelist scope sorting name key template option
   let mut snkname = names.get_sortingnamekeytemplatename().unwrap_or(snkname);
@@ -1470,19 +1468,19 @@ fn _namestring(self, citekey: &str, field, dlist) {
   // scope since we need the visibility type now and this doesn't mean anything below the name list
   // level anyway. We will select the final sorting namekey template below if there is an override
   // at the individual name level
-  let $tmpsnk = crate::Config->getblxoption(undef, "sortingnamekeytemplate")->{$snkname};
+  let $tmpsnk = crate::Config->getblxoption(None, "sortingnamekeytemplate")->{$snkname};
   // Now set visibility of the correct type. By default this is the standard
   // sorting visibility but can be citation visibility as the biblatex
   // "sortcites" option can require a different visibility for citations and
   // so we have to generate a separate sorting list for this case
   let visible = dlist.get_visible_sort(names.get_id());
-  if (defined($tmpsnk) && $tmpsnk->{visibility} == "cite") {
+  if let Some("cite") = tmpsnk.as_deref() {
     visible = dlist.get_visible_cite(names.get_id());
   }
 
   // Name list scope useprefix option
-  if (defined($names->get_useprefix)) {
-    $useprefix = $names->get_useprefix;
+  if let Some(val) = names.get_useprefix() {
+    useprefix = val;
   }
 
   let trunc = '\x{10FFFD}';  // sort string for "et al" truncated name
@@ -1490,8 +1488,8 @@ fn _namestring(self, citekey: &str, field, dlist) {
   for n in &names.first_n_names(visible) {
 
     // Name scope useprefix option
-    if (defined($n->get_useprefix)) {
-      $useprefix = $n->get_useprefix;
+    if let Some(val) = n.get_useprefix() {
+      useprefix = val;
     }
 
     // Override with any name scope sorting name key template option
@@ -1501,7 +1499,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
     snkname = n.get_sortingnamekeytemplatename.unwrap_or(snkname);
 
     // Now get the actual sorting name key template
-    let $snk = crate::Config->getblxoption(undef, "sortingnamekeytemplate")->{$snkname};
+    let $snk = crate::Config->getblxoption(None, "sortingnamekeytemplate")->{$snkname};
 
     // Get the sorting name key specification and use it to construct a sorting key for each name
     let $kpa = [];
@@ -1511,12 +1509,12 @@ fn _namestring(self, citekey: &str, field, dlist) {
         let $np = $kp->[$i];
         if ($np->{type} == "namepart") {
           let $namepart = $np->{value};
-          let $useopt = exists($np->{use}) ? "use$namepart" : undef;
-          let $useoptval = crate::Config->getblxoption($secnum, $useopt, $bee, $citekey);
+          let useopt = if exists($np->{use}) { Some(format!("use{namepart}")) } else { None };
+          let $useoptval = crate::Config->getblxoption(secnum, useopt, bee, citekey);
 
           // useprefix can be name list or name local
-          if ($useopt && $useopt == "useprefix") {
-            $useoptval = map_boolean("useprefix", $useprefix, "tonum");
+          if let Some("useprefix") = useopt.as_deref() {
+            $useoptval = map_boolean("useprefix", useprefix, "tonum");
           }
 
           if (let $npstring = $n->get_namepart($namepart)) {
@@ -1561,7 +1559,7 @@ fn _namestring(self, citekey: &str, field, dlist) {
       }
       // Now append the key part string if the string is not empty
       if $kps {
-        $str .= $kps;
+        string .= $kps;
       }
       push $kpa->@*, $kps;
     }
@@ -1576,11 +1574,11 @@ fn _namestring(self, citekey: &str, field, dlist) {
 
   if !($nso) {
     if $visible < $count {
-      $str.push(trunc); // name list was truncated
+      string.push(trunc); // name list was truncated
     }
   }
 
-  return $str;
+  return string;
 
 }
 
@@ -1633,7 +1631,7 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
 // transliterate if requested
 fn _translit(target, entry, string) {
   let $entrytype = $entry->get_field("entrytype");
-  if (let $translits = crate::Config->getblxoption(undef, "translit", $entrytype)) {
+  if (let $translits = crate::Config->getblxoption(None, "translit", $entrytype)) {
     for tr in ($translits->@*) {
       // Translit is specific to particular langids
       if (defined($tr->{langids})) {

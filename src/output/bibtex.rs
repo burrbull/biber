@@ -21,7 +21,7 @@ impl BibTeX {
   /// filename
   fn set_output_target_file(self, outfile) {
     $self->{output_target_file} = $outfile;
-    return undef;
+    return None;
   }
 
   /// Set the output for a comment
@@ -116,7 +116,7 @@ impl BibTeX {
 
     // IDs
     if (let $val = $be->get_field("ids")) {
-      $acc{$outmap->("ids")} = join(',', $val->@*);
+      $acc{$outmap->("ids")} = val.join(",");
     }
 
     // Name fields
@@ -164,7 +164,7 @@ impl BibTeX {
           push @namelist, $name->$tonamesub;
         }
 
-        $acc{$outmap->($namefield)} = join(" $namesep ", @namelist);
+        $acc{$outmap->($namefield)} = namelist.join(&format!(" {namesep} "));
 
         // Deal with morenames
         if names.get_morenames() {
@@ -185,17 +185,17 @@ impl BibTeX {
           }
           push @plainlist, $item;
         }
-        $acc{$outmap->($listfield)} = join(" $listsep ", @plainlist);
+        $acc{$outmap->($listfield)} = plainlist.join(format!(" {listsep} "));
       }
     }
 
     // Per-entry options
-    let @entryoptions;
-    for opt in (crate::Config->getblxentryoptions($secnum, $key)) {
-      push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
+    let mut entryoptions = Vec::new();
+    for opt in (crate::Config->getblxentryoptions(secnum, key)) {
+      entryoptions.push(format!("{}={}", opt, crate::Config->getblxoption(secnum, opt, None, key)));
     }
-    if @entryoptions {
-      $acc{$outmap->("options")} = join(',', @entryoptions);
+    if !entryoptions.is_empty() {
+      $acc{$outmap->("options")} = entryoptions.join(",");
     }
 
     // Date fields
@@ -210,8 +210,7 @@ impl BibTeX {
       // Output legacy dates for YEAR/MONTH if requested
       if (!$d && crate::Config->getoption("output_legacy_dates")) {
         if (let $val = be.get_field("year")) {
-          if (!be.get_field("day") &&
-              !be.get_field("endyear")) {
+          if (!be.get_field("day") && !be.get_field("endyear")) {
             $acc{$outmap->("year")} = $val;
             if (let $mval = be.get_field("month")) {
               if (crate::Config->getoption("nostdmacros")) {
@@ -230,7 +229,7 @@ impl BibTeX {
         }
       }
 
-      $acc{$outmap->("${d}date")} = construct_datetime($be, $d);
+      $acc{$outmap->("${d}date")} = construct_datetime(be, d);
     }
 
     // If CROSSREF and XDATA have been resolved, don't output them
@@ -278,7 +277,7 @@ impl BibTeX {
 
     // Ranges
     for rfield in ($dmh->{ranges}->@*) {
-      if ( let $rf = $be->get_field($rfield) ) {
+      if ( let $rf = be.get_field(rfield) ) {
         let $rfl = construct_range($rf);
         if !(crate::Config->getoption("output_resolve_xdata")) {
           let $xd = xdatarefcheck(rfl, false);
@@ -554,21 +553,22 @@ impl BibTeX {
   ///
   /// ```
   /// [m, n]      -> m-n
-  /// [m, undef]  -> m
+  /// [m, None]  -> m
   /// [m, ""]     -> m-
   /// ["", n]     -> -n
-  /// ["", undef] -> ignore
+  /// ["", None] -> ignore
   /// ```
-  fn construct_range(r) {
-    let @ranges;
-    for e in ($r->@*) {
-      let $rs = $e->[0];
-      if (defined($e->[1])) {
-        $rs .= '--' . $e->[1];
+  fn construct_range(r: &[&str]) -> String {
+    let mut ranges = Vec::new();
+    for e in r {
+      let rs = e[0];
+      if let Some(e1) = e.get(1) {
+        rs.push_str(--);
+        rs.push_str(e1);
       }
-      push @ranges, $rs;
+      ranges.push(rs);
     }
-    return join(',', @ranges);
+    ranges.join(",")
   }
 
   /// Construct a datetime from its components

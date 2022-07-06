@@ -26,7 +26,7 @@ impl Name {
         return bless $name, $class;
       }
 
-      for attr in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*,
+      for attr in (CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME"),
                         "gender",
                         "useprefix",
                         "strip") {
@@ -39,8 +39,7 @@ impl Name {
           $name->{nameparts}{$np} = $params{$np};
         }
       }
-      $name->{rawstring} = join("",
-                                map {$name->{nameparts}{$_}{string}.unwrap_or("")} keys $name->{nameparts}->%*);
+      $name->{rawstring} = name.nameparts.values().map(|val| val.string.unwrap_or("")).join("");
       $name->{id} = Id::new();
       return bless $name, $class;
     }
@@ -137,7 +136,7 @@ impl Name {
 
 
     // Add per-name options
-    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
@@ -254,7 +253,7 @@ impl Name {
     }
 
     // Add per-name options
-    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
@@ -278,48 +277,48 @@ impl Name {
   /// Return bblxml data for a name
   fn name_to_bblxml*(self, $xml, $xml_prefix, $un) {
     let $dm = crate::config::get_dm();
-    let %pno; // per-name options
+    let mut pno = BTreeMap::new(); // per-name options
     let %names;
     let $nid = self.{id};
 
     for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
-      let $npc;
-      let $npci;
+      let npc = self.get_namepart(np);
+      let npci = None;
 
-      if ($npc = self.get_namepart($np)) {
-        $npci = join('. ', @{self.get_namepart_initial($np)});
+      if npc.skip_empty().is_some() {
+        npci = Some(self.get_namepart_initial(np).join(". "));
       }
       // Some of the subs above can result in these being undef so make sure there is an empty
       // string instead of undef so that interpolation below doesn't produce warnings
-      $npc = npc.unwrap_or("");
-      $npci = npci.unwrap_or("");
-      if ($npc) {
-        $names{$np} = [$npc, $npci];
-        if ($un != "false") {
-          push $names{$np}->@*, "[BDS]UNP-${np}-${nid}[/BDS]";
+      let npc = npc.unwrap_or("");
+      let npci = npci.unwrap_or("");
+      if !npc.is_empty() {
+        names.insert(np, vec![npc, npci]);
+        if un != "false" {
+          names{np}.push(format!("[BDS]UNP-{np}-{nid}[/BDS]"));
         }
       }
     }
 
     // Generate uniquename if uniquename is requested
-    if ($un != "false") {
-      $pno{un} = "[BDS]UNS-${nid}[/BDS]";
-      $pno{uniquepart} = "[BDS]UNP-${nid}[/BDS]";
+    if un != "false" {
+      pno.insert("un", format!("[BDS]UNS-{nid}[/BDS]"));
+      pno.insert("uniquepart", format!("[BDS]UNP-{nid}[/BDS]"));
     }
 
     // Add per-name options
-    for no in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAME}->%*) {
+    for no in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAME") {
       if (defined(self.${\"get_$no"})) {
         let $nov = self.${\"get_$no"};
 
         if ($CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{OUTPUT}) {
-          $pno{$no} = crate::utils::map_boolean($no, $nov, "tostring");
+          pno.insert(no, crate::utils::map_boolean(no, nov, "tostring"));
         }
       }
     }
 
     // Add the name hash to the options
-    $pno{hash} = "[BDS]${nid}-PERNAMEHASH[/BDS]";
+    pno.insert("hash", format!("[BDS]{nid}-PERNAMEHASH[/BDS]"));
 
     $xml->startTag([$xml_prefix, "name"], map {$_ => $pno{$_}} sort keys %pno);
     for key in (sort keys %names) {

@@ -11,6 +11,21 @@ use List::Util qw( first );
 
 pub struct XData;
 
+pub enum LabelDateInfo {
+  String(String),
+  Field {
+    year: String,
+    month: String,
+    day: String,
+    hour: String,
+    minute: String,
+    second: String,
+    timezone: String,
+    pseudodate: bool,
+    source: String,
+  },
+}
+
 pub struct Entry {
   xdatarefs: Vec<XData>,
   labelnameinfo: Unknown,
@@ -56,7 +71,7 @@ impl Entry {
     let section = crate::MASTER.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
     if (let $relkeys = $self->get_field("related")) {
-        debug!("Found RELATED field in '{}' with contents {}", citekey, join(',', @$relkeys));
+        debug!("Found RELATED field in '{}' with contents {}", citekey, relkeys.join(","));
       let @clonekeys;
       for relkey in (@$relkeys) {
         // Resolve any alias
@@ -312,14 +327,14 @@ impl Entry {
   /// Record the labeldate information. This is special
   /// meta-information so we have a separate method for this
   /// Takes a hash ref with the information.
-  fn set_labeldate_info(&mut self, data: Unknown) {
-    self.labeldateinfo = data;
+  fn set_labeldate_info(&mut self, data: LabelDateInfo) {
+    self.labeldateinfo = Some(data);
   }
 
   /// Retrieve the labeldate information. This is special
   /// meta-information so we have a separate method for this
   /// Returns a hash ref with the information.
-  fn get_labeldate_info(&self) -> Unknown {
+  fn get_labeldate_info(&self) -> Option<LabelDateInfo> {
     self.labeldateinfo
   }
 

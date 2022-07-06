@@ -564,7 +564,7 @@ impl DataModel {
             }
           }
           if !flag {
-            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined", join(', ', @fs)));
+            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined", fs.join(", ")));
           }
         }
       }

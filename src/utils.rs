@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use crate::Id;
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
+use unicode_segmentation::UnicodeSegmentation;
 
 /* TODO
 use parent qw(Exporter);
@@ -294,7 +295,7 @@ fn file_exist_check($filename) {
     }
   }
 
-  return undef;
+  return None;
 }
 
 /// Wrapper around empty check to deal with Win32 Unicode filenames
@@ -706,7 +707,7 @@ pub fn is_null($arg) {
 /// Checks for notnullness
 pub fn is_notnull($arg) -> bool {
   if !defined($arg) {
-    return undef;
+    return None;
   }
   let $st = is_notnull_scalar($arg);
   if (defined($st) && $st) { return true; }
@@ -722,7 +723,7 @@ pub fn is_notnull($arg) -> bool {
 /// Checks for notnullness of a scalar
 fn is_notnull_scalar($arg) -> bool {
   if !(ref \$arg == "SCALAR") {
-    return undef;
+    return None;
   }
   arg != ""
 }
@@ -730,7 +731,7 @@ fn is_notnull_scalar($arg) -> bool {
 /// Checks for notnullness of an array (passed by ref)
 fn is_notnull_array($arg) -> bool {
   if !(ref $arg == "ARRAY") {
-    return undef;
+    return None;
   }
   let @arr = $arg->@*;
   return $#arr > -1 ? 1 : 0;
@@ -739,7 +740,7 @@ fn is_notnull_array($arg) -> bool {
 /// Checks for notnullness of an hash (passed by ref)
 fn is_notnull_hash($arg) {
   if !(ref $arg == "HASH") {
-    return undef;
+    return None;
   }
   let @arr = keys $arg->%*;
   return $#arr > -1 ? 1 : 0;
@@ -748,7 +749,7 @@ fn is_notnull_hash($arg) {
 /// Checks for notnullness of an object (passed by ref)
 fn is_notnull_object($arg) {
   if !(ref($arg) =~ m/\Acrate::/xms) {
-    return undef;
+    return None;
   }
   return $arg->notnull ? 1 : 0;
 }
@@ -1228,10 +1229,10 @@ pub fn bcp472locale<'a>(localestr: &'a str) -> &'a str {
 /// Deals with Unicode and ASCII roman numerals via the magic of Unicode NFKD form
 ///
 /// m-n -> [m, n]
-/// m   -> [m, undef]
+/// m   -> [m, None]
 /// m-  -> [m, ""]
 /// -n  -> ["", n]
-/// -   -> ["", undef]
+/// -   -> ["", None]
 pub fn rangelen($rf) {
   let $rl = 0;
   for f in ($rf->@*) {
@@ -1257,13 +1258,13 @@ pub fn rangelen($rf) {
         if ($n < $m) {
           let @m = reverse split(//,$m);
           let @n = reverse split(//,$n);
-          for (let $i=0;$i<=$#m;$i++) {
+          for (i, mi) in m.iter().enumerate() {
             if $n[$i] {
               continue;
             }
-            $n[$i] = $m[$i];
+            $n[$i] = mi;
           }
-          $n = join("", reverse @n);
+          $n = n.iter().reverse().join("");
         }
         $rl += (($n - $m) + 1);
       }
@@ -1333,7 +1334,7 @@ pub fn parse_range_alt($rs) {
     return [$1, $3];
   }
   else {
-    return undef;
+    return None;
   }
 }
 
@@ -1342,7 +1343,7 @@ pub fn maploopreplace($string, $maploop) {
   // $MAPUNIQVAL is lexical here
   no strict "vars";
   if !defined($string) {
-    return undef;
+    return None;
   }
   if !($maploop) {
     return $string;
@@ -1399,57 +1400,59 @@ pub fn call_transliterator($target, $from, $to, $text) {
     return $text;
   }
 }
-
+*/
 /// Passed an array of strings, returns an array of initials
-pub fn gen_initials(@strings) {
-  let @strings_out;
-  for str in (@strings) {
+pub fn gen_initials<'a>(strings: impl Iterator<Item=&'a str>) -> Vec<String> {
+  let mut strings_out = Vec::new();
+  for mut string in strings {
     // Deal with hyphenated name parts and normalise to a '-' character for easy
     // replacement with macro later
     // Dont' split a name part if it's brace-wrapped
     // Dont' split a name part if the hyphen in a hyphenated name is protected like:
     // Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
-    if ($str !~ m/^\{.+\}$/ && $str =~ m/[^{]\p{Dash}[^}]/) {
-      push @strings_out, join('-', gen_initials(split(/\p{Dash}/, $str)));
+    if !Regex::new(r"^\{.+\}$").unwrap().is_match(string)
+      && Regex::new(r"[^{]\p{Dash}[^}]").unwrap().is_match(string) {
+      strings_out.push(
+        gen_initials(Regex::new(r"\p{Dash}").unwrap().split(string))
+        .join("-"));
     }
     else {
       // remove any leading braces and backslash from latex decoding or protection
-      $str =~ s/^\{+//;
-      let $chr = Unicode::GCString->new($str)->substr(0, 1)->as_string;
+      let string = Regex::new(r"^\{+").unwrap().replace(string, "");
+      let chr = string.graphemes(true).next().unwrap();
       // Keep diacritics with their following characters
-      if ($chr =~ m/^\p{Dia}/) {
-        push @strings_out, Unicode::GCString->new($str)->substr(0, 2)->as_string;
+      if Regex::new(r"^\p{Dia}").unwrap().is_match(chr) {
+        strings_out.push(string.graphemes(true).take(2).collect());
       }
       else {
-        push @strings_out, $chr;
+        strings_out.push(chr.into());
       }
     }
   }
-  return @strings_out;
+  strings_out
 }
 
 /// Joins name parts using BibTeX tie algorithm. Ties are added:
 ///
 /// 1. After the first part if it is less than three characters long
 /// 2. Before the family part
-pub fn join_name_parts($parts) {
-  // special case - 1 part
-  if parts.len() == 1 {
-    return parts[0];
+pub fn join_name_parts<'a>(parts: impl Iterator<Item=&'a str>) -> String {
+  let parts: Vec<_> = parts.collect();
+  if parts.len() == 1 { // special case - 1 part
+    parts[0].into()
+  } else if parts.len() == 2 { // special case - 2 parts
+    format!("{}~{}", parts[0], parts[1])
+  } else {
+    format!(
+      "{}{}{}~{}",
+      parts[0],
+      if parts[0].graphemes(true).count() < 3 { '~' } else { ' ' },
+      parts[1..parts.len()-1].join(" "),
+      parts[parts.len()-1]
+    )
   }
-  // special case - 2 parts
-  if parts.len() == 2 {
-    return format!("{}~{}", parts[0], parts[1]);
-  }
-  format!(
-    "{}{}{}~{}",
-    parts[0],
-    if Unicode::GCString->new(parts[0]).length < 3 { '~' } else { ' ' },
-    parts[1..parts().len()-1].join(" "),
-    parts[parts().len()-1]
-  )
 }
-
+/*
 /// Split an xsv using Text::CSV because it is fast and can handle quoting
 pub fn split_xsv($string, $sep) {
   if ($sep) {

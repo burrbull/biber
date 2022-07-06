@@ -19,5 +19,6 @@ regex = "1.5.6"
 roxmltree = "0.14.1"
 unicase = "2.6.0"
 unicode-normalization = "0.1.19"
+unicode-segmentation = "1.9.0"
 uuid = { version = "1.1.2", features = ["v4", "fast-rng"] }
 xmltree = "0.10.3"

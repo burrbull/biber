@@ -34,7 +34,7 @@ impl BibLaTeXML {
 
     // biblatexml output is only in tool mode and so we are looking at a data source name in
     // $ARGV[0]
-    let $exts = join('|', values %DS_EXTENSIONS);
+    let $exts = DS_EXTENSIONS.values().join("|");
     let $schemafile = crate::Config->getoption("dsn") =~ s/\.(?:$exts)$/.rng/r;
 
     $self->{output_target_file} = $toolfile;
@@ -117,12 +117,12 @@ impl BibLaTeXML {
     }
 
     // Per-entry options
-    let @entryoptions;
+    let entryoptions = Vec::new();
     for opt in (crate::Config->getblxentryoptions($secnum, $key)) {
-      push @entryoptions, $opt . '=' . crate::Config->getblxoption($secnum, $opt, undef, $key);
+      push @entryoptions, $opt . '=' . crate::Config->getblxoption(secnum, $opt, None, $key);
     }
-    if @entryoptions {
-      $xml->dataElement([$xml_prefix, "options"], NFC(join(',', @entryoptions)));
+    if !entryoptions.is_empty() {
+      $xml->dataElement([$xml_prefix, "options"], NFC(entryoptions.join(",")));
     }
 
     // Output name fields
@@ -149,7 +149,7 @@ impl BibLaTeXML {
         }
 
         // Add per-namelist options
-        for nlo in (keys $CONFIG_SCOPEOPT_BIBLATEX{NAMELIST}->%*) {
+        for nlo in CONFIG_OPT_SCOPE_BIBLATEX.iter_by_right("NAMELIST") {
           if (defined($nf->${\"get_$nlo"})) {
             let $nlov = $nf->${\"get_$nlo"};
 
@@ -573,7 +573,7 @@ impl BibLaTeXML {
     $xml->end();
 
     info!("Output to {}", target_string);
-    let $exts = join('|', values %DS_EXTENSIONS);
+    let $exts = DS_EXTENSIONS.values().join("|");
     let $schemafile = crate::Config->getoption("dsn") =~ s/\.(?:$exts)$/.rng/r;
 
     // Generate schema to accompany output

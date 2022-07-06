@@ -1,4 +1,7 @@
 use phf::phf_map;
+use once_cell::sync::Lazy;
+use std::{sync::Mutex, collections::HashMap};
+use crate::BiSet;
 
 /* TODO
 use Encode;
@@ -18,14 +21,11 @@ our @EXPORT = qw{
                   $BIBER_SORT_NULL
                   $LABEL_FINAL
                   %CONFIG_DEFAULT_BIBLATEX
-                  %CONFIG_OPTSCOPE_BIBLATEX
-                  %CONFIG_SCOPEOPT_BIBLATEX
                   %CONFIG_OPTTYPE_BIBLATEX
                   %CONFIG_BIBLATEX_OPTIONS
                   %CONFIG_META_MARKERS
                   %CONFIG_DATE_PARSERS
                   %CONFIG_OUTPUT_FIELDREPLACE
-                  %DATAFIELD_SETS
                   %DM_DATATYPES
                   %REMOTE_MAP
                   %DS_EXTENSIONS
@@ -105,16 +105,26 @@ pub const MONTHS: phf::Map<&'static str, &'static str> = phf_map! {
   "jun" => "6",
   "jul" => "7",
   "aug" => "8",
-  "oct" => "10",
   "sep" => "9",
+  "oct" => "10",
   "nov" => "11",
   "dec" => "12"
 };
 
-/* TODO
-// datafieldsets
-our %DATAFIELD_SETS = ();
+// ????
+#[derive(Clone, Debug)]
+pub enum DataField {
+  String(String),
+  Field {
+    fieltype: String,
+    datatype: String,
+  },
+}
 
+// datafieldsets
+pub static DATAFIELD_SETS: Lazy<Mutex<HashMap<String, Vec<DataField>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+/* TODO
 // datatypes for data model validation
 our %DM_DATATYPES = (
                      DataType::Integer => fn(v) -> bool {
@@ -625,12 +635,15 @@ pub const LOCALE_MAP_R: phf::Map<&'static str, &'static str> = phf_map! {
                      "vi"         => "vietnamese",
                      "vi-VN"      => "vietnamese",
 };
-/* TODO
+
 // Holds the scope of each of the BibLaTeX configuration options from the .bcf
-our %CONFIG_OPTSCOPE_BIBLATEX;
 // Holds the options in a particular scope
-our %CONFIG_SCOPEOPT_BIBLATEX;
+pub static CONFIG_OPT_SCOPE_BIBLATEX: Lazy<Mutex<BiSet<String, String>>> = Lazy::new(|| Mutex::new(BiSet::new()));
+
 // Holds the datatype of an option at a particular scope
+pub static CONFIG_OPTTYPE_BIBLATEX: Lazy<Mutex<HashMap<String, crate::Unknown>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+/* TODO
 our %CONFIG_OPTTYPE_BIBLATEX;
 // For per-entry, per-namelist and per-name options, what should be set when we find them and
 // should they be output to the .bbl for biblatex.
