@@ -141,8 +141,8 @@ impl BibTeX {
         let @namelist;
 
         // Namelist scope useprefix
-        if (defined($names->get_useprefix)) {// could be 0
-          push @namelist, "useprefix=" . map_boolean("useprefix", $names->get_useprefix, "tostring");
+        if let Some(pref) = names.get_useprefix() {// could be 0
+          namelist.push(format!("useprefix={}", map_boolean("useprefix", pref, "tostring")));
         }
 
         // Namelist scope sortingnamekeytemplatename
@@ -161,7 +161,7 @@ impl BibTeX {
             }
           }
 
-          push @namelist, $name->$tonamesub;
+          namelist.push($name->$tonamesub_;
         }
 
         $acc{$outmap->($namefield)} = namelist.join(&format!(" {namesep} "));
@@ -175,15 +175,15 @@ impl BibTeX {
 
     // List fields and verbatim list fields
     for listfield in ($dmh->{lists}->@*, $dmh->{vlists}->@*) {
-      if (let $list = $be->get_field($listfield)) {
+      if let Some(list) = be.get_field(listfield).skip_empty() {
         let $listsep = crate::Config->getoption("output_listsep");
-        let @plainlist;
-        for item in ($list->@*) {
+        let mut plainlist = Vec::new();
+        for mut item in list {
           if !(crate::Config->getoption("output_resolve_xdata")) {
-            let $xd = xdatarefcheck(item, false);
-            $item = $xd.unwrap_or($item);
+            let xd = xdatarefcheck(item, false);
+            item = xd.unwrap_or(item);
           }
-          push @plainlist, $item;
+          plainlist.push(item);
         }
         $acc{$outmap->($listfield)} = plainlist.join(format!(" {listsep} "));
       }
@@ -246,14 +246,14 @@ impl BibTeX {
 
     // Standard fields
     for field in ($dmh->{fields}->@*) {
-      if (let $val = be.get_field(field)) {
+      if let Some(val) = be.get_field(field).skip_empty() {
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck(val, false);
-          $val = $xd.unwrap_or($val);
+          let xd = xdatarefcheck(val, false);
+          val = xd.unwrap_or(val);
         }
         // Could have been set in dates above (MONTH, YEAR special handling)
         if !($acc{$outmap->($field)}) {
-          $acc{$outmap->($field)} = $val;
+          $acc{$outmap->($field)} = val;
         }
       }
     }
@@ -335,11 +335,11 @@ impl BibTeX {
       if (field == "names" ||
           field == "lists" ||
           field == "dates") {
-        let @donefields;
+        let mut donefields = Vec::new();
         for key in (sort keys %acc) {
           if (first {unicase::eq($_, strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
-            $acc .= bibfield($key, $acc{$key}, $max_field_len);
-            push @donefields, $key;
+            $acc .= bibfield(key, $acc{$key}, $max_field_len);
+            donefields.push(key);
           }
         }
         delete @acc{@donefields};
@@ -425,9 +425,9 @@ impl BibTeX {
 
     // Bibtex output uses just one special section, always sorted by global sorting spec
     for key in ($crate::MASTER->datalists->get_lists_by_attrs(section => 99999,
-                                                                  name => crate::Config->getblxoption(undef, "sortingtemplatename") . "/global//global/global",
+                                                                  name => crate::Config->getblxoption(None, "sortingtemplatename") . "/global//global/global",
                                                                   type => "entry",
-                                                                  sortingtemplatename => crate::Config->getblxoption(undef, "sortingtemplatename"),
+                                                                  sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"),
                                                                   sortingnamekeytemplatename => "global",
                                                                   labelprefix => "",
                                                                   uniquenametemplatename => "global",

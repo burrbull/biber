@@ -382,9 +382,9 @@ fn _label_literal(self, $citekey, $secnum, $section, $be, $args, $labelattrs) {
 // names
 fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlist) {
   let $bee = $be->get_field("entrytype");
-  let $useprefix = crate::Config->getblxoption($secnum, "useprefix", $bee, $citekey);
-  let $alphaothers = crate::Config->getblxoption(undef, "alphaothers", $bee);
-  let $sortalphaothers = crate::Config->getblxoption(undef, "sortalphaothers", $bee);
+  let $useprefix = crate::Config->getblxoption($secnum, "useprefix", bee, citekey);
+  let $alphaothers = crate::Config->getblxoption(None, "alphaothers", bee);
+  let $sortalphaothers = crate::Config->getblxoption(None, "sortalphaothers", $bee);
 
   // Get the labelalphanametemplate name or this list context
   let $lantname = $dlist->get_labelalphanametemplatename;
@@ -432,8 +432,8 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
     }
 
     // namelist scope useprefix
-    if (defined($names->get_useprefix)) {
-      $useprefix = $names->get_useprefix;
+    if let Some(pref) = names.get_useprefix() {
+      $useprefix = pref;
     }
 
     let numnames = names.count();
@@ -474,8 +474,8 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
       }
 
       // name scope useprefix
-      if (defined($name->get_useprefix)) {
-        $useprefix = $name->get_useprefix;
+      if let Some(pref) = name.get_useprefix() {
+        $useprefix = pref;
       }
 
       // In future, perhaps there will be a need for more namepart use* options and
@@ -1479,8 +1479,8 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
   }
 
   // Name list scope useprefix option
-  if let Some(val) = names.get_useprefix() {
-    useprefix = val;
+  if let Some(pref) = names.get_useprefix() {
+    useprefix = pref;
   }
 
   let trunc = '\x{10FFFD}';  // sort string for "et al" truncated name
@@ -1488,8 +1488,8 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
   for n in &names.first_n_names(visible) {
 
     // Name scope useprefix option
-    if let Some(val) = n.get_useprefix() {
-      useprefix = val;
+    if let Some(pref) = n.get_useprefix() {
+      useprefix = pref;
     }
 
     // Override with any name scope sorting name key template option
@@ -1645,7 +1645,7 @@ fn _translit(target, entry, string) {
       }
       if (lc($tr->{target}) == '*' ||
           $tr->{target} == $target ||
-          first {$target == $_} $DATAFIELD_SETS{$tr->{target}}->@*) {
+          DATAFIELD_SETS{$tr->{target}}.contains(target)) {
         return call_transliterator($target, $tr->{from}, $tr->{to}, $string);
       }
     }

@@ -2,7 +2,10 @@
 
 // no autovivification;
 
+use itertools::Itertools;
 use crate::Id;
+use indexmap::{indexmap as attribute_map};
+type AttributeMap = indexmap::IndexMap<String, String>;
 
 use Regexp::Common qw( balanced );
 use crate::Config;
@@ -34,7 +37,7 @@ impl Name {
           $name->{$attr} = $params{$attr};
         }
       }
-      for np in ($dm->get_constant_value("nameparts")) {
+      for np in dm.get_constant_value("nameparts") {
         if (exists $params{$np}) {
           $name->{nameparts}{$np} = $params{$np};
         }
@@ -129,10 +132,10 @@ impl Name {
   }
 
   /// Create biblatexml data for a name
-  fn name_to_biblatexml(self, $out, $xml, $key, $namefield, $count) -> String {
+  fn name_to_biblatexml(self, out, xml: &mut Element, $key, $namefield, $count) -> String {
     let $xml_prefix = $out->{xml_prefix};
     let $dm = crate::config::get_dm();
-    let @attrs;
+    let mut attrs = AttributeMap::new();
 
 
     // Add per-name options
@@ -141,26 +144,26 @@ impl Name {
         let $nov = self.${\"get_$no"};
 
         if ($CONFIG_BIBLATEX_OPTIONS{NAME}{$no}{OUTPUT}) {
-          push @attrs, ($no => crate::utils::map_boolean($no, $nov, "tostring"));
+          attrs.insert(no, crate::utils::map_boolean($no, $nov, "tostring"));
         }
       }
     }
 
     // gender
     if let Some(g) = self.get_gender().skip_empty() {
-      push @attrs, ("gender" => g);
+      attrs.insert("gender", g);
     }
 
     // name scope annotation
     let ann = &crate::annotation::ANN.lock().unwrap();
     if let Some(ann) = ann.get_item_annotation(key, namefield, count).map(|ann| ann.value()).skip_empty() {
-      push @attrs, ("annotation" => $ann);
+      attrs.insert("annotation", ann);
     }
 
     $xml->startTag([$xml_prefix, "name"], @attrs);
 
-    for np in ($dm->get_constant_value("nameparts")) {// list type so returns list
-      self.name_part_to_bltxml($xml, $xml_prefix, $key, $namefield, $np, $count);
+    for np in dm.get_constant_value("nameparts") {// list type so returns list
+      self.name_part_to_bltxml($xml, $xml_prefix, key, namefield, np, count);
     }
 
     $xml->endTag(); // Name
@@ -171,13 +174,13 @@ impl Name {
     let $np = self.get_namepart($npn);
     let $nip = self.get_namepart_initial($npn);
     if ($np) {
-      let $parts = [split(/[\s~]/, $np)];
-      let @attrs;
+      let parts: Vec<_> = Regex::new(r"[\s~]").unwrap().split(np).collect();
+      let mut attrs = AttributeMap::new();
 
       // namepart scope annotation
       let ann = &crate::annotation::ANN.lock().unwrap();
       if let Some(ann) = ann.get_part_annotation(key, namefield, count, npn).map(|ann| ann.value()).skip_empty() {
-        push @attrs, ("annotation" => $ann);
+        attrs.insert("annotation", ann);
       }
 
       // Compound name part
@@ -321,17 +324,16 @@ impl Name {
     pno.insert("hash", format!("[BDS]{nid}-PERNAMEHASH[/BDS]"));
 
     $xml->startTag([$xml_prefix, "name"], map {$_ => $pno{$_}} sort keys %pno);
-    for key in (sort keys %names) {
-      let $value = $names{$key};
+    for (key, value) in names.iter().sorted_by(|(k, _) k) {
       let %un;
-      if ($un != "false") {
-        %un = (un => $value->[2]);
+      if un != "false" {
+        %un = (un => value[2]);
       }
       $xml->startTag([$xml_prefix, "namepart"],
                      type => $key,
                      %un,
-                     initials => NFC(crate::utils::normalise_string_bblxml($value->[1])));
-      $xml->characters(NFC(crate::utils::normalise_string_bblxml($value->[0])));
+                     initials => NFC(crate::utils::normalise_string_bblxml(value[1])));
+      $xml->characters(NFC(crate::utils::normalise_string_bblxml(value[0])));
       $xml->endTag();// namepart
     }
     $xml->endTag();// names
@@ -398,8 +400,8 @@ impl Name {
     }
 
     // Name scope useprefix
-    if let Some(useprefix) = self.get_useprefix) {// could be 0
-      namestring.push(format!("useprefix{xns}{}", crate::utils::map_boolean("useprefix", useprefix, "tostring")));
+    if let Some(pref) = self.get_useprefix() {// could be 0
+      namestring.push(format!("useprefix{xns}{}", crate::utils::map_boolean("useprefix", pref, "tostring")));
     }
 
     // Name scope sortingnamekeytemplatename

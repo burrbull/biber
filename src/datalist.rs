@@ -6,6 +6,59 @@ use Data::Compare;
 use Digest::MD5 qw( md5_hex );
 use List::Util qw( first );
 
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FilterType {
+    Type,
+    NotType,
+    Subtype,
+    NotSubtype,
+    Keyword,
+    NotKeyword,
+    Field,
+    NotField,
+    //
+}
+
+impl fmt::Display for FilterType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Type => f.write_str("type"),
+            Self::NotType => f.write_str("nottype"),
+            Self::Subtype => f.write_str("subtype"),
+            Self::NotSubtype => f.write_str("notsubtype"),
+            Self::Keyword => f.write_str("keyword"),
+            Self::NotKeyword => f.write_str("notkeyword"),
+            Self::Field => f.write_str("field"),
+            Self::NotField => f.write_str("notfield"),
+        }
+    }
+}
+
+impl core::str::FromStr for FilterType {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        match s {
+            "type" => Ok(Self::Type),
+            "nottype" => Ok(Self::NotType),
+            "subtype" => Ok(Self::Subtype),
+            "notsubtype" => Ok(Self::NotSubtype),
+            "keyword" => Ok(Self::Keyword),
+            "notkeyword" => Ok(Self::NotKeyword),
+            "field" => Ok(Self::Field),
+            "notfield" => Ok(Self::NotField),
+            _ => Err(anyhow::anyhow!("Incorrect filter type")),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Filter {
+    typ: FilterType,
+    value: String,
+}
+
 struct State {
   seenpa: HashMap<String, HashSet<String>>,
 }
@@ -1000,14 +1053,13 @@ impl DataList {
   }
 
   /// Adds a filter to a list object
-  fn add_filter(self, filter) {
-    push $self->{filters}->@*, $filter;
-    return;
+  fn add_filter(&mut self, filter: Filter) {
+    self.filters.push(filter)
   }
 
   /// Gets all filters for a list object
-  fn get_filters(self) {
-    return $self->{filters};
+  fn get_filters(&self) -> &Vec<Filter> {
+    self.filters
   }
 
   /// Do any dynamic information replacement for information

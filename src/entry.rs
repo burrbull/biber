@@ -441,13 +441,13 @@ impl Entry {
 
   /// Check if a crate::Entry object has a particular keyword in
   /// in the KEYWORDS field.
-  fn has_keyword(self, keyword) {
+  fn has_keyword(&self, keyword: &str) -> bool {
     no autovivification;
     if (let $keywords = $self->{datafields}{keywords}) {
-      return (first {$_ == $keyword} @$keywords) ? 1 : 0;
+      return keywords.contains(keyword);
     }
     else {
-      return 0;
+      return false;
     }
     return undef; // shouldn't get here
   }
@@ -721,7 +721,7 @@ impl Entry {
             // Skip for fields in the per-entry noinerit datafield set
             if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key) &&
               exists($field->{target})) {
-              if (first {$field->{target} == $_} $DATAFIELD_SETS{$niset}->@*) {
+              if DATAFIELD_SETS{$niset}.contains(field->{target}) {
                 continue;
               }
             }
@@ -815,7 +815,7 @@ impl Entry {
       for field in (@fields) {
         // Skip for fields in the per-entry noinherit datafield set
         if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key)) {
-          if (first {$field == $_} $DATAFIELD_SETS{$niset}->@*) {
+          if DATAFIELD_SETS{$niset}.contains(field) {
             continue;
           }
         }

@@ -623,7 +623,7 @@ impl Bbl {
       out($target, "\n\\refsection{$secnum}\n");
       let $section = $self->get_output_section($secnum);
 
-      let @lists; // Need to reshuffle list to put global sort order list at end, see below
+      let mut lists = Vec::new(); // Need to reshuffle list to put global sort order list at end, see below
 
       // This sort is cosmetic, just to order the lists in a predictable way in the .bbl
       // but omit global sort lists so that we can add them last
@@ -632,16 +632,16 @@ impl Bbl {
             list.get_type() == "entry") {
           continue;
         }
-        push @lists, $list;
+        lists.push(list);
       }
 
       // biblatex requires the last list in the .bbl to be the global sort list
       // due to its sequential reading of the .bbl as the final list overrides the
       // previously read ones and the global list determines the order of labelnumber
       // and sortcites etc. when not using defernumbers
-      push @lists, $crate::MASTER->datalists->get_lists_by_attrs(section => $secnum,
+      lists.push($crate::MASTER->datalists->get_lists_by_attrs(section => secnum,
                                                                 type    => "entry",
-                                                                sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"))->@*;
+                                                                sortingtemplatename => crate::Config->getblxoption(None, "sortingtemplatename"))->@*);
 
       for list in &lists {
         if !($list->count_keys) { // skip empty lists

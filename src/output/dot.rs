@@ -97,9 +97,7 @@ impl Dot {
       }
 
       // First create nodes/groups for entries
-      let mut entries: Vec<_> = section.bibentries().entries().collect();
-      entries.sort_by_key(|e| e.get_field("citekey"));
-      for be in entries.into_iter() {
+      for be in section.bibentries().entries().sorted_by_key(|e| e.get_field("citekey")) {
         let citekey = be.get_field("citekey");
         $state->{$secnum}{format!("{secnum}/{citekey}")} = 1;
         let et = be.get_field("entrytype").to_uppercase();

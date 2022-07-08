@@ -47,17 +47,17 @@ pub fn NFKD(s: &str) -> String {
 }
 /* TODO
 /// Expands a data file glob to a list of filenames
-pub fn glob_data_file($source, $globflag) {
-  let @sources;
+pub fn glob_data_file($source, $globflag) -> Vec<String> {
+  let sources = Vec::new();
 
   // No globbing unless requested. No globbing for remote datasources.
   if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms ||
       !_bool_norm($globflag)) {
-    push @sources, $source;
+    sources.push(source);
     return @sources;
   }
 
-  info!("Globbing data source '{}'", source);
+  info!("Globbing data source '{source}'");
 
   if ($^O =~ /Win/) {
     debug!("Enabling Windows-style globbing");
@@ -68,8 +68,8 @@ pub fn glob_data_file($source, $globflag) {
 
   push @sources, map {biber_decode_utf8($_)} glob NFC(qq("$source"));
 
-  info!("Globbed data source '{}' to '{}'", source, sources.join(","));
-  return @sources;
+  info!("Globbed data source '{source}' to '{}'", sources.join(","));
+  sources
 }
 
 /// Use different read encoding/slurp interfaces for Windows due to its
@@ -384,38 +384,35 @@ pub fn strip_noinit(string) {
 }
 
 /// Removes elements which are not to be used in sorting a name from a string
-pub fn strip_nosort(string, fieldname) {
+pub fn strip_nosort(string: &str, fieldname: &str) -> String {
   no autovivification;
-  if !($string) {
+  if string.is_empty() {
     return ""; // Sanitise missing data
   }
-  if !(let $nosort = crate::Config->getoption("nosort")) {
-    return $string;
-  }
+  if let Some(nosort) = crate::Config->getoption("nosort").skip_empty() {
+    let mut restrings = Vec::new();
 
-  let $restrings;
-
-  for nsopt in ($nosort->@*) {
-    // Specific fieldnames override sets
-    if (unicase::eq($nsopt->{name}, fieldname)) {
-      push $restrings->@*, $nsopt->{value};
-    }
-    else if (let $set = $DATAFIELD_SETS{lc($nsopt->{name})} ) {
-      if (first {unicase::eq($_, fieldname)} $set->@*) {
-        push $restrings->@*, $nsopt->{value};
+    for nsopt in nosort {
+      // Specific fieldnames override sets
+      if (unicase::eq(nsopt.name, fieldname)) {
+        restrings.push(nsopt.value);
+      } else if (let $set = $DATAFIELD_SETS{nsopt.name.to_lowercase()} ) {
+        if set.iter().any(|v| unicase::eq(v, fieldname)) {
+          restrings.push(nsopt.value);
+        }
       }
     }
-  }
 
-  // If no nosort to do, just return string
-  if !($restrings) {
-    return $string;
-  }
+    // If no nosort to do, just return string
+    if restrings.is_empty() {
+      return string;
+    }
 
-  for re in ($restrings->@*) {
-    $string =~ s/$re//gxms;
+    for re in &restrings {
+      $string =~ s/$re//gxms;
+    }
   }
-  return $string;
+  string
 }
 
 /// Removes elements which are not to be used in certain name-related operations like:
@@ -459,40 +456,40 @@ pub fn strip_nonamestring(string, fieldname) {
 
 /// Remove some things from a string for label generation. Don't strip \p{Dash}
 /// as this is needed to process compound names or label generation.
-pub fn normalise_string_label($str) {
-  if !($str) {
+pub fn normalise_string_label(string: &str) -> String {
+  if string.is_empty() {
     return ""; // Sanitise missing data
   }
   let $nolabels = crate::Config->getoption("nolabel");
-  $str =~ s/\\[A-Za-z]+//g;    // remove latex macros (assuming they have only ASCII letters)
+  string = Regex::new(r"\\[A-Za-z]+").unwrap().replace_all("");   // remove latex macros (assuming they have only ASCII letters)
   // Replace ties with spaces or they will be lost
-  $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
+  string = = Regex::new(r"([^\\])~").unwrap().replace_all("$1 "); // Foo~Bar -> Foo Bar
   for nolabel in ($nolabels->@*) {
     let $re = $nolabel->{value};
-    $str =~ s/$re//gxms;           // remove nolabel items
+    string =~ s/$re//gxms;           // remove nolabel items
   }
-  $str =~ s/(?:^\s+|\s+$)//g;      // Remove leading and trailing spaces
-  $str =~ s/\s+/ /g;               // collapse spaces
-  return $str;
+  string = Regex::new(r"(?:^\s+|\s+$)").unwrap().replace_all(""); // Remove leading and trailing spaces
+  string = Regex::new(r"\s+").unwrap().replace_all(" ");          // collapse spaces
+  string
 }
 
 /// Removes LaTeX macros, and all punctuation, symbols, separators
 /// as well as leading and trailing whitespace for sorting strings.
 /// Control chars don't need to be stripped as they are completely ignorable in DUCET
-pub fn normalise_string_sort($str, $fieldname) {
-  if !($str) {
+pub fn normalise_string_sort(string: &str, fieldname: &str) -> String {
+  if string.is_empty() {
     return ""; // Sanitise missing data
   }
   // First strip nosort REs
-  $str = strip_nosort($str, $fieldname);
+  string = strip_nosort(string, fieldname);
   // Then replace ties with spaces or they will be lost
-  $str =~ s/([^\\])~/$1 /g; // Foo~Bar -> Foo Bar
+  string = Regex::new(r"([^\\])~").unwrap().replace_all("$1 "); // Foo~Bar -> Foo Bar
   // Don't use normalise_string_common() as this strips out things needed for sorting
-  $str =~ s/\\[A-Za-z]+//g;        // remove latex macros (assuming they have only ASCII letters)
-  $str =~ s/[{}]+//g;              // remove embedded braces
-  $str =~ s/^\s+|\s+$//g;          // Remove leading and trailing spaces
-  $str =~ s/\s+/ /g;               // collapse spaces
-  return $str;
+  string = Regex::new(r"\\[A-Za-z]+").unwrap().replace_all(""); // remove latex macros (assuming they have only ASCII letters)
+  string = Regex::new(r"[{}]+").unwrap().replace_all("");       // remove embedded braces
+  string = Regex::new(r"^\s+|\s+$").unwrap().replace_all("");   // Remove leading and trailing spaces
+  string = Regex::new(r"\s+").unwrap().replace_all(" ");        // collapse spaces
+  string
 }
 */
 /// Some string normalisation for bblxml output

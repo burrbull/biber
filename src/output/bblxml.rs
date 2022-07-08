@@ -125,27 +125,27 @@ impl BblXML {
       return;
     }
 
-    let @entryopts;
+    let mut entryopts = AttributeMap::new();
     if (defined($be->get_field("crossrefsource"))) {
-      push @entryopts, ("source", "crossref");
+      entryopts.insert("source", "crossref");
     }
 
     if (defined($be->get_field("xrefsource"))) {
-      push @entryopts, ("source", "xref");
+      entryopts.insert("source", "xref");
     }
 
-    push @entryopts, ("singletitle"         => "[BDS]SINGLETITLE[/BDS]");
-    push @entryopts, ("uniquetitle"         => "[BDS]UNIQUETITLE[/BDS]");
-    push @entryopts, ("uniquebaretitle"     => "[BDS]UNIQUEBARETITLE[/BDS]");
-    push @entryopts, ("uniquework"          => "[BDS]UNIQUEWORK[/BDS]");
-    push @entryopts, ("uniqueprimaryauthor" => "[BDS]UNIQUEPRIMARYAUTHOR[/BDS]");
+    entryopts.insert("singletitle", "[BDS]SINGLETITLE[/BDS]");
+    entryopts.insert("uniquetitle", "[BDS]UNIQUETITLE[/BDS]");
+    entryopts.insert("uniquebaretitle", "[BDS]UNIQUEBARETITLE[/BDS]");
+    entryopts.insert("uniquework", "[BDS]UNIQUEWORK[/BDS]");
+    entryopts.insert("uniqueprimaryauthor", "[BDS]UNIQUEPRIMARYAUTHOR[/BDS]");
 
     $xml->startTag([$xml_prefix, "entry"], key => _bblxml_norm($key), type => _bblxml_norm($bee), @entryopts);
-    let @opts;
+    let mut opts = Vec::new();
     for opt in (filter_entry_options($secnum, $be)->@*) {
-      push @opts, $opt;
+      opt.push(opt);
     }
-    if (@opts) {
+    if !opts.is_empty() {
       $xml->startTag([$xml_prefix, "options"]);
       for opt in opts.iter() {
         $xml->dataElement([$xml_prefix, "option"], _bblxml_norm(opt));
@@ -160,7 +160,7 @@ impl BblXML {
       $xml->dataElement("BDS", "ENTRYSET");
 
       // Set parents need this - it is the labelalpha from the first entry
-      if (crate::Config->getblxoption(None, "labelalpha", $bee, $key)) {
+      if (crate::Config->getblxoption(None, "labelalpha", bee, key)) {
         $xml->dataElement("BDS", "LABELALPHA");
         $xml->dataElement("BDS", "EXTRAALPHA");
       }
@@ -174,12 +174,12 @@ impl BblXML {
 
       // Label can be in set parents
       if (let $lab = $be->get_field("label")) {
-        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($lab), name => "label");
+        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($lab), attribute_map!("name" => "label"));
       }
 
       // Annotation can be in set parents
       if (let $ann = $be->get_field("annotation")) {
-        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ann), name => "annotation");
+        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ann), attribute_map!("name" => "annotation"));
       }
 
       // Skip everything else
@@ -218,7 +218,7 @@ impl BblXML {
           // Add uniquelist if requested
           // Don't use angles in attributes ...
           if (ul != "false") {
-            $plo{ul} = "[BDS]UL-${nlid}[/BDS]";
+            $plo{ul} = format!("[BDS]UL-{nlid}[/BDS]");
           }
 
           // Add per-namelist options
@@ -236,7 +236,7 @@ impl BblXML {
         $xml->startTag([$xml_prefix, "names"], type => $namefield, count => $total, map {$_ => $plo{$_}} sort keys %plo);
 
         // Now the names
-        for n in ($nf->names->@*) {
+        for n in nf.names() {
 
           // Per-name uniquename if this is labelname
           if ($lni == $namefield) {
@@ -270,10 +270,10 @@ impl BblXML {
           pop $lf->@*; // remove the last element in the array
         }
 
-        let $total = $lf->$#* + 1;
+        let $total = lf.len();
         $xml->startTag([$xml_prefix, "list"], name => $listfield, count => $total, map {$_ => $plo{$_}} sort keys %plo);
-        for f in ($lf->@*) {
-          $xml->dataElement([$xml_prefix, "item"], _bblxml_norm($f));
+        for f in &lf {
+          $xml->dataElement([$xml_prefix, "item"], _bblxml_norm(f));
         }
         $xml->endTag();// list
       }
@@ -396,14 +396,13 @@ impl BblXML {
     // Date parts
     // NOTE: already sorted
     for field in dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None) {
-      let $val = $be->get_field($field);
+      let val = be.get_field(field);
 
       if ( length($val) || // length() catches '0' values, which we want
           ($dm->field_is_nullok($field) &&
-            $be->field_exists($field))) {
-        let @attrs = ("name", $field);
-        let $str;
-        if (let ($d) = $field =~ m/^(.*)(?!end)year$/) {
+            be.field_exists($field))) {
+        let attrs = attribute_map!("name" => field);
+        let string = if (let ($d) = $field =~ m/^(.*)(?!end)year$/) {
 
           // Output absolute astronomical year by default (with year 0)
           // biblatex will adjust the years when printed with BCE/CE eras
@@ -412,40 +411,40 @@ impl BblXML {
           }
 
           // Unspecified granularity
-          if (let $unspec = $be->get_field("${d}dateunspecified")) {
-              push @attrs, ("unspecified", $unspec);
+          if (let $unspec = be.get_field("${d}dateunspecified")) {
+            attrs.insert("unspecified", unspec);
           }
 
           // Julian dates
-          if ($be->get_field("${d}datejulian")) {
-            push @attrs, ("startjulian", "true");
+          if (be.get_field(format!("{d}datejulian"))) {
+            attrs.insert("startjulian", "true");
           }
-          if ($be->get_field("${d}enddatejulian")) {
-            push @attrs, ("endjulian", "true");
+          if (be.get_field(format!("{d}enddatejulian"))) {
+            attrs.insert("endjulian", "true");
           }
 
           // Circa dates
-          if ($be->get_field("${d}dateapproximate")) {
-            push @attrs, ("startcirca", "true");
+          if (be.get_field(format!("{d}dateapproximate"))) {
+            attrs.insert("startcirca", "true");
           }
-          if ($be->get_field("${d}enddateapproximate")) {
-            push @attrs, ("endcirca", "true");
+          if (be.get_field(format!("{d}enddateapproximate"))) {
+            attrs.insert("endcirca", "true");
           }
 
           // Uncertain dates
-          if ($be->get_field("${d}dateuncertain")) {
-            push @attrs, ("startuncertain", "true");
+          if (be.get_field(format!("{d}dateuncertain"))) {
+            attrs.insert("startuncertain", "true");
           }
-          if ($be->get_field("${d}enddateuncertain")) {
-            push @attrs, ("enduncertain", "true");
+          if (be.get_field(format!("{d}enddateuncertain"))) {
+            attrs.insert("enduncertain", "true");
           }
 
           // Unknown dates
-          if ($be->get_field("${d}dateunknown")) {
-            push @attrs, ("startunknown", "true");
+          if (be.get_field(format!("{d}dateunknown"))) {
+            attrs.insert("startunknown", "true");
           }
-          if ($be->get_field("${d}enddateunknown")) {
-            push @attrs, ("endunknown", "true");
+          if (be.get_field(format!("{d}enddateunknown"))) {
+            attrs.insert("endunknown", "true");
           }
 
           // Only output era for date if:
@@ -453,21 +452,21 @@ impl BblXML {
           // The field is any other startyear
           if ($d == "" && $be->get_field("datesplit")) {
             if (let $era = $be->get_field("${d}era")) {
-              push @attrs, ("startera", $era);
+              attrs.insert("startera", era);
             }
             if (let $era = $be->get_field("${d}endera")) {
-              push @attrs, ("endera", $era);
+              attrs.insert("endera", era);
             }
-            $str = _bblxml_norm($be->get_field("${d}year"));
+            _bblxml_norm($be->get_field("${d}year"))
           }
           else {
-            $str = _bblxml_norm($val);
+            _bblxml_norm($val)
           }
         }
         else {
-          $str = _bblxml_norm($val);
-        }
-        $xml->dataElement([$xml_prefix, "field"], $str, @attrs);
+          _bblxml_norm($val)
+        };
+        $xml->dataElement([$xml_prefix, "field"], string, attrs);
       }
     }
 
@@ -624,10 +623,8 @@ impl BblXML {
     // This exists as we are making a new XML writer for each entry
     // which makes sense because the entries are not generated in the context
     // of the main XML due to instantiate_entry() requirements
-    $exml =~ s/\sxmlns:bbl="$xml_prefix".unwrap_or(xms);
+    $exml =~ s/\sxmlns:bbl="$xml_prefix"//xms;
     $self->{output_data}{ENTRIES}{$secnum}{index}{$key} = \$exml;
-
-    return;
   }
 
   /// BBL output method - this takes care to output entries in the explicit order
@@ -690,7 +687,7 @@ impl BblXML {
 
           debug!("Writing entries in '{}' list of type '{}' with sortingtemplatename '{}', sort name key scheme '{}' and labelprefix '{}'", listname, listtype, listssn, listsnksn, listpn);
 
-        $xml->startTag([$xml_prefix, "datalist"], type => listtype, id => listname);
+        $xml->startTag([$xml_prefix, "datalist"], attribute_map!("type" => listtype, "id" => listname));
         $xml->raw("\n");
 
         // The order of this array is the sorted order
@@ -720,8 +717,8 @@ impl BblXML {
 
       // alias citekeys are global to a section
       for k in section.get_citekey_aliases() {
-        let $realkey = $section->get_citekey_alias($k);
-        $xml->dataElement([$xml_prefix, "keyalias"], _bblxml_norm($k), key => $realkey);
+        let realkey = section.get_citekey_alias(k);
+        $xml->dataElement([$xml_prefix, "keyalias"], _bblxml_norm($k), attribute_map!("key" => realkey));
       }
 
       // undef citekeys are global to a section
@@ -758,8 +755,6 @@ impl BblXML {
     if (crate::Config->getoption("validate_bblxml")) {
       validate_biber_xml(target_string, "bbl", "https://sourceforge.net/projects/biblatex/bblxml", $schemafile);
     }
-
-    return;
   }
 
   /// Create the output from the sections data and push it into the
@@ -777,11 +772,9 @@ impl BblXML {
 
     // Make sure the output object knows about the output section
     $self->set_output_section($secnum, $section);
-
-    return;
   }
 
-  fn _bblxml_norm {
-    return NFC(normalise_string_bblxml(shift));
+  fn _bblxml_norm(shift: &str) -> String {
+    NFC(&normalise_string_bblxml(shift))
   }
 }

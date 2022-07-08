@@ -8,6 +8,7 @@
 //! ```
 
 use crate::section::{DataSource, DataSourceType};
+use crate::datalist::Filter;
 
 use parent qw(Class::Accessor crate::Internals);
 
@@ -482,11 +483,13 @@ impl Biber {
       let $name = lc($s->{name});
       for m in ($s->{member}->@*) {
         if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
-          push $DATAFIELD_SETS{$name}->@*, $field;
+          DATAFIELD_SETS{$name}.push(DataField::String(field));
         }
         else {
-            push $DATAFIELD_SETS{$name}->@*, {fieldtype => $m->{fieldtype},
-                                              datatype  => $m->{datatype}};
+            DATAFIELD_SETS{$name}.push(DataField::Field {
+              fieldtype: $m->{fieldtype},
+              datatype: $m->{datatype}
+            });
         }
       }
     }
@@ -887,14 +890,14 @@ impl Biber {
         // Normalise - when allkeys is true don't need citekeys - just in case someone
         // lists "*" and also some other citekeys
         bib_section.del_citekeys();
-        info!("Using all citekeys in bib section {}", secnum);
+        info!("Using all citekeys in bib section {secnum}");
       }
       else {
-        info!("Found {} citekeys in bib section {}", keys.len(), secnum);
+        info!("Found {} citekeys in bib section {secnum}", keys.len());
       }
 
       if !bib_section.is_allkeys() {
-          debug!("The citekeys for section {} are: {}\n", secnum, keys.join(", "));
+          debug!("The citekeys for section {secnum} are: {}\n", keys.join(", "));
       }
 
       if !bib_section.is_allkeys() {
@@ -942,15 +945,19 @@ impl Biber {
         lpn,
       );
       for filter in ($list->{filter}->@*) {
-        datalist.add_filter({"type"  => $filter->{type},
-                              "value" => $filter->{content}});
+        datalist.add_filter(Filter {
+          type: FilterType::from_str(filter->{type}).unwrap(),
+          value: filter->{content}
+        });
       }
       // disjunctive filters are an array ref of filter hashes
       for orfilter in ($list->{filteror}->@*) {
         let mut orfilts = Vec::new();
         for filter in ($orfilter->{filter}->@*) {
-          orfilts.push({type  => $filter->{type},
-                              value => $filter->{content}});
+          orfilts.push(Filter {
+            type: FilterType::from_str(filter->{type}).unwrap(),
+            value: filter->{content}
+          });
         }
         if !orfilts.is_empty() {
           datalist.add_filter(&orfilts);
@@ -1125,7 +1132,7 @@ impl Biber {
   // datafield sets need to be resolved after the datamodel is parsed
   fn _resolve_datafieldsets {
     let $dm = crate::config::get_dm();
-    while (let ($key, $value) = each %DATAFIELD_SETS) {
+    for value in DATAFIELD_SETS.values_mut() {
       let fs = Vec::new();
       for m in ($value->@*) {
         if (ref $m == "HASH") {
@@ -1146,7 +1153,7 @@ impl Biber {
           fs.push(m);
         }
       }
-      $DATAFIELD_SETS{$key} = $fs;
+      *value = $fs;
     }
   }
 
@@ -2742,33 +2749,33 @@ impl Biber {
       }
 
       // Filtering - must come before sorting/labelling so that there are no gaps in e.g. extradate
-      if (let $filters = $list->get_filters) {
+      if (let $filters = list.get_filters()) {
         let $flist = [];
       'KEYLOOP: for k list.get_keys() {
           let be = section.bibentry(k);
-          for f in &filters {
+          for f in filters {
             // Filter disjunction is ok if any of the checks are ok, hence the grep()
             if (ref $f == "ARRAY") {
-              if !(grep {check_list_filter($k, $_->{type}, $_->{value}, $be)} $f->@*) {
+              if !f.iter().any(|f| check_list_filter(k, f, be)) {
                 continue 'KEYLOOP ;
               }
             }
             else {
-              if !check_list_filter($k, $f->{type}, $f->{value}, $be) {
+              if !check_list_filter(k, f, be) {
                 continue 'KEYLOOP;
               }
             }
           }
-          push $flist->@*, $k;
+          flist.push(k);
         }
-          debug!("Keys after filtering list '{}' in section {}: {}", lname, secnum, flist.join(", "));
-        $list->set_keys($flist); // Now save the sorted list in the list object
+          debug!("Keys after filtering list '{lname}' in section {secnum}: {}", flist.join(", "));
+        list.set_keys(flist); // Now save the sorted list in the list object
       }
 
       // Sorting
-      $self->generate_sortdataschema($list); // generate the sort schema information
-      $self->generate_sortinfo($list);       // generate the sort information
-      $self->sort_list($list);               // sort the list
+      self.generate_sortdataschema(list); // generate the sort schema information
+      self.generate_sortinfo(list);       // generate the sort information
+      self.sort_list(list);               // sort the list
       if !crate::Config->getoption("tool") {
         $self->generate_contextdata($list);
       }
@@ -2778,75 +2785,81 @@ impl Biber {
   }
 
   /// Run an entry through a list filter. Returns a boolean.
-  fn check_list_filter(k, t, fs, be) {
-      debug!("Checking key '{}' against filter '{}={}'", k, t, fs);
-    if ($t == "type") {
-      if ($be->get_field("entrytype") == lc($fs)) {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
+  fn check_list_filter(k: &str, filter: &Filter, fs, be: &Entry) -> bool {
+    let Filter {
+      typ: t,
+      value: fs,
+    } = filter;
+      debug!("Checking key '{k}' against filter '{t}={fs}'");
+    match t {
+      FilterType::Type => {
+        if (be.get_field("entrytype") == fs.to_lowercase())) {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+        else {
+          return false;
+        }
       }
-      else {
-        return 0;
+      FilterType::NotType => {
+        if (be.get_field("entrytype") == fs.to_lowercase()) {
+          return false;
+        }
+        else {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+      }
+      FilterType::Subtype => {
+        if (be.field_exists("entrysubtype") &&
+            be.get_field("entrysubtype") == fs.to_lowercase()) {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+        else {
+          return false;
+        }
+      }
+      FilterType::NotSubtype => {
+        if (be.field_exists("entrysubtype") &&
+            be.get_field("entrysubtype") == fs.to_lowercase()) {
+          return false;
+        }
+        else {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+      }
+      FilterType::Keyword => {
+        if be.has_keyword(fs) {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+        else {
+          return false;
+        }
+      }
+      FilterType::NotKeyword => {
+        if be.has_keyword(fs) {
+          return false;
+        }
+        else {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+      }
+      FilterType::Field => {
+        if be.field_exists(fs) {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
+        else {
+          return false;
+        }
+      }
+      FilterType::NotField => {
+        if be.field_exists(fs) {
+          return false;
+        }
+        else {
+            trace!("Key '{k}' passes against filter '{t}={fs}'");
+        }
       }
     }
-    else if ($t == "nottype") {
-      if ($be->get_field("entrytype") == lc($fs)) {
-        return 0;
-      }
-      else {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-    }
-    else if ($t == "subtype") {
-      if ($be->field_exists("entrysubtype") &&
-          $be->get_field("entrysubtype") == lc($fs)) {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-      else {
-        return 0;
-      }
-    }
-    else if ($t == "notsubtype") {
-      if ($be->field_exists("entrysubtype") &&
-          $be->get_field("entrysubtype") == lc($fs)) {
-        return 0;
-      }
-      else {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-    }
-    else if ($t == "keyword") {
-      if ($be->has_keyword($fs)) {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-      else {
-        return 0;
-      }
-    }
-    else if ($t == "notkeyword") {
-      if ($be->has_keyword($fs)) {
-        return 0;
-      }
-      else {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-    }
-    else if ($t == "field") {
-      if ($be->field_exists($fs)) {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-      else {
-        return 0;
-      }
-    }
-    else if ($t == "notfield") {
-      if ($be->field_exists($fs)) {
-        return 0;
-      }
-      else {
-          trace!("Key '{}' passes against filter '{}={}'", k, t, fs);
-      }
-    }
-    return 1;
+    return true;
   }
 
   /// Generate sort data schema for Sort::Key from sort spec like this:
@@ -2871,34 +2884,30 @@ impl Biber {
   /// ```
   fn generate_sortdataschema(self, $list) {
     let $dm = crate::config::get_dm();
-    let $ds;
-    let $schema;
+    let mut ds = Vec::new();
 
     // Check if sorting templatename for the list contains anything ...
-    if (keys crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()}->%*) {
-      $schema = crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()};
-    }
-    else {
+    let $schema = if (keys crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()}->%*) {
+      crate::Config->getblxoption(None, "sortingtemplate")->{list.get_sortingtemplatename()}
+    } else {
       // ... fall back to global default if named template does not exist
-      $schema = crate::Config->getblxoption(None, "sortingtemplate")->{crate::Config->getblxoption(None, "sortingtemplatename")};
-    }
+      crate::Config->getblxoption(None, "sortingtemplate")->{crate::Config->getblxoption(None, "sortingtemplatename")}
+    };
 
     $list->set_sortingtemplate($schema); // link the sort schema into the list
 
     for sort in ($schema->{spec}->@*) {
       // Assume here that every item in a sorting spec section is the same datatype
       // See header for data structure
-      let $direction = "";
-      while (let ($sopt, $val) = each $sort->[0]->%*) {
-        if ($sopt == "sort_direction") {
-          if ($val == "descending") {
-            $direction = '-';
-          }
+      let mut direction = String::new();
+      for (sopt, val) in sort[0].iter() {
+        if sopt == "sort_direction" && val == "descending" {
+            direction = '-'.to_string();
         }
       }
-      let $spec = $dm->{sortdataschema}->([keys $sort->[1]->%*]->[0]);
-      push $ds->@*, {spec  => "$direction$spec",
-                    $spec => 1}; // Speed shortcut for sortkey extraction sub
+      let $spec = $dm->{sortdataschema}->(sort[1].keys().next().unwrap());
+      ds.push({"spec"  => format!("{direction}{spec}"),
+                    $spec => 1}); // Speed shortcut for sortkey extraction sub
 
     }
     $list->set_sortdataschema($ds);

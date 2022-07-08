@@ -13,6 +13,7 @@ use XML::LibXML::Simple;
 use Carp;
 use utf8;
 
+use itertools::Itertools;
 
 /// Encode/Decode chars to/from UTF-8/lacros in LaTeX
 ///
@@ -157,13 +158,11 @@ fn init_sets(set_d, set_e) {
   // of longer ones damaging the longer ones
   for tp in types {
     if let Some(typ) = remap_d.get_mut(tp) {
-      typ.re = {
-        let mut v: Vec<_> = typ.map.keys();
-        v.sort_by(|a, b| b.len().cmp(a.len()));
-        v.iter()
+      typ.re = typ.map
+        .keys()
+        .sorted_by(|a, b| b.len().cmp(a.len()))
         .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
-        .join("|")
-      };
+        .join("|");
       typ.re = qr|typ.re|;
     }
   }
@@ -171,13 +170,11 @@ fn init_sets(set_d, set_e) {
   // Populate the encode regexps
   for tp in types {
     if let Some(typ) = remap_e.get_mut(tp) {
-      typ.re = {
-        let mut v: Vec<_> = typ.map.keys();
-        v.sort();
-        v.iter()
+      typ.re = typ.map
+        .keys()
+        .sorted()
         .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
-        .join("|")
-      };
+        .join("|");
       typ.re = qr|typ.re|;
     }
   }

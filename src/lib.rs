@@ -3,6 +3,8 @@
 use core::fmt;
 use uuid::Uuid;
 
+mod element_builder;
+
 mod annotation;
 //mod section;
 mod constants;
@@ -375,16 +377,11 @@ impl core::str::FromStr for Bool {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub enum InputFormat {
+    #[default]
     BibTeX,
     BibLaTeXML,
-}
-
-impl Default for InputFormat {
-    fn default() -> Self {
-        Self::BibTeX
-    }
 }
 
 impl fmt::Display for InputFormat {
@@ -407,19 +404,14 @@ impl core::str::FromStr for InputFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub enum OutputFormat {
     Dot,
     BibTeX,
     BibLaTeXML,
+    #[default]
     Bbl,
     BblXML,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Bbl
-    }
 }
 
 impl fmt::Display for OutputFormat {
@@ -448,17 +440,12 @@ impl core::str::FromStr for OutputFormat {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub enum OutputFieldCase {
+    #[default]
     Upper,
     Lower,
     Title,
-}
-
-impl Default for OutputFieldCase {
-    fn default() -> Self {
-        Self::Upper
-    }
 }
 
 impl fmt::Display for OutputFieldCase {
