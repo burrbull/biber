@@ -381,7 +381,7 @@ impl DataModel {
   }
 
   /// Returns array ref of legal entrytypes
-  fn entrytypes(self) {
+  fn entrytypes(&self) -> impl Iterator<Item=&String> {
     return [ keys $self->{entrytypesbyname}->%* ];
   }
 
@@ -786,65 +786,57 @@ impl DataModel {
 
     // Set the .rng path to the output dir, if specified
     if (let $outdir = crate::Config->getoption("output_directory")) {
-      let (undef, undef, $file) = File::Spec->splitpath($outfile);
+      let (None, None, file) = File::Spec->splitpath($outfile);
       $outfile = File::Spec->catfile($outdir, $file)
     }
-    let $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
-    $rng->autoflush;// Needed for running tests to string refs
 
     info!("Writing BibLaTeXML RNG schema '{}' for datamodel", outfile);
-    require XML::Writer;
-    let $bltx_ns = "http://biblatex-biber.sourceforge.net/biblatexml";
-    let $bltx = "bltx";
-    let $default_ns = "http://relaxng.org/ns/structure/1.0";
-    let $writer = new XML::Writer(NAMESPACES   => 1,
+
+    let bltx_ns = "http://biblatex-biber.sourceforge.net/biblatexml";
+    let bltx = "bltx";
+    let default_ns = "http://relaxng.org/ns/structure/1.0";
+    /*let $writer = new XML::Writer(NAMESPACES   => 1,
                                 ENCODING     => "UTF-8",
                                 DATA_MODE    => 1,
                                 DATA_INDENT  => 2,
                                 OUTPUT       => $rng,
                                 PREFIX_MAP   => {$bltx_ns    => $bltx,
-                                                  $default_ns => ""});
+                                                  $default_ns => ""});*/
 
-    $writer->xmlDecl();
-    $writer->comment("Auto-generated from .bcf Datamodel");
-    $writer->forceNSDecl($default_ns);
-    $writer->forceNSDecl($bltx_ns);
-    $writer->startTag("grammar",
-                      attribute_map!("datatypeLibrary" => "http://www.w3.org/2001/XMLSchema-datatypes"));
-    $writer->startTag("start");
-    $writer->startTag("element", attribute_map!("name" => format!("{bltx}:entries")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bltx}:entry")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "id"));
-    $writer->startTag("attribute", attribute_map!("name" => "entrytype"));
-    $writer->startTag("choice");
-    for entrytype in ($dm->entrytypes->@*) {
-      $writer->dataElement("value", $entrytype);
-    }
-    $writer->endTag();// choice
-    $writer->endTag();// attribute
-    $writer->startTag("interleave");
+    #[rustfmt::skip]
+    let mut grammar_tag = Element::builder("grammar")
+      .attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes")
+      .append(Element::builder("start")
+        .append(Element::builder("element").attr("name", format!("{bltx}:entries"))
+          .append(Element::builder("attribute").attr("name", "id"))
+          .append(Element::builder("attribute").attr("name", "entrytype")
+            .append(Element::builder("choice")
+              .append_all(dm.entrytypes().map(|entrytype| {
+                Element::builder("value").text(entrytype)
+              }))
+            )
+          )
 
-    for ft in &dm.fieldtypes {
-      for dt in &dm.datatypes {
-        if dm.is_fields_of_type(ft, dt, None) {
-          if dt == DataType::Datepart { // not legal in input, only output
-            continue;
-          }
-          $writer->comment(format!("{dt} {ft}s"));
-          $writer->emptyTag("ref", attribute_map!("name" => format!("{dt}{ft}")));
-        }
-      }
-    }
-
-    // Annotations
-    $writer->emptyTag("ref", "name" => "mannotation");
-
-    $writer->endTag();// interleave
-    $writer->endTag();// entry element
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// entries element
-    $writer->endTag();// start
+          .append({
+            let mut builder = Element::builder("interleave");
+    
+            for ft in &dm.fieldtypes {
+              for dt in &dm.datatypes {
+                if dm.is_fields_of_type(ft, dt, None) {
+                  if dt == DataType::Datepart { // not legal in input, only output
+                    continue;
+                  }
+                  builder = builder.comment(format!("{dt} {ft}s"));
+                  builder = builder.append(Element::builder("ref").attr("name", format!("{dt}{ft}")));
+                }
+              }
+            }
+    
+            // Annotations
+            builder.append(Element::builder("ref").attr("name", "mannotation"))
+          })
+        )
+      );
 
     for ft in &dm.fieldtypes {
       for dt in &dm.datatypes {
@@ -852,154 +844,119 @@ impl DataModel {
           if dt == DataType::Datepart { // not legal in input, only output
             continue;
           }
-          builder = builder.comment(format!("{dt} {ft}s definition"));
-          builder = builder.append(
+          grammar_tag = grammar_tag.comment(format!("{dt} {ft}s definition"));
+          grammar_tag = grammar_tag.append(
             Element::builder("define").attr("name", format!("{dt}{ft}")).append(
           // Name lists element definition
           // =============================
+
+          #[rustfmt::skip]
           match (ft, dt) {
             (FieldType::List, DataType::Name) => {
               Element::builder("zeroOrMore")// for example, XDATA doesn't need a name
-                .append(
-                  Element::builder("element")
-                    .attr("name", format!("{bltx}:names"))
-                    .append(
-                      Element::builder("choice")
-                        // xdata attribute ref
-                        .append(Element::builder("ref").attr("name", "xdata"))
-                        .append(
-                          Element::builder("group")
-                            // useprefix attribute
-                            .comment("useprefix option")
-                            .append(
-                              Element::builder("optional")
-                                .append(
-                                  Element::builder("attribute")
-                                    .attr("name", "useprefix")
-                                    .append(Element::builder("data").attr("type", "boolean"))
-                                )
-                            )
+                .append(Element::builder("element")
+                  .attr("name", format!("{bltx}:names"))
+                  .append(Element::builder("choice")
+                    // xdata attribute ref
+                    .append(Element::builder("ref").attr("name", "xdata"))
+                    .append(Element::builder("group")
+                      // useprefix attribute
+                      .comment("useprefix option")
+                      .append(Element::builder("optional")
+                        .append(Element::builder("attribute").attr("name", "useprefix")
+                          .append(Element::builder("data").attr("type", "boolean"))
+                        )
+                      )
 
-                            // sortingnamekeytemplatename attribute
-                            .comment("sortingnamekeytemplatename option")
-                            .append(
-                              Element::builder("optional")
-                                .append(
-                                  Element::builder("attribute")
-                                    .attr("name", "sortingnamekeytemplatename")
-                                    .append(Element::builder("data").attr("type", "string"))
-                                )
-                            )
+                      // sortingnamekeytemplatename attribute
+                      .comment("sortingnamekeytemplatename option")
+                      .append(Element::builder("optional")
+                        .append(Element::builder("attribute").attr("name", "sortingnamekeytemplatename")
+                          .append(Element::builder("data").attr("type", "string"))
+                        )
+                      )
 
-                            // type attribute
-                            .comment("types of names elements")
-                            .append(
-                              Element::builder("attribute")
-                                .attr("name", "type")
-                                .append(
-                                  Element::builder("choice")
-                                    .append_all(
-                                      dm.get_fields_of_type(ft, &[dt], None).iter().map(|name|
-                                        Element::builder("value").text(name)
+                      // type attribute
+                      .comment("types of names elements")
+                      .append(Element::builder("attribute").attr("name", "type")
+                        .append(Element::builder("choice")
+                          .append_all(
+                            dm.get_fields_of_type(ft, &[dt], None).iter().map(|name|
+                              Element::builder("value").text(name)
+                            )
+                          )
+                        )
+                      )
+
+                      // morenames attribute
+                      .append(Element::builder("optional")
+                        .append(Element::builder("attribute").attr("name", "morenames")
+                          .append(Element::builder("data").attr("type", "boolean"))
+                        )
+                      )
+
+                      .append(Element::builder("oneOrMore")
+                        // Individual name element
+                        .append(Element::builder("element").attr("name", format!("{bltx}:name"))
+                          .append(Element::builder("choice")
+                            // xdata attribute ref
+                            .append(Element::builder("ref").attr("name", "xdata"))
+                            .append(Element::builder("group")
+                              // useprefix attribute
+                              .comment("useprefix option")
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute")
+                                  .attr("name", "useprefix")
+                                  .append(Element::builder("data").attr("type", "boolean"))
+                                )
+                              )
+
+                              // sortingnamekeytemplatename attribute
+                              .comment("sortingnamekeytemplatename option")
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "sortingnamekeytemplatename")
+                                  .append(Element::builder("data").attr("type", "string"))
+                                )
+                              )
+
+                              // gender attribute ref
+                              .append(Element::builder("ref").attr("name", "gender"))
+
+                              // namepart element
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bltx}:namepart"))
+                                  .append(Element::builder("attribute").attr("name", "type")
+                                    .append(Element::builder("choice")
+                                      // list type so returns list
+                                      .append_all(
+                                        dm.get_constant_value("nameparts").iter().map(|np|
+                                          Element::builder("value").text(np)
+                                        )
                                       )
                                     )
+                                  )
+                                  .append(Element::builder("optional")
+                                    .append(Element::builder("attribute").attr("name", "initial"))
+                                  )
+                                  .append(Element::builder("choice")
+                                    .append(Element::builder("oneOrMore")
+                                      .append(Element::builder("element").attr("name", format!("{bltx}:namepart"))
+                                        .append(Element::builder("optional")
+                                          .append(Element::builder("attribute").attr("name", "initial"))
+                                        )
+                                        .append(Element::builder("text"))
+                                      )
+                                    )
+                                    .append(Element::builder("text"))
+                                  )
                                 )
-                            )
-
-                            // morenames attribute
-                            .append(
-                              Element::builder("optional")
-                              .append(
-                                Element::builder("attribute")
-                                  .attr("name", "morenames")
-                                  .append(Element::builder("data").attr("type", "boolean"))
                               )
                             )
-
-                            .append(
-                              Element::builder("oneOrMore")
-                                // Individual name element
-                                .append(
-                                  Element::builder("element")
-                                    .attr("name", format!("{bltx}:name"))
-                                    .append(
-                                      Element::builder("choice")
-                                        // xdata attribute ref
-                                        .append(Element::builder("ref").attr("name", "xdata"))
-                                        .append(
-                                          Element::builder("group")
-                                            // useprefix attribute
-                                            .comment("useprefix option")
-                                            .append(
-                                              Element::builder("optional")
-                                                .append(
-                                                  Element::builder("attribute")
-                                                    .attr("name", "useprefix")
-                                                    .append(Element::builder("data").attr("type", "boolean"))
-                                                )
-                                            )
-
-                                            // sortingnamekeytemplatename attribute
-                                            .comment("sortingnamekeytemplatename option")
-                                            .append(
-                                              Element::builder("optional")
-                                                .append(
-                                                  Element::builder("attribute")
-                                                    .attr("name", "sortingnamekeytemplatename")
-                                                    .append(Element::builder("data").attr("type", "string"))
-                                                )
-                                            )
-
-                                            // gender attribute ref
-                                            .append(Element::builder("ref").attr("name", "gender"))
-
-                                            // namepart element
-                                            .append(
-                                              Element::builder("oneOrMore")
-                                                .append(
-                                                  Element::builder("element")
-                                                    .attr("name", format!("{bltx}:namepart"))
-                                                    .append(
-                                                      Element::builder("attribute")
-                                                        .attr("name", "type")
-                                                        .append(
-                                                          Element::builder("choice")
-                                                            // list type so returns list
-                                                            .append_all(
-                                                              dm.get_constant_value("nameparts").iter().map(|np|
-                                                                Element::builder("value").text(np)
-                                                              )
-                                                            )
-                                                        )
-                                                    )
-                                                    .append(
-                                                      Element::builder("optional")
-                                                        .append(Element::builder("attribute").attr("name", "initial"))
-                                                    )
-                                                    .append(
-                                                      Element::builder("choice")
-                                                        .append(
-                                                          Element::builder("oneOrMore")
-                                                            .append(
-                                                              Element::builder("element")
-                                                                .attr("name", format!("{bltx}:namepart"))
-                                                                .append(
-                                                                  Element::builder("optional")
-                                                                    .append(Element::builder("attribute").attr("name", "initial"))
-                                                                )
-                                                                .append(Element::builder("text"))
-                                                            )
-                                                        )
-                                                        .append(Element::builder("text"))
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
+                          )
                         )
+                      )
                     )
+                  )
                 )
               // ========================
             }
@@ -1008,31 +965,23 @@ impl DataModel {
               // ========================
               Element::builder("interleave")
                 .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|list| {
-                  Element::builder("optional").append(
-                    Element::builder("element")
-                      .attr("name", format!("{bltx}:{list}"))
-                      .append(
-                        Element::builder("choice")
-                          .append(Element::builder("ref").attr("name", "xdata"))
-                          .append(
-                            Element::builder("choice")
-                              .append(Element::builder("text"))
-                              .append(
-                                Element::builder("element")
-                                  .attr("name", format!("{bltx}:list"))
-                                  .append(
-                                    Element::builder("oneOrMore").append(
-                                      Element::builder("element")
-                                        .attr("name", format!("{bltx}:item"))
-                                        .append(
-                                          Element::builder("choice")
-                                            .append(Element::builder("ref").attr("name", "xdata"))
-                                            .append(Element::builder("text")),
-                                        ),
-                                    ),
-                                  ),
+                  Element::builder("optional")
+                    .append(Element::builder("element").attr("name", format!("{bltx}:{list}"))
+                      .append(Element::builder("choice")
+                        .append(Element::builder("ref").attr("name", "xdata"))
+                        .append(Element::builder("choice")
+                          .append(Element::builder("text"))
+                          .append(Element::builder("element").attr("name", format!("{bltx}:list"))
+                            .append(Element::builder("oneOrMore")
+                              .append(Element::builder("element").attr("name", format!("{bltx}:item"))
+                                .append(Element::builder("choice")
+                                  .append(Element::builder("ref").attr("name", "xdata"))
+                                  .append(Element::builder("text")),
+                                ),
                               ),
+                            ),
                           ),
+                        ),
                       ),
                   )
                 }))
@@ -1043,13 +992,11 @@ impl DataModel {
               // ============================
               Element::builder("interleave")
               .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
-                Element::builder("optional").append(
-                  Element::builder("element")
-                    .attr("name", format!("{bltx}:{field}"))
-                    .append(
-                      Element::builder("choice")
-                        .append(Element::builder("ref").attr("name", "xdata"))
-                        .append(Element::builder("data").attr("type", "anyURI"))
+                Element::builder("optional")
+                  .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
+                    .append(Element::builder("choice")
+                      .append(Element::builder("ref").attr("name", "xdata"))
+                      .append(Element::builder("data").attr("type", "anyURI"))
                     ),
                 )
               }))
@@ -1060,45 +1007,32 @@ impl DataModel {
               // ==============================
               Element::builder("interleave")
               .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
-                Element::builder("optional").append(
-                  Element::builder("element")
-                    .attr("name", format!("{bltx}:{field}"))
-                    .append(
-                      Element::builder("choice")
-                        // xdata attribute ref
-                        .append(Element::builder("ref").attr("name", "xdata"))
-                        .append(
-                          Element::builder("element")
-                            .attr("name", format!("{bltx}:list"))
-                            .append(
-                              Element::builder("oneOrMore").append(
-                                Element::builder("element")
-                                  .attr("name", format!("{bltx}:item"))
-                                  .append(
-                                    Element::builder("choice")
-                                      // xdata attribute ref
-                                      .append(Element::builder("ref").attr("name", "xdata"))
-                                      .append(
-                                        Element::builder("group")
-                                          .append(
-                                            Element::builder("element")
-                                              .attr("name", format!("{bltx}:start"))
-                                              .append(Element::builder("text"))
-                                          )
-                                          .append(
-                                            Element::builder("element")
-                                              .attr("name", format!("{bltx}:end"))
-                                              .append(
-                                                Element::builder("choice")
-                                                  .append(Element::builder("text"))
-                                                  .append(Element::builder("empty"))
-                                              )
-                                          )
-                                      ),
-                                  ),
+                Element::builder("optional")
+                  .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
+                    .append(Element::builder("choice")
+                      // xdata attribute ref
+                      .append(Element::builder("ref").attr("name", "xdata"))
+                      .append(Element::builder("element").attr("name", format!("{bltx}:list"))
+                        .append(Element::builder("oneOrMore")
+                          .append(Element::builder("element").attr("name", format!("{bltx}:item"))
+                            .append(Element::builder("choice")
+                              // xdata attribute ref
+                              .append(Element::builder("ref").attr("name", "xdata"))
+                              .append(Element::builder("group")
+                                .append(Element::builder("element").attr("name", format!("{bltx}:start"))
+                                  .append(Element::builder("text"))
+                                )
+                                .append(Element::builder("element").attr("name", format!("{bltx}:end"))
+                                  .append(Element::builder("choice")
+                                    .append(Element::builder("text"))
+                                    .append(Element::builder("empty"))
+                                  )
+                                )
                               ),
                             ),
+                          ),
                         ),
+                      ),
                     ),
                 )
               }))
@@ -1111,55 +1045,39 @@ impl DataModel {
               .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
                 Element::builder("optional").append(
                   if field == "related" {
-                    Element::builder("element")
-                      .attr("name", format!("{bltx}:{field}"))
-                      .append(
-                        Element::builder("element")
-                          .attr("name", format!("{bltx}:list"))
-                          .append(
-                            Element::builder("oneOrMore").append(
-                              Element::builder("element")
-                                .attr("name", format!("{bltx}:item"))
-                                .append(Element::builder("attribute").attr("name", "type"))
-                                .append(Element::builder("attribute").attr("name", "ids"))
-                                .append(
-                                  Element::builder("optional")
-                                    .append(Element::builder("attribute").attr("name", "string"))
-                                )
-                                .append(
-                                  Element::builder("optional")
-                                    .append(Element::builder("attribute").attr("name", "options"))
-                                )
+                    Element::builder("element").attr("name", format!("{bltx}:{field}"))
+                      .append(Element::builder("element").attr("name", format!("{bltx}:list"))
+                        .append(Element::builder("oneOrMore")
+                          .append(Element::builder("element").attr("name", format!("{bltx}:item"))
+                            .append(Element::builder("attribute").attr("name", "type"))
+                            .append(Element::builder("attribute").attr("name", "ids"))
+                            .append(Element::builder("optional")
+                              .append(Element::builder("attribute").attr("name", "string"))
+                            )
+                            .append(Element::builder("optional")
+                              .append(Element::builder("attribute").attr("name", "options"))
                             )
                           )
+                        )
                       )
                   } else {
-                    Element::builder("element")
-                      .attr("name", format!("{bltx}:{field}"))
-                      .append(
-                        Element::builder("choice")
-                          .append(Element::builder("ref").attr("name", "xdata"))
-                          .append(
-                            Element::builder("choice")
-                              .append(
-                                Element::builder("list")
-                                  .append(
-                                    Element::builder("oneOrMore")
-                                      .append(Element::builder("data").attr("type", "string"))
-                                  )
-                              )
-                              .append(
-                                Element::builder("element")
-                                  .attr("name", format!("{bltx}:list"))
-                                  .append(
-                                    Element::builder("oneOrMore").append(
-                                      Element::builder("element")
-                                        .attr("name", format!("{bltx}:item"))
-                                        .append(Element::builder("text"))
-                                    ),
-                                  ),
-                              ),
+                    Element::builder("element").attr("name", format!("{bltx}:{field}"))
+                      .append(Element::builder("choice")
+                        .append(Element::builder("ref").attr("name", "xdata"))
+                        .append(Element::builder("choice")
+                          .append(Element::builder("list")
+                            .append(Element::builder("oneOrMore")
+                              .append(Element::builder("data").attr("type", "string"))
+                            )
                           )
+                          .append(Element::builder("element").attr("name", format!("{bltx}:list"))
+                            .append(Element::builder("oneOrMore")
+                              .append(Element::builder("element").attr("name", format!("{bltx}:item"))
+                                .append(Element::builder("text"))
+                              ),
+                            ),
+                          ),
+                        )
                       )
                   }
                 )
@@ -1173,70 +1091,53 @@ impl DataModel {
                 f.strip_suffix("date").unwrap_or(f)
               );
               Element::builder("zeroOrMore")
-                .append(
-                  Element::builder("element")
-                    .attr("name", format!("{bltx}:date"))
-                    .append(
-                      Element::builder("optional")
-                        .append(
-                          Element::builder("attribute")
-                            .attr("name", "type")
-                            .append(
-                              Element::builder("choice")
-                              .append_all(
-                                types.filter(|datetype| !datetype.is_empty()).map(|datetype| {
-                                  Element::builder("value").text(datetype)
-                                })
-                              )
-                            )
+                .append(Element::builder("element")
+                  .attr("name", format!("{bltx}:date"))
+                  .append(Element::builder("optional")
+                    .append(Element::builder("attribute")
+                      .attr("name", "type")
+                      .append(Element::builder("choice")
+                        .append_all(
+                          types.filter(|datetype| !datetype.is_empty()).map(|datetype| {
+                            Element::builder("value").text(datetype)
+                          })
                         )
+                      )
                     )
-                    .append(
-                      Element::builder("choice")
-                        .append(
-                          Element::builder("data")
-                            .attr("type", "string")
-                        )
-                        .append(
-                          Element::builder("group")
-                            .append(
-                              Element::builder("element")
-                                .attr("name", format!("{bltx}:start"))
-                                .append(
-                                  Element::builder("choice")
-                                  .append(Element::builder("data").attr("type", "string"))
-                                )
-                            )
-                            .append(
-                              Element::builder("element")
-                                .attr("name", format!("{bltx}:end"))
-                                .append(
-                                  Element::builder("choice")
-                                    .append(Element::builder("data").attr("type", "string"))
-                                    .append(Element::builder("empty"))
-                                )
-                            )
-                        )
+                  )
+                  .append(Element::builder("choice")
+                    .append(Element::builder("data").attr("type", "string")
                     )
+                    .append(Element::builder("group")
+                      .append(Element::builder("element").attr("name", format!("{bltx}:start"))
+                        .append(Element::builder("choice")
+                          .append(Element::builder("data").attr("type", "string"))
+                        )
+                      )
+                      .append(Element::builder("element").attr("name", format!("{bltx}:end"))
+                        .append(Element::builder("choice")
+                          .append(Element::builder("data").attr("type", "string"))
+                          .append(Element::builder("empty"))
+                        )
+                      )
+                    )
+                  )
                 )
               // =============================
             }
             (FieldType::Field, _) => {
               // field element definition
               // ========================
-
               Element::builder("interleave")
-              .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
-                Element::builder("optional").append(
-                  Element::builder("element")
-                    .attr("name", format!("{bltx}:{field}"))
-                    .append(
-                      Element::builder("choice")
+                .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
+                  Element::builder("optional")
+                    .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
+                      .append(Element::builder("choice")
                         .append(Element::builder("ref").attr("name", "xdata"))
                         .append(Element::builder("text"))
-                    ),
-                )
-              }))
+                      ),
+                    )
+                }))
               // ========================
             }
           }))
@@ -1246,60 +1147,79 @@ impl DataModel {
 
     // xdata attribute definition
     // ===========================
-    $writer->comment("xdata attribute definition");
-    $writer->startTag("define", attribute_map!("name" => "xdata"));
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "xdata"));
-    $writer->emptyTag("text");// text
-    $writer->endTag();// attribute
-    $writer->endTag();// optional
-    $writer->endTag();// define
+    #[rustfmt::skip]
+    grammar_tag = grammar_tag
+      .comment("xdata attribute definition")
+      .append(Element::builder("define").attr("name", "xdata")
+        .append(Element::builder("optional")
+          .append(Element::builder("attribute").attr("name", "xdata")
+            .append(Element::builder("text"))
+          )
+        )
+      )
     // ===========================
 
     // gender attribute definition
     // ===========================
-    $writer->comment("gender attribute definition");
-    $writer->startTag("define", attribute_map!("name" => "gender"));
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "gender"));
-    $writer->startTag("choice");
-    for gender in ($dm->get_constant_value("gender")) {// list type so returns list
-      $writer->dataElement("value", $gender);
-    }
-    $writer->endTag();// choice
-    $writer->endTag();// attribute
-    $writer->endTag();// optional
-    $writer->endTag();// define
+      .comment("gender attribute definition")
+      .append(Element::builder("define").attr("name", "gender")
+        .append(Element::builder("optional")
+          .append(Element::builder("attribute").attr("name", "gender")
+            .append(Element::builder("choice")
+              .append_all(
+                // list type so returns list
+                dm.get_constant_value("gender").iter().map(|gender|
+                  Element::builder("value").text(gender)
+                )
+              )
+            )
+          )
+        )
+      )
     // ===========================
 
     // generic meta annotation element definition
     // ===========================================
-    $writer->comment("generic annotation element definition");
-    $writer->startTag("define", attribute_map!("name" => "mannotation"));
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bltx}:mannotation")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "field"));
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "name"));
-    $writer->endTag(); // optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "item"));
-    $writer->endTag(); // optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "part"));
-    $writer->endTag(); // optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "literal"));
-    $writer->endTag(); // optional
-    $writer->emptyTag("text");// text
-    $writer->endTag(); // mannotation element
-    $writer->endTag(); // zeroOrMore
-    $writer->endTag();// define
-    // ===========================
+      .comment("generic annotation element definition")
+      .append(Element::builder("define").attr("name", "mannotation")
+        .append(Element::builder("zeroOrMore")
+          .append(Element::builder("element").attr("name", format!("{bltx}:mannotation"))
+            .append(Element::builder("attribute").attr("name", "field"))
+            .append(Element::builder("optional")
+              .append(Element::builder("attribute").attr("name", "name"))
+            )
+            .append(Element::builder("optional")
+              .append(Element::builder("attribute").attr("name", "item"))
+            )
+            .append(Element::builder("optional")
+              .append(Element::builder("attribute").attr("name", "part"))
+            )
+            .append(Element::builder("optional")
+              .append(Element::builder("attribute").attr("name", "literal"))
+            )
+            .append(Element::builder("text"))
+          )
+        )
+      );
+      // ===========================
 
-    $writer->endTag();// grammar
-    $writer->end();
-    $rng->close();
+    let grammar_tag = grammar_tag.build();
+
+    let mut ns = Namespace::empty();
+    ns.force_put(bltx, bltx_ns);
+    ns.force_put("", default_ns);
+    grammar_tag.namespaces = Some(ns);
+
+    let mut rng = File::create(outfile).unwrap;
+    write!(&mut rng, r##"<?xml version="1.0" encoding="UTF-8"?>
+<!-- Auto-generated from .bcf Datamodel -->
+
+"##);
+    let mut cfg = EmitterConfig::new();
+    cfg.perform_indent = true;
+    cfg.write_document_declaration = false;
+    grammar_tag.write_with_config(&mut rng, cfg).unwrap();
+
     // So we only do this one for potentially multiple .bltxml datasources
     dm.bltxml_schema_gen_done = true;
   }
