@@ -5,13 +5,10 @@ no autovivification;
 use List::Util qw( first );
 use List::AllUtils qw( firstidx );
 use crate::Config;
-use crate::Utils;
-use crate::Constants;
-use Data::Dump qw( pp );
-use Log::Log4perl qw( :no_extra_logdie_message );
 use Scalar::Util qw (blessed looks_like_number);
 use Unicode::UCD qw(num);
 
+#[derive(Debug)]
 pub struct DataModel;
 
 impl DataModel {
@@ -148,12 +145,12 @@ impl DataModel {
       push $self->{fieldsbyformat}{f.format.unwrap_or(Format::Default)}->@*, $f->{content};
 
       // check null_ok
-      if ($f->{nullok}) {
-        $self->{fieldsbyname}{$f->{content}}{nullok} = 1;
+      if f.nullok {
+        $self->{fieldsbyname}{$f->{content}}.nullok = true;
       }
       // check skips - fields we don't want to output to .bbl
       if ($f->{skip_output}) {
-        $self->{fieldsbyname}{$f->{content}}{skipout} = 1;
+        $self->{fieldsbyname}{$f->{content}}.skipout = true;
       }
     }
 
@@ -168,7 +165,7 @@ impl DataModel {
 
       // Skip output flag for certain entrytypes
       if ($et->{skip_output}) {
-        $self->{entrytypesbyname}->{$es}{skipout} = 1;
+        $self->{entrytypesbyname}->{$es}.skipout = true;
       }
       // fields for entrytypes
       for ef in ($dm->{entryfields}->@*) {
@@ -176,7 +173,7 @@ impl DataModel {
         if (!exists($ef->{entrytype}) ||
             grep {$_->{content} == $es} $ef->{entrytype}->@*) {
           for f in ($ef->{field}->@*) {
-            $self->{entrytypesbyname}{$es}{legal_fields}{$f->{content}} = 1;
+            self.entrytypesbyname{$es}.legal_fields.insert(&f.content);
           }
         }
       }
@@ -312,7 +309,7 @@ impl DataModel {
                       };
     // Mapping of sorting fields to Sort::Key sort data types which are not "str"
     $self->{sortdataschema} = |f| {
-      if (first {$f == $_} ("citeorder", "citecount", self.helpers{integers}->@*)) {
+      if ["citeorder", "citecount"].into_iter().chain(self.helpers{integers}.iter()).any(|k| f == k) {
         return "int";
       }
       else {
@@ -325,22 +322,22 @@ impl DataModel {
   }
 
   /// Returns the original datamodel field/entrytype case for output
-  fn get_outcase(self, $string) {
+  fn get_outcase(&self, $string) {
     return $self->{casemap}{foldtoorig}{$string};
   }
 
   /// Returns array ref of constant names
-  fn constants(self) {
+  fn constants(&self) {
     return [ keys $self->{constants}->%* ];
   }
 
   /// Returns a constant type
-  fn get_constant_type(self, $name) {
+  fn get_constant_type(&self, $name) {
     return $self->{constants}{$name}{type};
   }
 
   /// Returns a constant value
-  fn get_constant_value(self, name: &str) {
+  fn get_constant_value(&self, name: &str) {
     if ($self->{constants}{$name}{type} == "list") {
       return split(/\s*,\s*/, $self->{constants}{$name}{value});
     }
@@ -350,17 +347,17 @@ impl DataModel {
   }
 
   /// Returns boolean to say if a field is a multiscript field
-  fn is_multiscript(self, field: &str) -> bool {
+  fn is_multiscript(&self, field: &str) -> bool {
     self.multiscriptfields.contains(field)
   }
 
   /// Returns array ref of legal fieldtypes
-  fn fieldtypes(self) {
+  fn fieldtypes(&self) {
     return [ keys $self->{fieldsbyfieldtype}->%* ];
   }
 
   /// Returns array ref of legal datatypes
-  fn datatypes(self) {
+  fn datatypes(&self) {
     return [ keys $self->{fieldsbydatatype}->%* ];
   }
 
@@ -391,18 +388,13 @@ impl DataModel {
   }
 
   /// Returns boolean to say if a field is legal for an entrytype
-  fn is_field_for_entrytype(&self, type, field) -> bool {
-    if ($self->{entrytypesbyname}{$type}{legal_fields}{$field}) {
-      return 1;
-    }
-    else {
-      return 0;
-    }
+  fn is_field_for_entrytype(&self, type, field: &str) -> bool {
+    self.entrytypesbyname{$type}.legal_fields.contains(field) // NOTE: legal_fields: HashSet
   }
 
   /// Returns boolean depending on whether an entrytype is to be skipped on output
-  fn entrytype_is_skipout(&self, $type) {
-    return $self->{entrytypesbyname}{$type}{skipout}.unwrap_or(0);
+  fn entrytype_is_skipout(&self, $type) -> bool {
+    return $self->{entrytypesbyname}{$type}.skipout.unwrap_or(false);
   }
 
   /// Retrieve fields of a certain biblatex fieldtype from data model
@@ -438,7 +430,7 @@ impl DataModel {
   /// Retrieve fields of a certain biblatex type from data model
   /// Return in sorted order so that bbl order doesn't change when changing
   /// .bcf. This really messes up tests otherwise.
-  fn get_fields_of_type(self, fieldtype: FieldType, datatype: &[DataType], format: Option<Format>) -> Vec<Unknown> {
+  fn get_fields_of_type(&self, fieldtype: FieldType, datatype: &[DataType], format: Option<Format>) -> Vec<Unknown> {
     let f = Vec::new();
     let format = format.unwrap_or("*");
 
@@ -474,15 +466,15 @@ impl DataModel {
   }
 
   /// Returns the format of a field
-  fn get_fieldformat(self, $field) {
+  fn get_fieldformat(&self, $field) {
     return $self->{fieldsbyname}{$field}{format};
   }
 
   /// Returns the fieldtype, datatype and format of a field
-  fn get_dm_for_field(self, field: &str) {
-    return {"fieldtype" =>  $self->{fieldsbyname}{$field}{fieldtype},
-            "datatype"  => $self->{fieldsbyname}{$field}{datatype},
-            "format"    => $self->{fieldsbyname}{$field}{format}};
+  fn get_dm_for_field(&self, field: &str) {
+    return {"fieldtype" =>  self.fieldsbyname{$field}{fieldtype},
+            "datatype"  => self.fieldsbyname{$field}{datatype},
+            "format"    => self.fieldsbyname{$field}{format}};
   }
 
   /// Returns boolean depending on whether a field is a certain biblatex fieldtype
@@ -511,18 +503,18 @@ impl DataModel {
   }
 
   /// Returns boolean depending on whether a field is ok to be null
-  fn field_is_nullok(self, $field) {
-    return $self->{fieldsbyname}{$field}{nullok}.unwrap_or(0);
+  fn field_is_nullok(&self, field: &str) -> bool {
+    return $self->{fieldsbyname}{$field}.nullok.unwrap_or(false); // TODO: false by default
   }
 
   /// Returns boolean depending on whether a field is to be skipped on output
-  fn field_is_skipout(self, $field) {
-    return $self->{fieldsbyname}{$field}{skipout}.unwrap_or(0);
+  fn field_is_skipout(&self, field: &str) -> bool {
+    return $self->{fieldsbyname}{$field}.skipout.unwrap_or(false); // TODO: false by default
   }
 
   /// Checks constraints of type "mandatory" on entry and
   /// returns an arry of warnings, if any
-  fn check_mandatory_constraints(self, be: &mut Entry) -> Vec<String> {
+  fn check_mandatory_constraints(&self, be: &mut Entry) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let warnings = Vec::new();
@@ -580,7 +572,7 @@ impl DataModel {
 
   /// Checks constraints of type "conditional" on entry and
   /// returns an arry of warnings, if any
-  fn check_conditional_constraints(self, be) -> Vec<String> {
+  fn check_conditional_constraints(&self, be: &mut Entry) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let warnings = Vec::new();
@@ -596,17 +588,17 @@ impl DataModel {
       let actual_afs = afs.iter().filter(|cf| be.field_exists(cf)).collect(); // antecedent fields in entry
       // check antecedent
       if aq == "all" {
-        if !(afs.len() == actual_afs.len()) { // ALL -> ? not satisfied
+        if afs.len() != actual_afs.len() { // ALL -> ? not satisfied
           continue;
         }
       }
       else if aq == "none" {
-        if !actual_afs.len() {      // NONE -> ? not satisfied
+        if actual_afs.len() == 0 {      // NONE -> ? not satisfied
           continue;
         }
       }
       else if aq == "one" {
-        if actual_afs.len() {  // ONE -> ? not satisfied
+        if actual_afs.len() != 0 {  // ONE -> ? not satisfied
           continue;
         }
       }
@@ -614,7 +606,7 @@ impl DataModel {
       // check consequent
       let actual_cfs = cfs.iter().filter(|cf| be.field_exists(cf)).collect();
       if cq == "all" {
-        if !(cfs.len() == actual_cfs.len()) { // ? -> ALL not satisfied
+        if cfs.len() != actual_cfs.len() { // ? -> ALL not satisfied
           warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
         }
       }
@@ -638,7 +630,7 @@ impl DataModel {
 
   /// Checks constraints of type "data" on entry and
   /// returns an array of warnings, if any
-  fn check_data_constraints(self, be) -> Vec<String> {
+  fn check_data_constraints(&self, be: &mut Entry) -> Vec<String> {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let warnings = Vec::new();
@@ -648,86 +640,89 @@ impl DataModel {
 
     for c in ($self->{entrytypesbyname}{$et}{constraints}{data}->@*) {
       // This is the datatype of the constraint, not the field!
-      if c.datatype == DataType::Isbn {
-        for f in ($c->{fields}->@*) {
-          if (let $fv = be.get_field(f)) {
+      match c.datatype {
+        DataType::Isbn => {
+          for f in ($c->{fields}->@*) {
+            if (let $fv = be.get_field(f)) {
 
-            // Treat as a list field just in case someone has made it so in a custom datamodel
-            if self.get_fieldtype(f) != FieldType::List {
-              $fv = [$fv];
-            }
-            for i in fv {
-              if (!$DM_DATATYPES{isbn}->(i, f)) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'"));
+              // Treat as a list field just in case someone has made it so in a custom datamodel
+              if self.get_fieldtype(f) != FieldType::List {
+                $fv = [$fv];
+              }
+              for i in fv {
+                if (!$DM_DATATYPES{isbn}->(i, f)) {
+                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'"));
+                }
               }
             }
           }
         }
-      }
-      else if c.datatype == DataType::Issn {
-        for f in ($c->{fields}->@*) {
-          if (let $fv = be.get_field(f)) {
+        DataType::Issn => {
+          for f in ($c->{fields}->@*) {
+            if (let $fv = be.get_field(f)) {
 
-            // Treat as a list field just in case someone has made it so in a custom datamodel
-            if self.get_fieldtype(f) != FieldType::List {
-              $fv = [$fv];
-            }
-            for i in fv {
-              if (!$DM_DATATYPES{issn}->(i)) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISSN in value of field '{f}'"));
+              // Treat as a list field just in case someone has made it so in a custom datamodel
+              if self.get_fieldtype(f) != FieldType::List {
+                $fv = [$fv];
+              }
+              for i in fv {
+                if (!$DM_DATATYPES{issn}->(i)) {
+                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISSN in value of field '{f}'"));
+                }
               }
             }
           }
         }
-      }
-      else if c.datatype == DataType::Ismn {
-        for f in ($c->{fields}->@*) {
-          if (let $fv = be.get_field(f)) {
+        DataType::Ismn => {
+          for f in ($c->{fields}->@*) {
+            if (let $fv = be.get_field(f)) {
 
-            // Treat as a list field just in case someone has made it so in a custom datamodel
-            if self.get_fieldtype(f) != FieldType::List {
-              $fv = [$fv];
-            }
-            for i in fv {
-              if (!$DM_DATATYPES{ismn}->(i)) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISMN in value of field '{f}'"));
+              // Treat as a list field just in case someone has made it so in a custom datamodel
+              if self.get_fieldtype(f) != FieldType::List {
+                $fv = [$fv];
+              }
+              for i in fv {
+                if (!$DM_DATATYPES{ismn}->(i)) {
+                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISMN in value of field '{f}'"));
+                }
               }
             }
           }
         }
-      }
-      else if c.datatype == DataType::Integer || c.datatype == DataType::Datepart {
-        for f in ($c->{fields}->@*) {
-          if (let $fv = be.get_field(f)) {
-            if (let $fmin = $c->{rangemin}) {
-              if !(fv >= fmin) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '>={fmin}' - ignoring field"));
-                be.del_field(f);
-                continue;
+        DataType::Integer | DataType::Datepart => {
+          for f in ($c->{fields}->@*) {
+            if (let $fv = be.get_field(f)) {
+              if (let $fmin = $c->{rangemin}) {
+                if !(fv >= fmin) {
+                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '>={fmin}' - ignoring field"));
+                  be.del_field(f);
+                  continue;
+                }
               }
-            }
-            if (let $fmax = $c->{rangemax}) {
-              if !(fv <= fmax) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '<={fmax}' - ignoring field"));
-                be.del_field(f);
-                continue;
+              if (let $fmax = $c->{rangemax}) {
+                if !(fv <= fmax) {
+                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '<={fmax}' - ignoring field"));
+                  be.del_field(f);
+                  continue;
+                }
               }
             }
           }
         }
-      }
-      else if c.datatype == DataType::Pattern {
-        let $patt;
-        if !($patt = $c->{pattern}) {
-          warnings.push("Datamodel: Pattern constraint has no pattern!".into());
-        }
-        for f in ($c->{fields}->@*) {
-          if (let $fv = be.get_field(f)) {
-            if !(imatch($fv, $patt)) {
-              warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value (pattern match fails) for field '{f}'"));
+        DataType::Pattern => {
+          let $patt;
+          if !($patt = $c->{pattern}) {
+            warnings.push("Datamodel: Pattern constraint has no pattern!".into());
+          }
+          for f in ($c->{fields}->@*) {
+            if (let $fv = be.get_field(f)) {
+              if !(imatch($fv, $patt)) {
+                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value (pattern match fails) for field '{f}'"));
+              }
             }
           }
         }
+        _ => {}
       }
     }
     warnings
@@ -773,21 +768,16 @@ impl DataModel {
     warnings
   }
 
-  /// Dump crate::DataModel object
-  fn dump(self) {
-    return pp($self);
-  }
-
   /// Generate a RelaxNG XML schema from the datamodel for BibLaTeXML datasources
-  fn generate_bltxml_schema(dm, outfile) {
-    if dm.bltxml_schema_gen_done {
+  fn generate_bltxml_schema(&self, outfile: &Path) {
+    if self.bltxml_schema_gen_done {
       return;
     }
 
     // Set the .rng path to the output dir, if specified
     if (let $outdir = crate::Config->getoption("output_directory")) {
-      let (None, None, file) = File::Spec->splitpath($outfile);
-      $outfile = File::Spec->catfile($outdir, $file)
+      let file = outfile.file_name();
+      outfile = outdir.join(file);
     }
 
     info!("Writing BibLaTeXML RNG schema '{}' for datamodel", outfile);
@@ -795,13 +785,6 @@ impl DataModel {
     let bltx_ns = "http://biblatex-biber.sourceforge.net/biblatexml";
     let bltx = "bltx";
     let default_ns = "http://relaxng.org/ns/structure/1.0";
-    /*let $writer = new XML::Writer(NAMESPACES   => 1,
-                                ENCODING     => "UTF-8",
-                                DATA_MODE    => 1,
-                                DATA_INDENT  => 2,
-                                OUTPUT       => $rng,
-                                PREFIX_MAP   => {$bltx_ns    => $bltx,
-                                                  $default_ns => ""});*/
 
     #[rustfmt::skip]
     let mut grammar_tag = Element::builder("grammar").attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes")
@@ -810,7 +793,7 @@ impl DataModel {
           .append(Element::builder("attribute").attr("name", "id"))
           .append(Element::builder("attribute").attr("name", "entrytype")
             .append(Element::builder("choice")
-              .append_all(dm.entrytypes()
+              .append_all(self.entrytypes()
                 .map(|entrytype| Element::builder("value").text(entrytype))
               )
             )
@@ -819,9 +802,9 @@ impl DataModel {
           .append({
             let mut builder = Element::builder("interleave");
     
-            for ft in &dm.fieldtypes {
-              for dt in &dm.datatypes {
-                if dm.is_fields_of_type(ft, dt, None) {
+            for ft in &self.fieldtypes {
+              for dt in &self.datatypes {
+                if self.is_fields_of_type(ft, dt, None) {
                   if dt == DataType::Datepart { // not legal in input, only output
                     continue;
                   }
@@ -837,9 +820,9 @@ impl DataModel {
         )
       );
 
-    for ft in &dm.fieldtypes {
-      for dt in &dm.datatypes {
-        if dm.is_fields_of_type(ft, dt, None) {
+    for ft in &self.fieldtypes {
+      for dt in &self.datatypes {
+        if self.is_fields_of_type(ft, dt, None) {
           if dt == DataType::Datepart { // not legal in input, only output
             continue;
           }
@@ -878,7 +861,7 @@ impl DataModel {
                       .comment("types of names elements")
                       .append(Element::builder("attribute").attr("name", "type")
                         .append(Element::builder("choice")
-                          .append_all(dm.get_fields_of_type(ft, &[dt], None).iter()
+                          .append_all(self.get_fields_of_type(ft, &[dt], None).iter()
                             .map(|name| Element::builder("value").text(name))
                           )
                         )
@@ -923,7 +906,7 @@ impl DataModel {
                                   .append(Element::builder("attribute").attr("name", "type")
                                     .append(Element::builder("choice")
                                       // list type so returns list
-                                      .append_all(dm.get_constant_value("nameparts").iter()
+                                      .append_all(self.get_constant_value("nameparts").iter()
                                         .map(|np| Element::builder("value").text(np))
                                       )
                                     )
@@ -957,7 +940,7 @@ impl DataModel {
               // lists element definition
               // ========================
               Element::builder("interleave")
-                .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|list| {
+                .append_all(self.get_fields_of_type(ft, &[dt], None).iter().map(|list| {
                   Element::builder("optional")
                     .append(Element::builder("element").attr("name", format!("{bltx}:{list}"))
                       .append(Element::builder("choice")
@@ -984,7 +967,7 @@ impl DataModel {
               // uri field element definition
               // ============================
               Element::builder("interleave")
-              .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
+              .append_all(self.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
                 Element::builder("optional")
                   .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
                     .append(Element::builder("choice")
@@ -999,7 +982,7 @@ impl DataModel {
               // range field element definition
               // ==============================
               Element::builder("interleave")
-              .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
+              .append_all(self.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
                 Element::builder("optional")
                   .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
                     .append(Element::builder("choice")
@@ -1035,7 +1018,7 @@ impl DataModel {
               // entrykey field element definition
               // =================================
               Element::builder("interleave")
-              .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
+              .append_all(self.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
                 Element::builder("optional").append(
                   if field == "related" {
                     Element::builder("element").attr("name", format!("{bltx}:{field}"))
@@ -1080,7 +1063,7 @@ impl DataModel {
               // date field element definition
               // Can't strongly type dates as we allow full ISO8601 meta characters
               // =============================
-              let types = dm.get_fields_of_type(ft, &[dt], None).iter().map(|f|
+              let types = self.get_fields_of_type(ft, &[dt], None).iter().map(|f|
                 f.strip_suffix("date").unwrap_or(f)
               );
               Element::builder("zeroOrMore")
@@ -1119,7 +1102,7 @@ impl DataModel {
               // field element definition
               // ========================
               Element::builder("interleave")
-                .append_all(dm.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
+                .append_all(self.get_fields_of_type(ft, &[dt], None).iter().map(|field| {
                   Element::builder("optional")
                     .append(Element::builder("element").attr("name", format!("{bltx}:{field}"))
                       .append(Element::builder("choice")
@@ -1156,11 +1139,9 @@ impl DataModel {
         .append(Element::builder("optional")
           .append(Element::builder("attribute").attr("name", "gender")
             .append(Element::builder("choice")
-              .append_all(
+              .append_all(self.get_constant_value("gender").iter()
                 // list type so returns list
-                dm.get_constant_value("gender").iter().map(|gender|
-                  Element::builder("value").text(gender)
-                )
+                .map(|gender| Element::builder("value").text(gender))
               )
             )
           )
@@ -1211,17 +1192,17 @@ impl DataModel {
     grammar_tag.write_with_config(&mut rng, cfg).unwrap();
 
     // So we only do this one for potentially multiple .bltxml datasources
-    dm.bltxml_schema_gen_done = true;
+    self.bltxml_schema_gen_done = true;
   }
 
   /// Generate a RelaxNG XML schema from the datamodel for bblXML output
-  fn generate_bblxml_schema(dm: &DataModel, outfile: &Path) {
-    let dmh = dm.helpers;
+  fn generate_bblxml_schema(&self, outfile: &Path) {
+    let dmh = &self.helpers;
 
     // Set the .rng path to the output dir, if specified
     if (let $outdir = crate::Config->getoption("output_directory")) {
-      let (_, _, file) = File::Spec->splitpath(outfile);
-      $outfile = File::Spec->catfile(outdir, file)
+      let file = outfile.file_name();
+      outfile = outdir.join(file);
     }
 
     info!("Writing bblXML RNG schema '{}' for datamodel", outfile);
@@ -1229,13 +1210,6 @@ impl DataModel {
     let bbl_ns = "https://sourceforge.net/projects/biblatex/bblxml";
     let bbl = "bbl";
     let default_ns = "http://relaxng.org/ns/structure/1.0";
-    /*let $writer = new XML::Writer(NAMESPACES   => 1,
-                                ENCODING     => "UTF-8",
-                                DATA_MODE    => 1,
-                                DATA_INDENT  => 2,
-                                OUTPUT       => $rng,
-                                PREFIX_MAP   => {$bbl_ns     => $bbl,
-                                                  $default_ns => ""});*/
 
     #[rustfmt::skip]
     let grammar_tag = Element::builder("grammar").attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes"))
@@ -1292,7 +1266,7 @@ impl DataModel {
                         .append(Element::builder("attribute").attr("name", "key"))
                         .append(Element::builder("attribute").attr("name", "type")
                           .append(Element::builder("choice")
-                            .append_all(dm.entrytypes()
+                            .append_all(self.entrytypes()
                               .map(|et| Element::builder("value").text(et))
                             )
                           )
@@ -1371,8 +1345,8 @@ impl DataModel {
                             .append(Element::builder("element").attr("name", format!("{bbl}:names"))
                               .append(Element::builder("attribute").attr("name", "type")
                                 .append(Element::builder("choice")
-                                  .append_all(dm.get_fields_of_type(FieldType::List, DataType::Name, None)
-                                    .filter(|f| !dm.field_is_skipout(f))
+                                  .append_all(self.get_fields_of_type(FieldType::List, DataType::Name, None)
+                                    .filter(|f| !self.field_is_skipout(f))
                                     .map(|name| Element::builder("value").text(name))
                                   )
                                 )
@@ -1440,8 +1414,8 @@ impl DataModel {
                             .append(Element::builder("element").attr("name", format!("{bbl}:list"))
                               .append(Element::builder("attribute").attr("name", "name")
                                 .append(Element::builder("choice")
-                                  .append_all(dm.get_fields_of_fieldtype("list")
-                                  .filter(|k| !dm.field_is_datatype("name", k) && !dm.field_is_datatype("uri", k) && !dm.field_is_skipout(k))
+                                  .append_all(self.get_fields_of_fieldtype("list")
+                                  .filter(|k| !self.field_is_datatype("name", k) && !self.field_is_datatype("uri", k) && !self.field_is_skipout(k))
                                     .map(|list| Element::builder("value").text(list))
                                   )
                                 )
@@ -1488,18 +1462,18 @@ impl DataModel {
                             ];
 
                             // verbatim fields don't need special handling in XML, unlike TeX so they are here
-                            let fs2 = dm.get_fields_of_type(FieldType::Field,
+                            let fs2 = self.get_fields_of_type(FieldType::Field,
                               &[DataType::Entrykey,
                               DataType::Key,
                               DataType::Integer,
                               DataType::Datepart,
                               DataType::Literal,
                               DataType::Code,
-                              DataType::Verbatim], None).filter(|f| !(dm.get_fieldformat(f) == Format::Xsv)
-                              && !dm.field_is_skipout(f));
+                              DataType::Verbatim], None).filter(|f| !(self.get_fieldformat(f) == Format::Xsv)
+                              && !self.field_is_skipout(f));
 
                             // uri fields
-                            let fs3 = dm.get_fields_of_type(FieldType::Field, &[DataType::Uri], None);
+                            let fs3 = self.get_fields_of_type(FieldType::Field, &[DataType::Uri], None);
 
                             // <namelist>namehash and <namelist>fullhash
                             let fs4 = Vec::new();
@@ -1528,7 +1502,7 @@ impl DataModel {
                                   .append(Element::builder("group")
                                     .append(Element::builder("attribute").attr("name", "name")
                                       .append(Element::builder("choice")
-                                        .append_all(dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None)
+                                        .append_all(self.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None)
                                           .map(|dp| Element::builder("value").text(dp))
                                         )
                                       )
@@ -1621,8 +1595,8 @@ impl DataModel {
                             .append(Element::builder("element").attr("name", format!("{bbl}:range"))
                               .append(Element::builder("attribute").attr("name", format!("{bbl}:range"))
                                 .append(Element::builder("choice")
-                                  .append_all(dm.get_fields_of_datatype(&[DataType::Range]).iter()
-                                    .filter(|f| !dm.field_is_skipout(f))
+                                  .append_all(self.get_fields_of_datatype(&[DataType::Range]).iter()
+                                    .filter(|f| !self.field_is_skipout(f))
                                     .map(|r| Element::builder("value").text(r))
                                   )
                                 )
@@ -1647,7 +1621,7 @@ impl DataModel {
 
                           // uri lists - not in default data model
                           .optional_append({
-                            let uril = dm.get_fields_of_type(FieldType::List, &[DataType::Uri], None);
+                            let uril = self.get_fields_of_type(FieldType::List, &[DataType::Uri], None);
                             (!uril.is_empty()).then(||
                               Element::builder("optional")
                                 .append(Element::builder("element").attr("name", format!("{bbl}:list"))

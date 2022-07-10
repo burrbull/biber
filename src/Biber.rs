@@ -1576,7 +1576,7 @@ impl Biber {
   fn process_namedis(&self, citekey: &str, dlist: &DataList) -> HashMap<(Id, Id), Unknown> {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
-    let $dmh = crate::config::get_dm_helpers();
+    let dmh = crate::config::get_dm_helpers();
       debug!("Processing names in entries in section {} to generate disambiguation data", secnum);
     // Use nameuniqueness template to construct uniqueness strings
     let mut untname = dlist.get_uniquenametemplatename();
@@ -2455,7 +2455,7 @@ impl Biber {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
-    let $dmh = crate::config::get_dm_helpers();
+    let dmh = crate::config::get_dm_helpers();
 
     // fullhash is generated from the labelname but ignores SHORT* fields and
     // max/mincitenames settings
@@ -2463,7 +2463,7 @@ impl Biber {
     // and also SHORT* fields etc.
     if (let $lnfhi = $be->get_labelnamefh_info) {
       if (let $lnfh = $be->get_field($lnfhi)) {
-        $be->set_field("fullhash", $self->_getfullhash($citekey, $lnfh));
+        be.set_field("fullhash", self._getfullhash(citekey, lnfh));
       }
     }
 
@@ -4073,7 +4073,7 @@ impl Biber {
 
         // Generate schema for datasource
         if !(crate::Config->getoption("no_bltxml_schema")) {
-          $dm->generate_bltxml_schema($outfile);
+          dm.generate_bltxml_schema(outfile);
         }
 
         if (crate::Config->getoption("validate_bltxml")) {

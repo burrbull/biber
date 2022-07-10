@@ -735,9 +735,9 @@ impl BblXML {
     $xml->end();
 
 
-    let $exts = DS_EXTENSIONS.values().join("|");
-    let $schemafile = {
-      let r = Regex::new(r"\.(?:$exts)$").unwrap();
+    let exts = DS_EXTENSIONS.values().join("|");
+    let schemafile = {
+      let r = Regex::new(format!(r"\.(?:{exts})$")).unwrap();
       if r.is_match(target_string) {
         r.replace(target_string, ".rng")
       }

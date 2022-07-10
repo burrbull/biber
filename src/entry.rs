@@ -582,8 +582,8 @@ impl Entry {
               let $xdataposition = $xdatum->{xdataposition};
               let $reffield = $xdatum->{reffield};
               let $refposition = $xdatum->{refposition};
-              let $reffielddm = $dm->get_dm_for_field($reffield);
-              let $xdatafielddm = $dm->get_dm_for_field($xdatafield);
+              let reffielddm = dm.get_dm_for_field(reffield);
+              let xdatafielddm = dm.get_dm_for_field(xdatafield);
 
               if !(reffielddm.fieldtype == xdatafielddm.fieldtype &&
                       reffielddm.datatype == xdatafielddm.datatype) {

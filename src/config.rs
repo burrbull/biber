@@ -688,14 +688,14 @@ fn postprocess_biber_opts() {
 }
 
 /// Sets the data model information object
-fn set_dm(obj) {
-  $CONFIG->{dm} = $obj;
+fn set_dm(obj: DataModel) {
+  CONFIG.dm = Some(obj);
   return;
 }
 
 /// Gets the data model information object
-fn get_dm() -> DataModel {
-  return $CONFIG->{dm};
+fn get_dm() -> &DataModel {
+  CONFIG.dm.as_ref().unwrap()
 }
 
 /// Sets the datamodel helper lists

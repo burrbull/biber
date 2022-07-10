@@ -461,7 +461,7 @@ impl BibLaTeXML {
 
           // start timezone
           if let Some(mut stz) = be.get_field(format!("{d}timezone")).skip_empty() {
-            stz = Regex::new(r"\\bibtzminsep\s+").unwrap().replace(stz, ":");
+            stz = regex!(r"\\bibtzminsep\s+").replace(stz, ":");
             start.push_str(NFC(stz));
           }
 
@@ -476,7 +476,7 @@ impl BibLaTeXML {
 
           // end timezone
           if let Some(etz) = be.get_field(format!("{d}endtimezone")).skip_empty() {
-            etz = Regex::new(r"\\bibtzminsep\s+").unwrap().replace(etz, ":");
+            etz = regex!(r"\\bibtzminsep\s+").replace(etz, ":");
             end.push_str(NFC(etz));
           }
 
@@ -497,7 +497,7 @@ impl BibLaTeXML {
 
           // start timezone
           if let Some(mut stz) = be.get_field(format!("{d}timezone")).skip_empty() {
-            stz = Regex::new(r"\\bibtzminsep\s+").unwrap().replace(stz, ":");
+            stz = regex!(r"\\bibtzminsep\s+").replace(stz, ":");
             $xml->characters(NFC(stz));
           }
         }

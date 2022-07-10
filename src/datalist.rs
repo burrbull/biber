@@ -868,7 +868,7 @@ impl DataList {
   }
 
   /// Gets labelalpha field data for a key
-  fn get_labelalphadata_for_key(self, $key) {
+  fn get_labelalphadata_for_key(self, key: &str) {
     return $self->{state}{labelalphadata}{$key};
   }
 
@@ -1068,7 +1068,7 @@ impl DataList {
   /// of the reference context and not the entry per se so it cannot be stored
   /// statically in the entry and must be retrieved from the specific datalist
   /// when outputting the entry.
-  fn instantiate_entry(self, section: Section, $entry, key: &str, fmt: Option<OutputFormat>) {
+  fn instantiate_entry(&self, section: Section, $entry, key: &str, fmt: Option<OutputFormat>) -> String {
     let be = section.bibentry(key);
     let bee = be.get_field("entrytype");
 
@@ -1076,7 +1076,7 @@ impl DataList {
       return "";
     }
 
-    let $dmh = crate::config::get_dm_helpers();
+    let dmh = crate::config::get_dm_helpers();
 
     let fmt = fmt.unwrap_or(OutputFormat::Bbl); // default
 
@@ -1115,13 +1115,13 @@ impl DataList {
       }
 
       // extraalpha
-      if let Some(e) = self.get_extraalphadata_for_key(key).filter(|es| !es.is_empty()) {
+      if let Some(e) = self.get_extraalphadata_for_key(key).skip_empty() {
         let s = format!("\\field{{extraalpha}}{{{e}}}");
         entry_string = entry_string.replace("<BDS>EXTRAALPHA</BDS>", &s);
       }
 
       // labelalpha
-      if let Some(e) = self.get_labelalphadata_for_key(key).filter(|es| !es.is_empty()) {
+      if let Some(e) = self.get_labelalphadata_for_key(key).skip_empty() {
         let s = format!("\\field{{labelalpha}}{{{e}}}");
         entry_string = entry_string.replace("<BDS>LABELALPHA</BDS>", &s);
       }
@@ -1273,60 +1273,67 @@ impl DataList {
     if fmt == OutputFormat::BblXML {
       // entryset
       if (let $es = self.get_entryfield(key, "entryset")) {
-        let $str = "<bbl:set>\n";
+        let mut string = "<bbl:set>\n";
         for m in ($es->@*) {
-          $str .= "    <bbl:member>$m</bbl:member>\n";
+          string.push_str(&format!("    <bbl:member>{m}</bbl:member>\n"));
         }
-        $str .= "  </bbl:set>";
-        $entry_string =~ s|<BDS>ENTRYSET</BDS>|$str|gxms;
+        string.push_str("  </bbl:set>");
+        let r = Regex::new(r"(?xms)<BDS>ENTRYSET</BDS>").unwrap();
+        entry_string = r.entry_string.replace_all(&string);
       }
 
       // uniqueprimaryauthor
       if self.get_entryfield(key, "uniqueprimaryauthor") {
-        let $str = "true";
-        $entry_string =~ s|\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]|$str|gxms;
+        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]").unwrap();
+        entry_string = r.entry_string.replace_all("true");
       }
       else {
-        $entry_string =~ s|\suniqueprimaryauthor="\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]"||gxms;
+        let r = Regex::new(r#"(?xms)\suniqueprimaryauthor="\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]""#).unwrap();
+        entry_string = r.entry_string.replace_all("");
       }
 
       // uniquework
       if self.get_entryfield(key, "uniquework") {
-        let $str = "true";
-        $entry_string =~ s|\[BDS\]UNIQUEWORK\[/BDS\]|$str|gxms;
+        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEWORK\[/BDS\]").unwrap();
+        entry_string = r.entry_string.replace_all("true");
       }
       else {
-        $entry_string =~ s|\suniquework="\[BDS\]UNIQUEWORK\[/BDS\]"||gxms;
+        let r = Regex::new(r#"(?xms)\suniquework="\[BDS\]UNIQUEWORK\[/BDS\]""#).unwrap();
+        entry_string = r.entry_string.replace_all("");
       }
 
       // uniquebaretitle
       if self.get_entryfield(key, "uniquebaretitle") {
-        let $str = "true";
-        $entry_string =~ s|\[BDS\]UNIQUEBARETITLE\[/BDS\]|$str|gxms;
+        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEBARETITLE\[/BDS\]").unwrap();
+        entry_string = r.entry_string.replace_all("true");
       }
       else {
-        $entry_string =~ s|\suniquebaretitle="\[BDS\]UNIQUEBARETITLE\[/BDS\]"||gxms;
+        let r = Regex::new(r#"(?xms)\suniquebaretitle="\[BDS\]UNIQUEBARETITLE\[/BDS\]""#).unwrap();
+        entry_string = r.entry_string.replace_all("");
       }
 
       // uniquetitle
       if self.get_entryfield(key, "uniquetitle") {
-        let $str = "true";
-        $entry_string =~ s|\[BDS\]UNIQUETITLE\[/BDS\]|$str|gxms;
+        let r = Regex::new(r"(?xms)\[BDS\]UNIQUETITLE\[/BDS\]").unwrap();
+        entry_string = r.entry_string.replace_all("true");
       }
       else {
-        $entry_string =~ s|\suniquetitle="\[BDS\]UNIQUETITLE\[/BDS\]"||gxms;
+        let r = Regex::new(r#"(?xms)\suniquetitle="\[BDS\]UNIQUETITLE\[/BDS\]""#).unwrap();
+        entry_string = r.entry_string.replace_all("");
       }
 
       // extraalpha
       if (let $e = self.get_extraalphadata_for_key(key)) {
-        let $str = "<bbl:field name=\"extraalpha\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>EXTRAALPHA</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"extraalpha\">{e}</bbl:field>");
+        let r = Regex::new(r"(?xms)<BDS>EXTRAALPHA</BDS>").unwrap();
+        entry_string = r.rentry_string.replace_all(&s);
       }
 
       // labelalpha
       if (let $e = self.get_labelalphadata_for_key(key)) {
-        let $str = "<bbl:field name=\"labelalpha\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>LABELALPHA</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"labelalpha\">{e}</bbl:field>");
+        let r = Regex::new(r"(?xms)<BDS>LABELALPHA</BDS>").unwrap();
+        entry_string = r.rentry_string.replace_all(&s);
       }
 
       // uniquelist
@@ -1337,10 +1344,12 @@ impl DataList {
         }
         let nlid = nl.get_id();
         if let Some(s) = self.get_uniquelist(nlid) {
-          entry_string = entry_string.replace(&format!("\[BDS\]UL-{nlid}\[/BDS\]"), s);
+          let r = Regex::new(format!(r"(?xms)\[BDS\]UL-{nlid}\[/BDS\]")).unwrap();
+          entry_string = r.entry_string.replace_all(s);
         }
         else {
-          entry_string = entry_string.replace(&format!(r#"\sul="\[BDS\]UL-$nlid\[/BDS\]""#), "");
+          let r = Regex::new(format!(r#"(?xms)\sul="\[BDS\]UL-{nlid}\[/BDS\]""#)).unwrap();
+          entry_string = r.entry_string.replace_all("");
         }
       }
 

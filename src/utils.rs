@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use crate::Id;
+use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all};
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
@@ -449,7 +450,7 @@ pub fn strip_nonamestring(string, fieldname) {
   }
 
   for re in ($restrings->@*) {
-    $string =~ s/$re//gxms;
+    string = Regex::new(format!(r"(?xms){re}")).unwrap().replace_all(string, "");
   }
   return $string;
 }
@@ -461,16 +462,15 @@ pub fn normalise_string_label(string: &str) -> String {
     return ""; // Sanitise missing data
   }
   let $nolabels = crate::Config->getoption("nolabel");
-  string = Regex::new(r"\\[A-Za-z]+").unwrap().replace_all("");   // remove latex macros (assuming they have only ASCII letters)
+  string = regex!(r"\\[A-Za-z]+").replace_all("");   // remove latex macros (assuming they have only ASCII letters)
   // Replace ties with spaces or they will be lost
-  string = = Regex::new(r"([^\\])~").unwrap().replace_all("$1 "); // Foo~Bar -> Foo Bar
-  for nolabel in ($nolabels->@*) {
-    let $re = $nolabel->{value};
-    string =~ s/$re//gxms;           // remove nolabel items
+  string = regex_replace_all!(r"([^\\])~", string, |_, word| format!("{word} ")); // Foo~Bar -> Foo Bar
+  for nolabel in nolabels {
+    let re = nolabel.value;
+    string = Regex::new(format!(r"(?xms){re}")).unwrap().replace_all(string, "");           // remove nolabel items
   }
-  string = Regex::new(r"(?:^\s+|\s+$)").unwrap().replace_all(""); // Remove leading and trailing spaces
-  string = Regex::new(r"\s+").unwrap().replace_all(" ");          // collapse spaces
-  string
+  string = regex!(r"(?:^\s+|\s+$)").replace_all(""); // Remove leading and trailing spaces
+  regex!(r"\s+").replace_all(" ")                    // collapse spaces
 }
 
 /// Removes LaTeX macros, and all punctuation, symbols, separators
@@ -481,15 +481,15 @@ pub fn normalise_string_sort(string: &str, fieldname: &str) -> String {
     return ""; // Sanitise missing data
   }
   // First strip nosort REs
-  string = strip_nosort(string, fieldname);
+  let s = strip_nosort(string, fieldname);
   // Then replace ties with spaces or they will be lost
-  string = Regex::new(r"([^\\])~").unwrap().replace_all("$1 "); // Foo~Bar -> Foo Bar
+  let s = regex_replace_all!(r"([^\\])~", s, |_, word| format!("{word} ")); // Foo~Bar -> Foo Bar
   // Don't use normalise_string_common() as this strips out things needed for sorting
-  string = Regex::new(r"\\[A-Za-z]+").unwrap().replace_all(""); // remove latex macros (assuming they have only ASCII letters)
-  string = Regex::new(r"[{}]+").unwrap().replace_all("");       // remove embedded braces
-  string = Regex::new(r"^\s+|\s+$").unwrap().replace_all("");   // Remove leading and trailing spaces
-  string = Regex::new(r"\s+").unwrap().replace_all(" ");        // collapse spaces
-  string
+  let s = regex!(r"\\[A-Za-z]+").replace_all(s, ""); // remove latex macros (assuming they have only ASCII letters)
+  let s = regex!(r"[{}]+").replace_all(s, "");       // remove embedded braces
+  let s = regex!(r"^\s+|\s+$").replace_all(s, "");   // Remove leading and trailing spaces
+  regex!(r"\s+").replace_all(s, " ")                 // collapse spaces
+
 }
 */
 /// Some string normalisation for bblxml output
@@ -498,11 +498,9 @@ pub fn normalise_string_bblxml(s: &str) -> String {
     return String::new(); // Sanitise missing data
   }
   // remove latex macros (assuming they have only ASCII letters)
-  let r = Regex::new(r"\\[A-Za-z]+").unwrap();
-  let s = r.replace_all(s, "");
+  let s = regex!(r"\\[A-Za-z]+").replace_all(s, "");
   // remove pointless braces
-  let r = Regex::new(r"\{(?P<word>[^\{\}]+)\}").unwrap();
-  let s = r.replace_all(&s, "${word}");
+  let s = regex_replace_all!(r"\{([^\{\}]+)\}", &s, |_, word| format!("{word}"));
   // replace ties with spaces
   s.replace('~', " ")
 }
@@ -516,25 +514,20 @@ pub fn normalise_string(s: &str) -> String {
   }
   // First replace ties with spaces or they will be lost
   // Foo~Bar -> Foo Bar
-  let r = Regex::new(r"(?P<word>[^\\])~").unwrap();
-  let s = r.replace_all(s, "${word} ");
+  let s = regex_replace_all!(r"([^\\])~", s, |_, word| format!("{word} "));
   normalise_string_common(&s).into()
 }
 
 /// Common bit for normalisation
 fn normalise_string_common(s: &str) -> String {
   // remove latex macros (assuming they have only ASCII letters)
-  let r = Regex::new(r"\\[A-Za-z]+").unwrap();
-  let s = r.replace_all(s, "");
+  let s = regex!(r"\\[A-Za-z]+").replace_all(s, "");
   // remove punctuation, symbols and control
-  let r = Regex::new(r"[\p{P}\p{S}\p{C}]+").unwrap();
-  let s = r.replace_all(&s, "");
+  let s = regex!(r"[\p{P}\p{S}\p{C}]+").replace_all(&s, "");
   // Remove leading and trailing spaces
-  let r = Regex::new(r"^\s+|\s+$").unwrap();
-  let s = r.replace_all(&s, "");
+  let s = regex!(r"^\s+|\s+$").replace_all(&s, "");
   // collapse spaces
-  let r = Regex::new(r"\s+").unwrap();
-  r.replace_all(&s, " ").into()
+  regex!(r"\s+").replace_all(&s, " ").into()
 }
 
 /// Normalise strings used for hashes. We collapse LaTeX macros into a vestige
@@ -552,14 +545,11 @@ pub fn normalise_string_hash(s: &str) -> String {
     return String::new(); // Sanitise missing data
   }
   // remove tex macros
-  let r = Regex::new(r"\\(?P<name>\p{L}+)\s*").unwrap();
-  let s = r.replace_all(s, "${name}:");
+  let s = regex_replace_all!(r"\\(\p{L}+)\s*", s, |_, name| format!("{name}:"));
   // remove accent macros like \"a
-  let r = Regex::new(r"\\(?P<name>[^\p{L}])\s*").unwrap();
-  let s = r.replace_all(&s, "ord(${name}).':'"); // TODO: `e` modifier
+  let s = regex_replace_all!(r"\\([^\p{L}])\s*", &s, |_, name| format!("ord({name}).':'")); // TODO: `e` modifier
   // Remove braces, ties, dots, spaces
-  let r = Regex::new(r"[\{\}~\.\s]+").unwrap();
-  r.replace_all(&s, "").into()
+  regex!(r"[\{\}~\.\s]+").replace_all(&s, "").into()
 }
 
 /// Like normalise_string, but also substitutes ~ and whitespace with underscore.
@@ -568,11 +558,9 @@ pub fn normalise_string_underscore(s: &str) -> String {
     return String::new(); // Sanitise missing data
   }
   // Foo~Bar -> Foo Bar
-  let r = Regex::new(r"(?P<word>[^\\])~").unwrap();
-  let s = r.replace_all(s, "${word} ");
+  let s = regex_replace_all!(r"([^\\])~", s, |_, word| format!("{word} "));
   let s = normalise_string(&s);
-  let r = Regex::new(r"\s+").unwrap();
-  r.replace_all(&s, "_").into()
+  regex!(r"\s+").replace_all(&s, "_").into()
 }
 
 /// Escapes a few special character which might be used in labels
@@ -580,9 +568,7 @@ pub fn escape_label(s: &str) -> String {
   if s.is_empty() {
     return String::new(); // Sanitise missing data
   }
-  let r = Regex::new(r"(?P<symbol>[_\^\$\#%\&])").unwrap();
-  let s = r.replace_all(&s, "\\${symbol}");
-  //$str =~ s/([_\^\$\#\%\&])/\\$1/g;
+  let s = regex_replace_all!(r"([_\^\$\#%\&])", &s, |_, symbol| format!("\\{symbol}"));
   s.replace('~', "{\\textasciitilde}")
    .replace('>', "{\\textgreater}")
    .replace('<', "{\\textless}")
@@ -593,8 +579,7 @@ pub fn unescape_label(s: &str) -> String {
   if s.is_empty() {
     return String::new(); // Sanitise missing data
   }
-  let r = Regex::new(r"\\(?P<symbol>[_\^\$\#%\&])").unwrap();
-  let s = r.replace_all(&s, "${symbol}");
+  let s = regex_replace_all!(r"\\([_\^\$\#%\&])", &s, |_, symbol| format!("{symbol}"));
   s.replace("{\\textasciitilde}", "~")
    .replace("{\\textgreater}", ">")
    .replace("{\\textless}", "<")
@@ -619,7 +604,7 @@ pub fn reduce_array<T: Clone + Eq + std::hash::Hash>(a: impl Iterator<Item=T>, b
 ///
 /// Return (boolean if stripped, string)
 pub fn remove_outer(s: &str) -> (bool, String) {
-  /*if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
+  /*if regex_is_match!(r"\}\s*\{", s) {
     (false, s.into())
   }*/
   let @check = extract_bracketed(s, "{}");
@@ -635,7 +620,7 @@ pub fn remove_outer(s: &str) -> (bool, String) {
 */
 /// Return (boolean if surrounded in braces
 pub fn has_outer(s: &str) -> bool {
-  if Regex::new(r"\}\s*\{").unwrap().is_match(s) {
+  if regex_is_match!(r"\}\s*\{", s) {
     return false;
   }
   s.len() > 2 && s.starts_with('{') &&  s.ends_with('}')
@@ -649,8 +634,7 @@ pub fn add_outer(s: &str) -> String {
 /// upper case of initial letters in a string
 pub fn ucinit(s: &str) -> String {
   let s = s.to_lowercase();
-  let r = Regex::new(r"\b(?P<symbol>\p{Ll})").unwrap();
-  r.replace_all(&s, r"\u${symbol}").into()
+  regex_replace_all!(r"\b(\p{Ll})", &s, |_, symbol| format!(r"\u{symbol}")).into()
 }
 
 /* TODO
@@ -1407,18 +1391,17 @@ pub fn gen_initials<'a>(strings: impl Iterator<Item=&'a str>) -> Vec<String> {
     // Dont' split a name part if it's brace-wrapped
     // Dont' split a name part if the hyphen in a hyphenated name is protected like:
     // Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
-    if !Regex::new(r"^\{.+\}$").unwrap().is_match(string)
-      && Regex::new(r"[^{]\p{Dash}[^}]").unwrap().is_match(string) {
+    if !regex_is_match!(r"^\{.+\}$", string) && regex_is_match!(r"[^{]\p{Dash}[^}]", string) {
       strings_out.push(
-        gen_initials(Regex::new(r"\p{Dash}").unwrap().split(string))
+        gen_initials(regex!(r"\p{Dash}").split(string))
         .join("-"));
     }
     else {
       // remove any leading braces and backslash from latex decoding or protection
-      let string = Regex::new(r"^\{+").unwrap().replace(string, "");
+      let string = regex!(r"^\{+").replace(string, "");
       let chr = string.graphemes(true).next().unwrap();
       // Keep diacritics with their following characters
-      if Regex::new(r"^\p{Dia}").unwrap().is_match(chr) {
+      if regex_is_match!(r"^\p{Dia}", chr) {
         strings_out.push(string.graphemes(true).take(2).collect());
       }
       else {

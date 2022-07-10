@@ -107,7 +107,7 @@ fn init_sets(set_d, set_e) {
   // Construct decode set
   for tp in types {
     for maps in ($xpc->findnodes("/texmap/maps[\@type='$tp']")) {
-      if !Regex::new(r"\s*,\s*").unwrap().split(maps.getAttribute("set")).any(set_d) {
+      if !regex!(r"\s*,\s*").split(maps.getAttribute("set")).any(set_d) {
         continue;
       }
       for map in ($maps->findnodes("map")) {
@@ -125,7 +125,7 @@ fn init_sets(set_d, set_e) {
   // Construct encode set
   for tp in types {
     for maps in ($xpc->findnodes("/texmap/maps[\@type='$tp']")) {
-      if !Regex::new(r"\s*,\s*").unwrap().split(maps.getAttribute("set")).any(set_e) {
+      if !regex!(r"\s*,\s*").split(maps.getAttribute("set")).any(set_e) {
         continue;
       }
       for map in ($maps->findnodes("map")) {
@@ -161,7 +161,7 @@ fn init_sets(set_d, set_e) {
       typ.re = typ.map
         .keys()
         .sorted_by(|a, b| b.len().cmp(a.len()))
-        .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
+        .map(|m| if regex_is_match!(r"[\.\^\|\+\-\)\(]", m) { format(r"\\{m}") } else { m })
         .join("|");
       typ.re = qr|typ.re|;
     }
@@ -173,7 +173,7 @@ fn init_sets(set_d, set_e) {
       typ.re = typ.map
         .keys()
         .sorted()
-        .map(|m| if Regex::new(r"[\.\^\|\+\-\)\(]").unwrap().is_match(m) {format(r"\\{m}")} else {m})
+        .map(|m| if regex_is_match!(r"[\.\^\|\+\-\)\(]", m) { format(r"\\{m}") } else { m })
         .join("|");
       typ.re = qr|typ.re|;
     }
