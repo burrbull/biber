@@ -45,6 +45,13 @@ impl ElementBuilder {
     self
   }
 
+  pub fn optional_append(mut self, node: Option<impl Into<XMLNode>>) -> ElementBuilder {
+    if let Some(node) = node {
+      self.0.children.push(node.into());
+    }
+    self
+  }
+
   /// Appends an iterator of things implementing `Into<XMLNode>` into the tree.
   pub fn append_all<T: Into<XMLNode>>(
     mut self,

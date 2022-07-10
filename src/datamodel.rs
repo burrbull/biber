@@ -804,16 +804,15 @@ impl DataModel {
                                                   $default_ns => ""});*/
 
     #[rustfmt::skip]
-    let mut grammar_tag = Element::builder("grammar")
-      .attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes")
+    let mut grammar_tag = Element::builder("grammar").attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes")
       .append(Element::builder("start")
         .append(Element::builder("element").attr("name", format!("{bltx}:entries"))
           .append(Element::builder("attribute").attr("name", "id"))
           .append(Element::builder("attribute").attr("name", "entrytype")
             .append(Element::builder("choice")
-              .append_all(dm.entrytypes().map(|entrytype| {
-                Element::builder("value").text(entrytype)
-              }))
+              .append_all(dm.entrytypes()
+                .map(|entrytype| Element::builder("value").text(entrytype))
+              )
             )
           )
 
@@ -854,8 +853,7 @@ impl DataModel {
           match (ft, dt) {
             (FieldType::List, DataType::Name) => {
               Element::builder("zeroOrMore")// for example, XDATA doesn't need a name
-                .append(Element::builder("element")
-                  .attr("name", format!("{bltx}:names"))
+                .append(Element::builder("element")\.attr("name", format!("{bltx}:names"))
                   .append(Element::builder("choice")
                     // xdata attribute ref
                     .append(Element::builder("ref").attr("name", "xdata"))
@@ -880,10 +878,8 @@ impl DataModel {
                       .comment("types of names elements")
                       .append(Element::builder("attribute").attr("name", "type")
                         .append(Element::builder("choice")
-                          .append_all(
-                            dm.get_fields_of_type(ft, &[dt], None).iter().map(|name|
-                              Element::builder("value").text(name)
-                            )
+                          .append_all(dm.get_fields_of_type(ft, &[dt], None).iter()
+                            .map(|name| Element::builder("value").text(name))
                           )
                         )
                       )
@@ -905,8 +901,7 @@ impl DataModel {
                               // useprefix attribute
                               .comment("useprefix option")
                               .append(Element::builder("optional")
-                                .append(Element::builder("attribute")
-                                  .attr("name", "useprefix")
+                                .append(Element::builder("attribute").attr("name", "useprefix")
                                   .append(Element::builder("data").attr("type", "boolean"))
                                 )
                               )
@@ -928,10 +923,8 @@ impl DataModel {
                                   .append(Element::builder("attribute").attr("name", "type")
                                     .append(Element::builder("choice")
                                       // list type so returns list
-                                      .append_all(
-                                        dm.get_constant_value("nameparts").iter().map(|np|
-                                          Element::builder("value").text(np)
-                                        )
+                                      .append_all(dm.get_constant_value("nameparts").iter()
+                                        .map(|np| Element::builder("value").text(np))
                                       )
                                     )
                                   )
@@ -1091,16 +1084,13 @@ impl DataModel {
                 f.strip_suffix("date").unwrap_or(f)
               );
               Element::builder("zeroOrMore")
-                .append(Element::builder("element")
-                  .attr("name", format!("{bltx}:date"))
+                .append(Element::builder("element").attr("name", format!("{bltx}:date"))
                   .append(Element::builder("optional")
-                    .append(Element::builder("attribute")
-                      .attr("name", "type")
+                    .append(Element::builder("attribute").attr("name", "type")
                       .append(Element::builder("choice")
-                        .append_all(
-                          types.filter(|datetype| !datetype.is_empty()).map(|datetype| {
-                            Element::builder("value").text(datetype)
-                          })
+                        .append_all(types
+                          .filter(|datetype| !datetype.is_empty())
+                          .map(|datetype| Element::builder("value").text(datetype))
                         )
                       )
                     )
@@ -1233,549 +1223,545 @@ impl DataModel {
       let (_, _, file) = File::Spec->splitpath(outfile);
       $outfile = File::Spec->catfile(outdir, file)
     }
-    let $rng = IO::File->new($outfile, '>:encoding(UTF-8)');
-    $rng->autoflush;// Needed for running tests to string refs
 
     info!("Writing bblXML RNG schema '{}' for datamodel", outfile);
-    require XML::Writer;
-    let $bbl_ns = "https://sourceforge.net/projects/biblatex/bblxml";
-    let $bbl = "bbl";
-    let $default_ns = "http://relaxng.org/ns/structure/1.0";
-    let $writer = new XML::Writer(NAMESPACES   => 1,
+
+    let bbl_ns = "https://sourceforge.net/projects/biblatex/bblxml";
+    let bbl = "bbl";
+    let default_ns = "http://relaxng.org/ns/structure/1.0";
+    /*let $writer = new XML::Writer(NAMESPACES   => 1,
                                 ENCODING     => "UTF-8",
                                 DATA_MODE    => 1,
                                 DATA_INDENT  => 2,
                                 OUTPUT       => $rng,
                                 PREFIX_MAP   => {$bbl_ns     => $bbl,
-                                                  $default_ns => ""});
+                                                  $default_ns => ""});*/
 
-    $writer->xmlDecl();
-    $writer->comment("Auto-generated from .bcf Datamodel");
-    $writer->forceNSDecl($default_ns);
-    $writer->forceNSDecl($bbl_ns);
-    $writer->startTag("grammar", attribute_map!("datatypeLibrary" => "http://www.w3.org/2001/XMLSchema-datatypes"));
-    $writer->startTag("start");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:refsections")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:refsection")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "id"));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:datalist")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "id"));
-    $writer->startTag("attribute", attribute_map!("name" => "type"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "entry");
-    $writer->dataElement("value", "list");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->startTag("oneOrMore");
-    $writer->startTag("choice");
-    // Set parent entries are special
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:entry")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "key"));
-    $writer->startTag("attribute", attribute_map!("name" => "type"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "set");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:set")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:member")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // member
-    $writer->endTag();    // oneOrMore
-    $writer->endTag();    // set
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:field")));
-    $writer->startTag("attribute", attribute_map!("name" => "name"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "labelprefix");
-    $writer->dataElement("value", "labelalpha");
-    $writer->dataElement("value", "extraalpha");
-    $writer->dataElement("value", "annotation");
-    $writer->dataElement("value", "sortinit");
-    $writer->dataElement("value", "sortinithash");
-    $writer->dataElement("value", "label");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // field
-    $writer->endTag();    // oneOrMore
-    $writer->endTag(); // entry
-    // Normal entries
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:entry")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "key"));
-    $writer->startTag("attribute", attribute_map!("name" => "type"));
-    $writer->startTag("choice");
-    for et in ($dm->entrytypes->@*) {
-      $writer->dataElement("value", et);
-    }
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
+    #[rustfmt::skip]
+    let grammar_tag = Element::builder("grammar").attr("datatypeLibrary", "http://www.w3.org/2001/XMLSchema-datatypes"))
+      .append(Element::builder("start")
+        .append(Element::builder("element").attr("name", format!("{bbl}:refsections"))
+          .append(Element::builder("oneOrMore")
+            .append(Element::builder("element").attr("name", format!("{bbl}:refsection"))
+              .append(Element::builder("attribute").attr("name", "id"))
+              .append(Element::builder("oneOrMore")
+                .append(Element::builder("element").attr("name", format!("{bbl}:datalist"))
+                  .append(Element::builder("attribute").attr("name", "id"))
+                  .append(Element::builder("attribute").attr("name", "type")
+                    .append(Element::builder("choice")
+                      .append(Element::builder("value").text("entry"))
+                      .append(Element::builder("value").text("list"))
+                    )
+                  )
+                  .append(Element::builder("oneOrMore")
+                    .append(Element::builder("choice")
+                      // Set parent entries are special
+                      .append(Element::builder("element").attr("name", format!("{bbl}:entry"))
+                        .append(Element::builder("attribute").attr("name", "key"))
+                        .append(Element::builder("attribute").attr("name", "type")
+                          .append(Element::builder("choice")
+                            .append(Element::builder("value").text("set"))
+                          )
+                        )
+                        .append(Element::builder("element").attr("name", format!("{bbl}:set"))
+                          .append(Element::builder("oneOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:member"))
+                              .append(Element::builder("text"))
+                            )
+                          )
+                        )
+                        .append(Element::builder("oneOrMore")
+                          .append(Element::builder("element").attr("name", format!("{bbl}:field"))
+                            .append(Element::builder("attribute").attr("name", "name")
+                              .append(Element::builder("choice")
+                                .append(Element::builder("value").text("labelprefix"))
+                                .append(Element::builder("value").text("labelalpha"))
+                                .append(Element::builder("value").text("extraalpha"))
+                                .append(Element::builder("value").text("annotation"))
+                                .append(Element::builder("value").text("sortinit"))
+                                .append(Element::builder("value").text("sortinithash"))
+                                .append(Element::builder("value").text("label"))
+                              )
+                            )
+                            .append(Element::builder("text"))
+                          )
+                        )
+                      )
+                      // Normal entries
+                      .append(Element::builder("element").attr("name", format!("{bbl}:entry"))
+                        .append(Element::builder("attribute").attr("name", "key"))
+                        .append(Element::builder("attribute").attr("name", "type")
+                          .append(Element::builder("choice")
+                            .append_all(dm.entrytypes()
+                              .map(|et| Element::builder("value").text(et))
+                            )
+                          )
+                        )
 
-    // source
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "source"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "crossref");
-    $writer->dataElement("value", "xref");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                        // source
+                        .append(Element::builder("optional")
+                          .append(Element::builder("attribute").attr("name", "source")
+                            .append(Element::builder("choice")
+                              .append(Element::builder("value").text("crossref"))
+                              .append(Element::builder("value").text("xref"))
+                            )
+                          )
+                        )
 
-    // singletitle
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "singletitle"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                        // singletitle
+                        .append(Element::builder("optional")
+                          .append(Element::builder("attribute").attr("name", "singletitle")
+                            .append(Element::builder("choice")
+                              .append(Element::builder("value").text("true"))
+                            )
+                          )
+                        )
 
-    // uniquetitle
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "uniquetitle"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                        // uniquetitle
+                        .append(Element::builder("optional")
+                          .append(Element::builder("attribute").attr("name", "uniquetitle")
+                            .append(Element::builder("choice")
+                              .append(Element::builder("value").text("true"))
+                            )
+                          )
+                        )
 
-    // uniquework
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "uniquework"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                        // uniquework
+                        .append(Element::builder("optional")
+                          .append(Element::builder("attribute").attr("name", "uniquework")
+                            .append(Element::builder("choice")
+                              .append(Element::builder("value").text("true"))
+                            )
+                          )
+                        )
 
-    // uniqueprimaryauthor
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "uniqueprimaryauthor"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                        // uniqueprimaryauthor
+                        .append(Element::builder("optional")
+                          .append(Element::builder("attribute").attr("name", "uniqueprimaryauthor")
+                            .append(Element::builder("choice")
+                              .append(Element::builder("value").text("true"))
+                            )
+                          )
+                        )
 
-    $writer->startTag("interleave");
+                        .append(Element::builder("interleave")
+                          .append(Element::builder("zeroOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:inset"))
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:member"))
+                                  .append(Element::builder("text"))
+                                )
+                              )
+                            )
+                          )
 
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:inset")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:member")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // member
-    $writer->endTag();    // oneOrMore
-    $writer->endTag();    // inset
-    $writer->endTag();    // zeroOrMore
+                          // Per-entry options
+                          .append(Element::builder("zeroOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:options"))
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:option"))
+                                  .append(Element::builder("text"))
+                                )
+                              )
+                            )
+                          )
 
-    // Per-entry options
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:options")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:option")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // option
-    $writer->endTag();    // oneOrMore
-    $writer->endTag();    // options
-    $writer->endTag();    // zeroOrMore
+                          // names
+                          .append(Element::builder("oneOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:names"))
+                              .append(Element::builder("attribute").attr("name", "type")
+                                .append(Element::builder("choice")
+                                  .append_all(dm.get_fields_of_type(FieldType::List, DataType::Name, None)
+                                    .filter(|f| !dm.field_is_skipout(f))
+                                    .map(|name| Element::builder("value").text(name))
+                                  )
+                                )
+                              )
+                              .append(Element::builder("attribute").attr("name", "count")
+                                .append(Element::builder("data").attr("type", "integer"))
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "ul")
+                                  .append(Element::builder("data").attr("type", "integer"))
+                                )
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "useprefix")
+                                  .append(Element::builder("data").attr("type", "boolean"))
+                                )
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "sortingnamekeytemplatename"))
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "more")
+                                  .append(Element::builder("data").attr("type", "boolean"))
+                                )
+                              )
 
-    // names
-    let names = dm.get_fields_of_type(FieldType::List, DataType::Name, None).filter(|f| !dm.field_is_skipout(f));
+                              // name
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:name"))
+                                  .append(Element::builder("optional")
+                                    .append(Element::builder("attribute").attr("name", "useprefix")
+                                      .append(Element::builder("data").attr("type", "boolean"))
+                                    )
+                                  )
+                                  .append(Element::builder("optional")
+                                    .append(Element::builder("attribute").attr("name", "sortingnamekeytemplatename"))
+                                  )
+                                  .append(Element::builder("attribute").attr("name", "hash"))
+                                  .append(Element::builder("optional")
+                                    .append(Element::builder("attribute").attr("name", "un")
+                                      .append(Element::builder("data").attr("type", "integer"))
+                                    )
+                                    .append(Element::builder("attribute").attr("name", "uniquepart")
+                                      .append(Element::builder("data").attr("type", "string"))
+                                    )
+                                  )
+                                  .append(Element::builder("oneOrMore")
+                                    .append(Element::builder("element").attr("name", format!("{bbl}:namepart"))
+                                      .append(Element::builder("attribute").attr("name", "type"))
+                                      .append(Element::builder("attribute").attr("name", "initials"))
+                                      .append(Element::builder("optional")
+                                        .append(Element::builder("attribute").attr("name", "un"))
+                                      )
+                                      .append(Element::builder("text"))
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
 
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:names")));
-    $writer->startTag("attribute", attribute_map!("name" => "type"));
-    $writer->startTag("choice");
-    for name in names {
-      $writer->dataElement("value", name);
-    }
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->startTag("attribute", attribute_map!("name" => "count"));
-    $writer->emptyTag("data", attribute_map!("type" => "integer"));
-    $writer->endTag();    // attribute
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "ul"));
-    $writer->emptyTag("data", attribute_map!("type" => "integer"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "useprefix"));
-    $writer->emptyTag("data", attribute_map!("type" => "boolean"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "sortingnamekeytemplatename"));
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "more"));
-    $writer->emptyTag("data", attribute_map!("type" => "boolean"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
+                          // lists
+                          // verbatim lists don't need special handling in XML, unlike TeX so they are here
+                          .append(Element::builder("zeroOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:list"))
+                              .append(Element::builder("attribute").attr("name", "name")
+                                .append(Element::builder("choice")
+                                  .append_all(dm.get_fields_of_fieldtype("list")
+                                  .filter(|k| !dm.field_is_datatype("name", k) && !dm.field_is_datatype("uri", k) && !dm.field_is_skipout(k))
+                                    .map(|list| Element::builder("value").text(list))
+                                  )
+                                )
+                              )
+                              .append(Element::builder("attribute").attr("name", "count")
+                                .append(Element::builder("data").attr("type", "integer"))
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "more")
+                                  .append(Element::builder("data").attr("type", "boolean"))
+                                )
+                              )
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:item"))
+                                  .append(Element::builder("text"))
+                                )
+                              )
+                            )
+                          )
 
-    // name
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:name")));
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "useprefix"));
-    $writer->emptyTag("data", attribute_map!("type" => "boolean"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "sortingnamekeytemplatename"));
-    $writer->endTag();    // optional
-    $writer->emptyTag("attribute", attribute_map!("name" => "hash"));
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "un"));
-    $writer->emptyTag("data", attribute_map!("type" => "integer"));
-    $writer->endTag();    // attribute
-    $writer->startTag("attribute", attribute_map!("name" => "uniquepart"));
-    $writer->emptyTag("data", attribute_map!("type" => "string"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:namepart")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "type"));
-    $writer->emptyTag("attribute", attribute_map!("name" => "initials"));
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "un"));
-    $writer->endTag();    // optional
-    $writer->emptyTag("text");// text
-    $writer->endTag();// namepart
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// name
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// names
-    $writer->endTag();// oneOrMore
+                          // fields
+                          .append({
+                            let fs1 = vec![
+                              "namehash",
+                              "bibnamehash",
+                              "fullhash",
+                              "labelalpha",
+                              "sortinit",
+                              "sortinithash",
+                              "sortinithash",
+                              "extraname",
+                              "extradate",
+                              "labelyear",
+                              "labelmonth",
+                              "labelday",
+                              "labeldatesource",
+                              "labelprefix",
+                              "extratitle",
+                              "extratitleyear",
+                              "extraalpha",
+                              "labelnamesource",
+                              "labeltitlesource",
+                              "clonesourcekey",
+                            ];
 
-    // lists
-    // verbatim lists don't need special handling in XML, unlike TeX so they are here
-    let @lists = dm.get_fields_of_fieldtype("list").filter(|k|
-      !$dm->field_is_datatype("name", k)
-      && !$dm->field_is_datatype("uri", k)
-      && !$dm->field_is_skipout(k)
-    );
+                            // verbatim fields don't need special handling in XML, unlike TeX so they are here
+                            let fs2 = dm.get_fields_of_type(FieldType::Field,
+                              &[DataType::Entrykey,
+                              DataType::Key,
+                              DataType::Integer,
+                              DataType::Datepart,
+                              DataType::Literal,
+                              DataType::Code,
+                              DataType::Verbatim], None).filter(|f| !(dm.get_fieldformat(f) == Format::Xsv)
+                              && !dm.field_is_skipout(f));
 
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:list")));
-    $writer->startTag("attribute", attribute_map!("name" => "name"));
-    $writer->startTag("choice");
-    for list in (@lists) {
-      $writer->dataElement("value", list);
-    }
-    $writer->endTag();          // choice
-    $writer->endTag();          // attribute
-    $writer->startTag("attribute", attribute_map!("name" => "count"));
-    $writer->emptyTag("data", attribute_map!("type" => "integer"));
-    $writer->endTag();          // attribute
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "more"));
-    $writer->emptyTag("data", attribute_map!("type" => "boolean"));
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:item")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();          // item
-    $writer->endTag();          // oneOrMore
-    $writer->endTag();          // list
-    $writer->endTag();          // zeroOrMore
+                            // uri fields
+                            let fs3 = dm.get_fields_of_type(FieldType::Field, &[DataType::Uri], None);
 
-    // fields
-    let fs1 = vec![
-      "namehash",
-      "bibnamehash",
-      "fullhash",
-      "labelalpha",
-      "sortinit",
-      "sortinithash",
-      "sortinithash",
-      "extraname",
-      "extradate",
-      "labelyear",
-      "labelmonth",
-      "labelday",
-      "labeldatesource",
-      "labelprefix",
-      "extratitle",
-      "extratitleyear",
-      "extraalpha",
-      "labelnamesource",
-      "labeltitlesource",
-      "clonesourcekey",
-    ];
+                            // <namelist>namehash and <namelist>fullhash
+                            let fs4 = Vec::new();
+                            for n in &dmh.namelists {
+                              fs4.push(format!("{n}namehash"));
+                              fs4.push(format!("{n}bibnamehash"));
+                              fs4.push(format!("{n}fullhash"));
+                            }
 
-    // verbatim fields don't need special handling in XML, unlike TeX so they are here
-    let fs2 = dm.get_fields_of_type(FieldType::Field,
-      &[DataType::Entrykey,
-      DataType::Key,
-      DataType::Integer,
-      DataType::Datepart,
-      DataType::Literal,
-      DataType::Code,
-      DataType::Verbatim], None).filter(|f| !(dm.get_fieldformat(f) == Format::Xsv)
-      && !dm.field_is_skipout(f));
+                            Element::builder("oneOrMore")
+                              .append(Element::builder("element").attr("name", format!("{bbl}:field"))
+                                // start choice of normal vs datepart fields
+                                .append(Element::builder("choice")
+                                  .append(Element::builder("group")
+                                    .append(Element::builder("attribute").attr("name", "name")
+                                      .append(Element::builder("choice")
+                                        .append_all(fs1.iter()
+                                          .chain(fs2)
+                                          .chain(fs3.iter())
+                                          .chain(fs4.iter())
+                                          .map(|f| Element::builder("value").text(f))
+                                        )
+                                      )
+                                    )
+                                  )
+                                  .append(Element::builder("group")
+                                    .append(Element::builder("attribute").attr("name", "name")
+                                      .append(Element::builder("choice")
+                                        .append_all(dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None)
+                                          .map(|dp| Element::builder("value").text(dp))
+                                        )
+                                      )
+                                    )
+                                    // dateparts may have an era attributes
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "startera")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("bce"))
+                                          .append(Element::builder("value").text("ce"))
+                                        )
+                                      )
+                                    )
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "endera")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("bce"))
+                                          .append(Element::builder("value").text("ce"))
+                                        )
+                                      )
+                                    )
+                                    // dateparts may have a julian attributes
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "startjulian")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "endjulian")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    // dateparts may have a approximate attributes
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "startapproximate")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "endapproximate")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    // dateparts may have an uncertain attributes
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "startuncertain")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "enduncertain")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    // dateparts may have an unknown attributes
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "startunknown")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                    .append(Element::builder("optional")
+                                      .append(Element::builder("attribute").attr("name", "endunknown")
+                                        .append(Element::builder("choice")
+                                          .append(Element::builder("value").text("true"))
+                                        )
+                                      )
+                                    )
+                                  )
+                                )
+                                .append(Element::builder("text"))
+                              )
+                          })
 
-    // uri fields
-    let fs3 = dm.get_fields_of_type(FieldType::Field, &[DataType::Uri], None);
+                          // ranges
+                          .append(Element::builder("oneOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:range"))
+                              .append(Element::builder("attribute").attr("name", format!("{bbl}:range"))
+                                .append(Element::builder("choice")
+                                  .append_all(dm.get_fields_of_datatype(&[DataType::Range]).iter()
+                                    .filter(|f| !dm.field_is_skipout(f))
+                                    .map(|r| Element::builder("value").text(r))
+                                  )
+                                )
+                              )
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:item"))
+                                  .append(Element::builder("attribute").attr("name", "length")
+                                    .append(Element::builder("data").attr("type", "integer"))
+                                  )
+                                  .append(Element::builder("element").attr("name", format!("{bbl}:start"))
+                                    .append(Element::builder("text"))
+                                  )
+                                  .append(Element::builder("optional")
+                                    .append(Element::builder("element").attr("name", format!("{bbl}:end"))
+                                      .append(Element::builder("text"))
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
 
-    // <namelist>namehash and <namelist>fullhash
-    let fs4 = Vec::new();
-    for n in &dmh.namelists {
-      fs4.push(format!("{n}namehash"));
-      fs4.push(format!("{n}bibnamehash"));
-      fs4.push(format!("{n}fullhash"));
-    }
+                          // uri lists - not in default data model
+                          .optional_append({
+                            let uril = dm.get_fields_of_type(FieldType::List, &[DataType::Uri], None);
+                            (!uril.is_empty()).then(||
+                              Element::builder("optional")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:list"))
+                                  .append(Element::builder("attribute").attr("name", "name")
+                                    .append(Element::builder("choice")
+                                      .append_all(uril.into_iter()
+                                        .map(|u| Element::builder("value").text(u))
+                                      )
+                                    )
+                                  )
+                                  .append(Element::builder("attribute").attr("name", "count")
+                                    .append(Element::builder("data").attr("type", "integer"))
+                                  )
+                                  .append(Element::builder("oneOrMore")
+                                    .append(Element::builder("element").attr("name", format!("{bbl}:item"))
+                                      .append(Element::builder("data").attr("type", "anyURI"))
+                                    )
+                                  )
+                                )
+                            )
+                          })
 
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:field")));
-    $writer->startTag("choice"); // start choice of normal vs datepart fields
-    $writer->startTag("group"); //
-    $writer->startTag("attribute", attribute_map!("name" => "name"));
+                          // nocite
+                          .append(Element::builder("optional")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:item"))
+                              .append(Element::builder("empty"))
+                            )
+                          )
 
-    $writer->startTag("choice");
-    for f in fs1.iter().chain(fs2).chain(fs3.iter()).chain(fs4.iter()) {
-      $writer->dataElement("value", f);
-    }
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // group
-    $writer->startTag("group"); //
-    $writer->startTag("attribute", attribute_map!("name" => "name"));
+                          // keywords
+                          .append(Element::builder("optional")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:keywords"))
+                              .append(Element::builder("oneOrMore")
+                                .append(Element::builder("element").attr("name", format!("{bbl}:keyword"))
+                                  .append(Element::builder("data").attr("type", "string"))
+                                )
+                              )
+                            )
+                          )
 
-    $writer->startTag("choice");
-    for dp in dm.get_fields_of_type(FieldType::Field, &[DataType::Datepart], None) {
-      $writer->dataElement("value", $dp);
-    }
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    // dateparts may have an era attributes
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "startera"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "bce");
-    $writer->dataElement("value", "ce");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "endera"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "bce");
-    $writer->dataElement("value", "ce");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    // dateparts may have a julian attributes
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "startjulian"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "endjulian"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    // dateparts may have a approximate attributes
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "startapproximate"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "endapproximate"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    // dateparts may have an uncertain attributes
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "startuncertain"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "enduncertain"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    // dateparts may have an unknown attributes
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "startunknown"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->startTag("optional");
-    $writer->startTag("attribute", attribute_map!("name" => "endunknown"));
-    $writer->startTag("choice");
-    $writer->dataElement("value", "true");
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->endTag();    // optional
-    $writer->endTag();    // group
-    $writer->endTag();    // choice (normal vs datepart)
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // field
-    $writer->endTag();    // oneOrMore
+                          // annotations
+                          .append(Element::builder("zeroOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:annotation"))
+                              .append(Element::builder("attribute").attr("name", "scope")
+                                .append(Element::builder("choice")
+                                  .append_all(["field", "list", "names", "item", "name", "namepart"].into_iter()
+                                    .map(|s| Element::builder("value").text(s))
+                                  )
+                                )
+                              )
+                              .append(Element::builder("attribute").attr("name", "field"))
+                              .append(Element::builder("attribute").attr("name", "name"))
+                              .append(Element::builder("attribute").attr("name", "value"))
+                              .append(Element::builder("attribute").attr("name", "literal")
+                                .append(Element::builder("choice")
+                                  .append_all(["1", "0"].into_iter()
+                                    .map(|s| Element::builder("value").text(s))
+                                  )
+                                )
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "item"))
+                              )
+                              .append(Element::builder("optional")
+                                .append(Element::builder("attribute").attr("name", "part"))
+                              )
+                            )
+                          )
 
-    // ranges
-    let ranges = dm.get_fields_of_datatype(&[DataType::Range]).iter().filter(|f|
-      !dm.field_is_skipout(f)
-    );
+                          // warnings
+                          .append(Element::builder("zeroOrMore")
+                            .append(Element::builder("element").attr("name", format!("{bbl}:warning"))
+                              .append(Element::builder("data").attr("type", "string"))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
 
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:range")));
-    $writer->startTag("attribute", attribute_map!("name" => "name"));
-    $writer->startTag("choice");
-    for r in ranges {
-      $writer->dataElement("value", r);
-    }
-    $writer->endTag();    // choice
-    $writer->endTag();    // attribute
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:item")));
-    $writer->startTag("attribute", attribute_map!("name" => "length"));
-    $writer->emptyTag("data", attribute_map!("type" => "integer"));
-    $writer->endTag();    // attribute
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:start")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // start
-    $writer->startTag("optional");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:end")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();    // end
-    $writer->endTag();    // optional
-    $writer->endTag();    // item
-    $writer->endTag();    // oneOrMore
-    $writer->endTag();    // range
-    $writer->endTag();    // zeroOrMore
+              // aliases
+              .append(Element::builder("zeroOrMore")
+                .append(Element::builder("element").attr("name", format!("{bbl}:keyalias"))
+                  .append(Element::builder("attribute").attr("name", "key"))
+                  .append(Element::builder("text"))
+                )
+              )
 
-    // uri lists - not in default data model
-    {
-      let uril = dm.get_fields_of_type(FieldType::List, &[DataType::Uri], None);
-      if !uril.is_empty() {
-        $writer->startTag("optional");
-        $writer->startTag("element", attribute_map!("name" => format!("{bbl}:list")));
-        $writer->startTag("attribute", attribute_map!("name" => "name"));
-        $writer->startTag("choice");
-        for u in uril.into_iter() {
-          $writer->dataElement("value", u);
-        }
-        $writer->endTag();          // choice
-        $writer->endTag();          // attribute
-        $writer->startTag("attribute", attribute_map!("name" => "count"));
-        $writer->emptyTag("data", attribute_map!("type" => "integer"));
-        $writer->endTag();          // attribute
-        $writer->startTag("oneOrMore");
-        $writer->startTag("element", attribute_map!("name" => format!("{bbl}:item")));
-        $writer->emptyTag("data", attribute_map!("type" => "anyURI"));
-        $writer->endTag();          // item
-        $writer->endTag();          // oneOrMore
-        $writer->endTag();          // list element
-        $writer->endTag();          // optional
-      }
-    }
-
-    // nocite
-    $writer->startTag("optional");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:nocite")));
-    $writer->emptyTag("empty");
-    $writer->endTag();// nocite
-    $writer->endTag();// optional
-
-    // keywords
-    $writer->startTag("optional");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:keywords")));
-    $writer->startTag("oneOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:keyword")));
-    $writer->emptyTag("data", attribute_map!("type" => "string"));
-    $writer->endTag();// item
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// keywords
-    $writer->endTag();// optional
-
-    // annotations
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:annotation")));
-    $writer->startTag("attribute", attribute_map!("name" => "scope"));
-    $writer->startTag("choice");
-    for s in ["field", "list", "names", "item", "name", "namepart"] {
-      $writer->dataElement("value", s);
-    }
-    $writer->endTag();// choice
-    $writer->endTag();// scope attribute
-    $writer->emptyTag("attribute", attribute_map!("name" => "field"));
-    $writer->emptyTag("attribute", attribute_map!("name" => "name"));
-    $writer->emptyTag("attribute", attribute_map!("name" => "value"));
-    $writer->startTag("attribute", attribute_map!("name" => "literal"));
-    $writer->startTag("choice");
-    for s in ["1", "0"] {
-      $writer->dataElement("value", s);
-    }
-    $writer->endTag();// choice
-    $writer->endTag();// literal attribute
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "item"));
-    $writer->endTag();// optional
-    $writer->startTag("optional");
-    $writer->emptyTag("attribute", attribute_map!("name" => "part"));
-    $writer->endTag();// optional
-    $writer->endTag();// annotation
-    $writer->endTag();// zeroOrMore
-
-    // warnings
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:warning")));
-    $writer->emptyTag("data", attribute_map!("type" => "string"));
-    $writer->endTag();// warning
-    $writer->endTag();// zeroOrMore
-
-    $writer->endTag();// interleave element
-    $writer->endTag();// entry element
-    $writer->endTag();// choice
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// datalist element
-    $writer->endTag();// oneOrMore
-
-    // aliases
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:keyalias")));
-    $writer->emptyTag("attribute", attribute_map!("name" => "key"));
-    $writer->emptyTag("text");// text
-    $writer->endTag();// keyalias
-    $writer->endTag();// zeroOrMore
-
-    // missing keys
-    $writer->startTag("zeroOrMore");
-    $writer->startTag("element", attribute_map!("name" => format!("{bbl}:missing")));
-    $writer->emptyTag("text");// text
-    $writer->endTag();// missing
-    $writer->endTag();// zeroOrMore
-
-    $writer->endTag();// refsection element
-    $writer->endTag();// oneOrMore
-    $writer->endTag();// refsections element
-    $writer->endTag();// start
-
-    $writer->endTag();// grammar
-    $writer->end();
-    $rng->close();
+              // missing keys
+              .append(Element::builder("zeroOrMore")
+                .append(Element::builder("element").attr("name", format!("{bbl}:missing"))
+                  .append(Element::builder("text"))
+                )
+              )
+            )
+          )
+        )
+      )
+      .build();
+      let mut ns = Namespace::empty();
+      ns.force_put(bbl, bbl_ns);
+      ns.force_put("", default_ns);
+      grammar_tag.namespaces = Some(ns);
+  
+      let mut rng = File::create(outfile).unwrap;
+      write!(&mut rng, r##"<?xml version="1.0" encoding="UTF-8"?>
+  <!-- Auto-generated from .bcf Datamodel -->
+  
+  "##);
+      let mut cfg = EmitterConfig::new();
+      cfg.perform_indent = true;
+      cfg.write_document_declaration = false;
+      grammar_tag.write_with_config(&mut rng, cfg).unwrap();
   }
 }
