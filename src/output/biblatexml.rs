@@ -1,3 +1,4 @@
+/*
 use parent qw(crate::Output::base);
 
 use crate::Config;
@@ -9,6 +10,7 @@ use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use XML::Writer;
 use Unicode::Normalize;
+*/
 
 /// Class for biblatexml output of tool mode
 pub struct BibLaTeXML;

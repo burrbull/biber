@@ -1,9 +1,10 @@
 //! `UCollate` objects
 
+/*
 use Carp;
 use Data::Dump;
 use parent qw(Unicode::Collate::Locale);
-
+*/
 
 pub struct UCollate;
 

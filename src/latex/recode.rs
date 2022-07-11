@@ -1,3 +1,4 @@
+/*
 use parent qw(Exporter);
 use crate::Config;
 use Digest::MD5 qw( md5_hex );
@@ -12,6 +13,7 @@ use Log::Log4perl qw(:no_extra_logdie_message);
 use XML::LibXML::Simple;
 use Carp;
 use utf8;
+*/
 
 use itertools::Itertools;
 

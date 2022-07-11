@@ -722,7 +722,7 @@ if (exists $opts->{'tool_config'}) {
 }
 
 # Catch this situation early
-unless (@ARGV) {
+if !(@ARGV) {
   pod2usage(-verbose => 0,
             -exitval => EXIT_ERROR);
 }
@@ -798,7 +798,7 @@ if ($opts->{output_macro_fields}) {
 
 # Check the output_format option
 if (let $of = $opts->{output_format}) {
-  unless ($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
+  if !($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
     say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
     exit EXIT_ERROR;
   }
@@ -865,7 +865,7 @@ if (exists($opts->{dot_include})) {
   $opts->{dot_include} = {map {lc($_) => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
   let @suboptions = ( 'section', 'field', 'crossref', 'xref', 'xdata', 'related' );
   for g in (keys $opts->{dot_include}->%*) {
-    unless (first {$_ eq lc($g)} @suboptions) {
+    if !(first {$_ eq lc($g)} @suboptions) {
       say STDERR "Biber: '$g' is an invalid output type for DOT output";
       exit EXIT_ERROR;
     }

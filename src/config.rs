@@ -10,6 +10,7 @@
 //! * State information used by Biber as it processes entries
 //! * displaymode date
 
+/*
 use crate::Constants;
 use crate::Utils;
 use IPC::Cmd qw( can_run );
@@ -30,6 +31,7 @@ use Log::Log4perl::Layout::PatternLayout;
 use Unicode::Normalize;
 use parent qw(Class::Accessor);
 __PACKAGE__->follow_best_practice;
+*/
 
 our $screen  = Log::Log4perl::get_logger("screen");
 
@@ -170,17 +172,16 @@ fn _initopts(opts) {
   let $biberlog;
   if (let $log = crate::Config->getoption("logfile")) { // user specified logfile name
     // Sanitise user-specified log name
-    $log =~ s/\.blg\z//xms;
-    $biberlog = $log . ".blg";
+    let log = regex!(r"\.blg\z"xms).replace(log, "");
+    $biberlog = format!("{log}.blg");
   }
   else if (!@ARGV) { // default if no .bcf file specified - mainly in tests
     crate::Config->setoption("nolog", 1);
   }
   else {                        // set log to \jobname.blg
-    let $bcf = $ARGV[0];         // ARGV is ok even in a module
+    let bcf = $ARGV[0];         // ARGV is ok even in a module
     // Sanitise control file name
-    $bcf =~ s/\.bcf\z//xms;
-    $biberlog = $bcf . ".blg";
+    let bcf = regex!(r"\.bcf\z"xms).replace(bcf, "");
   }
 
   // prepend output directory for log, if specified
@@ -631,7 +632,7 @@ fn config_file {
     }
 
     chomp $biberconf;
-    $biberconf =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
+    biberconf = regex!(r"\cM\z"xms).replace(&biberconf, ""); // kpsewhich in cygwin sometimes returns ^M at the end
     if !($biberconf) { // sanitise just in case it's an empty string
       $biberconf = None;
     }

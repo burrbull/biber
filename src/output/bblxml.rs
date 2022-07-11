@@ -1,3 +1,4 @@
+/*
 use parent qw(crate::Output::base);
 
 use crate::Config;
@@ -12,6 +13,7 @@ use Log::Log4perl qw( :no_extra_logdie_message );
 use Scalar::Util qw(looks_like_number);
 use XML::Writer;
 use Unicode::Normalize;
+*/
 
 /// Class for Biber output of .bbl in XML format
 pub struct BblXML;

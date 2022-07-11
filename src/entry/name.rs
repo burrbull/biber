@@ -4,9 +4,10 @@
 
 use itertools::Itertools;
 use crate::Id;
-use indexmap::{indexmap as attribute_map};
+use indexmap::indexmap as attribute_map;
 type AttributeMap = indexmap::IndexMap<String, String>;
 
+/*
 use Regexp::Common qw( balanced );
 use crate::Config;
 use crate::Constants;
@@ -14,6 +15,7 @@ use Data::Dump qw( pp );
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
 use Unicode::Normalize;
+*/
 
 impl Name {
   /// Initialise a crate::Entry::Name object, optionally with key=>value arguments.
@@ -100,7 +102,7 @@ impl Name {
   }
 
   /// Get nameparts for a name
-  fn get_nameparts(self) {
+  fn get_nameparts(&self) -> impl Iterator<Item=&String> {
     self.nameparts.keys()
   }
 
@@ -174,7 +176,7 @@ impl Name {
     let $np = self.get_namepart($npn);
     let $nip = self.get_namepart_initial($npn);
     if ($np) {
-      let parts: Vec<_> = Regex::new(r"[\s~]").unwrap().split(np).collect();
+      let parts: Vec<_> = regex!(r"[\s~]").split(np).collect();
       let mut attrs = AttributeMap::new();
 
       // namepart scope annotation

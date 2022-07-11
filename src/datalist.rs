@@ -1,12 +1,13 @@
 //! `DataLists` objects
 
+/*
 use crate::Utils;
 use crate::Constants;
 use Data::Compare;
 use Digest::MD5 qw( md5_hex );
 use List::Util qw( first );
-
-
+*/
+use crate::utils::regex_xms;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterType {
@@ -1087,43 +1088,43 @@ impl DataList {
       // entryset
       if let Some(es) = self.get_entryfield(key, "entryset").filter(|es| !es.is_empty()) {
         let s = format!("\\set{{{}}}", es.join(","));
-        entry_string = entry_string.replace("<BDS>ENTRYSET</BDS>", &s);
+        entry_string = regex!(r"<BDS>ENTRYSET</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniqueprimaryauthor
       if self.get_entryfield(key, "uniqueprimaryauthor") {
         let s = "\\true{uniqueprimaryauthor}";
-        entry_string = entry_string.replace("<BDS>UNIQUEPRIMARYAUTHOR</BDS>", s);
+        entry_string = regex!(r"<BDS>UNIQUEPRIMARYAUTHOR</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniquework
       if self.get_entryfield(key, "uniquework") {
         let s = "\\true{uniquework}";
-        entry_string = entry_string.replace("<BDS>UNIQUEWORK</BDS>", s);
+        entry_string = regex!(r"<BDS>UNIQUEWORK</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniquebaretitle
       if self.get_entryfield(key, "uniquebaretitle") {
         let s = "\\true{uniquebaretitle}";
-        entry_string = entry_string.replace("<BDS>UNIQUEBARETITLE</BDS>", s);
+        entry_string = regex!(r"<BDS>UNIQUEBARETITLE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniquetitle
       if self.get_entryfield(key, "uniquetitle") {
         let s = "\\true{uniquetitle}";
-        entry_string = entry_string.replace("<BDS>UNIQUETITLE</BDS>", s);
+        entry_string = regex!(r"<BDS>UNIQUETITLE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // extraalpha
       if let Some(e) = self.get_extraalphadata_for_key(key).skip_empty() {
         let s = format!("\\field{{extraalpha}}{{{e}}}");
-        entry_string = entry_string.replace("<BDS>EXTRAALPHA</BDS>", &s);
+        entry_string = regex!(r"<BDS>EXTRAALPHA</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // labelalpha
       if let Some(e) = self.get_labelalphadata_for_key(key).skip_empty() {
         let s = format!("\\field{{labelalpha}}{{{e}}}");
-        entry_string = entry_string.replace("<BDS>LABELALPHA</BDS>", &s);
+        entry_string = regex!(r"<BDS>LABELALPHA</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniquelist
@@ -1135,9 +1136,10 @@ impl DataList {
         let nlid = nl.get_id();
         if let Some(ul) = self.get_uniquelist(nlid) {
           let s = format!("ul={ul}");
-          entry_string = entry_string.replace(&format!("<BDS>UL-{nlid}</BDS>"), &s);
+          let r = regex_xms(&format!(r"<BDS>UL-{nlid}</BDS>")).unwrap();
+          entry_string = r.replace_all(entry_string, &s);
         } else {
-          let r = Regex::new(&format!(r"(?xms)<BDS>UL-{nlid}</BDS>,?")).unwrap();
+          let r = regex_xms(&format!(r"<BDS>UL-{nlid}</BDS>,?")).unwrap();
           entry_string = r.replace_all(entry_string, "");
         }
       }
@@ -1152,120 +1154,129 @@ impl DataList {
         for n in nl.names() {
           let nid = n.get_id();
           if let Some(unsummary) = self.get_unsummary(nlid, nid) {
-            let $str = format!("un={unsummary}");
-            $entry_string =~ s|<BDS>UNS-$nid</BDS>|$str|gxms;
-            $str = "uniquepart=" . $self->get_unpart($nlid, $nid);
-            $entry_string =~ s|<BDS>UNP-$nid</BDS>|$str|gxms;
-            for np in ($n->get_nameparts) {
-              if ($self->is_unbasepart($nlid, $nid, $np)) {
-                $entry_string =~ s|\s+<BDS>UNP-$np-$nid</BDS>,?||gxms;
+            let s = format!("un={unsummary}");
+            let r = regex_xms(&format!(r"<BDS>UNS-{nid}</BDS>")).unwrap();
+            entry_string = r.replace_all(entry_string, &s);
+            let s = format!("uniquepart={}", self.get_unpart(nlid, nid));
+            let r = regex_xms(&format!(r"<BDS>UNP-{nid}</BDS>")).unwrap();
+            entry_string = r.replace_all(entry_string, &s);
+            for np in n.get_nameparts() {
+              if self.is_unbasepart(nlid, nid, np) {
+                let r = regex_xms(&format!(r"\s+<BDS>UNP-{np}-{nid}</BDS>,?")).unwrap();
+                entry_string = r.replace_all(entry_string, "");
               }
               else {
-                $str = "${np}un=" . $self->get_unparts($nlid, $nid, $np);
-                $entry_string =~ s|<BDS>UNP-$np-$nid</BDS>|$str|gxms;
+                let s = format!("{np}un={}", self.get_unparts(nlid, nid, np));
+                let r = regex_xms(&format!(r"<BDS>UNP-{np}-{nid}</BDS>")).unwrap();
+                entry_string = r.replace_all(entry_string, &s);
               }
             }
           }
           else {
-            $entry_string =~ s|<BDS>UN[SP]-$nid</BDS>,?||gxms;
-            for np in ($n->get_nameparts) {
-              $entry_string =~ s|\s+<BDS>UNP-$np-$nid</BDS>,?||gxms;
+            let r = regex_xms(&format!(r"<BDS>UN[SP]-{nid}</BDS>,?")).unwrap();
+            entry_string = r.replace_all(entry_string, "");
+            for np in n.get_nameparts() {
+              let r = regex_xms(&format!(r"\s+<BDS>UNP-{np}-{nid}</BDS>,?")).unwrap();
+              entry_string = r.replace_all(entry_string, "");
             }
           }
         }
       }
 
       // extratitleyear
-      if (let $e = $self->get_extratitleyeardata_for_key($key)) {
-        let  $str = "\\field{extratitleyear}{$e}";
-        $entry_string =~ s|<BDS>EXTRATITLEYEAR</BDS>|$str|gxms;
+      if (let $e = self.get_extratitleyeardata_for_key(key)) {
+        let s = format!("\\field{{extratitleyear}}{{{e}}}");
+        entry_string = regex!(r"<BDS>EXTRATITLEYEAR</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // extratitle
-      if (let $e = $self->get_extratitledata_for_key($key)) {
-        let $str = "\\field{extratitle}{$e}";
-        $entry_string =~ s|<BDS>EXTRATITLE</BDS>|$str|gxms;
+      if (let $e = self.get_extratitledata_for_key(key)) {
+        let s = format!("\\field{{extratitle}}{{{e}}}");
+        entry_string = regex!(r"<BDS>EXTRATITLE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // per-namelist bibnamehash and namehash
       for namefield in ($dmh->{namelists}->@*) {
 
         // per-namelist bibnamehash
-        if (let $e = $self->get_entryfield($key, "${namefield}bibnamehash")) {
-          let $str = "\\strng{${namefield}bibnamehash}{$e}";
-          $entry_string =~ s|<BDS>${namefield}BIBNAMEHASH</BDS>|$str|gxms;
+        if (let $e = $self->get_entryfield(key, format!("{namefield}bibnamehash"))) {
+          let s = format!("\\strng{{{namefield}bibnamehash}}{{{e}}}";
+          let r = regex_xms(&format!(r"<BDS>{namefield}BIBNAMEHASH</BDS>")).unwrap();
+            entry_string = r.replace_all(entry_string, &s);
         }
 
         // per-namelist namehash
-        if (let $e = $self->get_entryfield($key, "${namefield}namehash")) {
-          let $str = "\\strng{${namefield}namehash}{$e}";
-          $entry_string =~ s|<BDS>${namefield}NAMEHASH</BDS>|$str|gxms;
-
+        if (let $e = self.get_entryfield(key, format!("{namefield}namehash"))) {
+          let s = format!("\\strng{{{namefield}namehash}}{{{e}}}");
+          let r = regex_xms(&format!(r"<BDS>{namefield}NAMEHASH</BDS>")).unwrap();
+            entry_string = r.replace_all(entry_string, &s);
         }
       }
 
       // bibnamehash
-      if (let $e = $self->get_entryfield($key, "bibnamehash")) {
-        let $str = "\\strng{bibnamehash}{$e}";
-        $entry_string =~ s|<BDS>BIBNAMEHASH</BDS>|$str|gxms;
+      if (let $e = self.get_entryfield(key, "bibnamehash")) {
+        let s = format!("\\strng{{bibnamehash}}{{{e}}}");
+        entry_string = regex!(r"<BDS>BIBNAMEHASH</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // namehash
-      if (let $e = $self->get_entryfield($key, "namehash")) {
-        let $str = "\\strng{namehash}{$e}";
-        $entry_string =~ s|<BDS>NAMEHASH</BDS>|$str|gxms;
+      if (let $e = self.get_entryfield(key, "namehash")) {
+        let s = format!("\\strng{{namehash}}{{{e}}}");
+        entry_string = regex!(r"<BDS>NAMEHASH</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // per-namehash
       for pn in ($dmh->{namelistsall}->@*) {
-        let nl = $be->get_field($pn);
+        let nl = be.get_field(pn);
         if !nl {
           continue;
         }
         for n in nl.names() {
           let nid = n.get_id();
           if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
-            let $str = "hash=$e";
-            $entry_string =~ s|<BDS>$nid-PERNAMEHASH</BDS>|$str|gxms;
+            let s = format!("hash={e}");
+            let r = regex_xms(&format!(r"<BDS>{nid}-PERNAMEHASH</BDS>")).unwrap();
+            entry_string = r.entry_string.replace_all(&s);
+            
           }
           else {
-            $entry_string =~ s|<BDS>$nid-PERNAMEHASH</BDS>,?||gxms;
+            let r = regex_xms(&format!(r"<BDS>{nid}-PERNAMEHASH</BDS>,?")).unwrap();
+            entry_string = r.entry_string.replace_all("");
           }
         }
       }
 
       // extraname
-      if (let $e = $self->get_extranamedata_for_key($key)) {
-        let $str = "\\field{extraname}{$e}";
-        $entry_string =~ s|<BDS>EXTRANAME</BDS>|$str|gxms;
+      if (let $e = $self->get_extranamedata_for_key(key)) {
+        let s = format!("\\field{{extraname}}{{{e}}}");
+        entry_string = regex!(r"<BDS>EXTRANAME</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // extradate
-      if (let $e = $self->get_extradatedata_for_key($key)) {
-        let $str = "\\field{extradate}{$e}";
-        $entry_string =~ s|<BDS>EXTRADATE</BDS>|$str|gxms;
+      if (let $e = $self->get_extradatedata_for_key(key)) {
+        let s = format!("\\field{{extradate}}{{{e}}}");
+        entry_string = regex!(r"<BDS>EXTRADATE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // sortinit + sortinithash
-      let sinit = self.get_sortinit_for_key(key);
-      if (defined($sinit)) {
-        let $str = "\\field{sortinit}{$sinit}";
-        $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
+      if let Some(sinit) = self.get_sortinit_for_key(key) {
+        let s = format!("\\field{{sortinit}}{{{sinit}}}");
+        entry_string = regex!(r"<BDS>SORTINIT</BDS>"xms).replace_all(&entry_string, &s);
         let $sinithash = md5_hex($self->{sortinitcollator}->viewSortKey($sinit));
-        $str = "\\field{sortinithash}{$sinithash}";
-        $entry_string =~ s|<BDS>SORTINITHASH</BDS>|$str|gxms;
+        let s = format!("\\field{{sortinithash}}{{{sinithash}}}");
+        entry_string = regex!(r"<BDS>SORTINITHASH</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // labelprefix
       if (let $pn = self.get_labelprefix(key)) {
-        let $str = "\\field{labelprefix}{$pn}";
-        $entry_string =~ s|<BDS>LABELPREFIX</BDS>|$str|gxms;
+        let s = format!("\\field{{labelprefix}}{{{pn}}}");
+        entry_string = regex!(r"<BDS>LABELPREFIX</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // singletitle
       if self.get_entryfield(key, "singletitle") {
-        let $str = "\\true{singletitle}";
-        $entry_string =~ s|<BDS>SINGLETITLE</BDS>|$str|gxms;
+        let s = "\\true{singletitle}";
+        entry_string = regex!(r"<BDS>SINGLETITLE</BDS>"xms).replace_all(&entry_string, &s);
       }
     }
 
@@ -1274,81 +1285,70 @@ impl DataList {
       // entryset
       if (let $es = self.get_entryfield(key, "entryset")) {
         let mut string = "<bbl:set>\n";
-        for m in ($es->@*) {
+        for m in es {
           string.push_str(&format!("    <bbl:member>{m}</bbl:member>\n"));
         }
         string.push_str("  </bbl:set>");
-        let r = Regex::new(r"(?xms)<BDS>ENTRYSET</BDS>").unwrap();
-        entry_string = r.entry_string.replace_all(&string);
+        entry_string = regex!(r"<BDS>ENTRYSET</BDS>"xms).replace_all(&entry_string, &string);
       }
 
       // uniqueprimaryauthor
       if self.get_entryfield(key, "uniqueprimaryauthor") {
-        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]").unwrap();
-        entry_string = r.entry_string.replace_all("true");
+        entry_string = regex!(r"\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]"xms).replace_all(&entry_string, "true");
       }
       else {
-        let r = Regex::new(r#"(?xms)\suniqueprimaryauthor="\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]""#).unwrap();
-        entry_string = r.entry_string.replace_all("");
+        entry_string = regex!(r#"\suniqueprimaryauthor="\[BDS\]UNIQUEPRIMARYAUTHOR\[/BDS\]""#xms).replace_all(&entry_string, "");
       }
 
       // uniquework
       if self.get_entryfield(key, "uniquework") {
-        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEWORK\[/BDS\]").unwrap();
-        entry_string = r.entry_string.replace_all("true");
+        entry_string = regex!(r"\[BDS\]UNIQUEWORK\[/BDS\]"xms).replace_all(&entry_string, "true");
       }
       else {
-        let r = Regex::new(r#"(?xms)\suniquework="\[BDS\]UNIQUEWORK\[/BDS\]""#).unwrap();
-        entry_string = r.entry_string.replace_all("");
+        entry_string = regex!(r#"\suniquework="\[BDS\]UNIQUEWORK\[/BDS\]""#xms).replace_all(&entry_string, "");
       }
 
       // uniquebaretitle
       if self.get_entryfield(key, "uniquebaretitle") {
-        let r = Regex::new(r"(?xms)\[BDS\]UNIQUEBARETITLE\[/BDS\]").unwrap();
-        entry_string = r.entry_string.replace_all("true");
+        entry_string = regex!(r"\[BDS\]UNIQUEBARETITLE\[/BDS\]"xms).replace_all(&entry_string, "true");
       }
       else {
-        let r = Regex::new(r#"(?xms)\suniquebaretitle="\[BDS\]UNIQUEBARETITLE\[/BDS\]""#).unwrap();
-        entry_string = r.entry_string.replace_all("");
+        entry_string = regex!(r#"\suniquebaretitle="\[BDS\]UNIQUEBARETITLE\[/BDS\]""#xms).replace_all(&entry_string, "");
       }
 
       // uniquetitle
       if self.get_entryfield(key, "uniquetitle") {
-        let r = Regex::new(r"(?xms)\[BDS\]UNIQUETITLE\[/BDS\]").unwrap();
-        entry_string = r.entry_string.replace_all("true");
+        entry_string = regex!(r"\[BDS\]UNIQUETITLE\[/BDS\]"xms).replace_all(&entry_string, "true");
       }
       else {
-        let r = Regex::new(r#"(?xms)\suniquetitle="\[BDS\]UNIQUETITLE\[/BDS\]""#).unwrap();
-        entry_string = r.entry_string.replace_all("");
+        entry_string = regex!(r#"\suniquetitle="\[BDS\]UNIQUETITLE\[/BDS\]""#xms).replace_all(&entry_string, "");
       }
 
       // extraalpha
       if (let $e = self.get_extraalphadata_for_key(key)) {
         let s = format!("<bbl:field name=\"extraalpha\">{e}</bbl:field>");
-        let r = Regex::new(r"(?xms)<BDS>EXTRAALPHA</BDS>").unwrap();
-        entry_string = r.rentry_string.replace_all(&s);
+        entry_string = regex!(r"<BDS>EXTRAALPHA</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // labelalpha
       if (let $e = self.get_labelalphadata_for_key(key)) {
         let s = format!("<bbl:field name=\"labelalpha\">{e}</bbl:field>");
-        let r = Regex::new(r"(?xms)<BDS>LABELALPHA</BDS>").unwrap();
-        entry_string = r.rentry_string.replace_all(&s);
+        entry_string = regex!(r"<BDS>LABELALPHA</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // uniquelist
       for namefield in ($dmh->{namelists}->@*) {
-        let nl = $be->get_field($namefield);
+        let nl = be.get_field(namefield);
         if !nl {
           continue;
         }
         let nlid = nl.get_id();
         if let Some(s) = self.get_uniquelist(nlid) {
-          let r = Regex::new(format!(r"(?xms)\[BDS\]UL-{nlid}\[/BDS\]")).unwrap();
+          let r = regex_xms(&format!(r"\[BDS\]UL-{nlid}\[/BDS\]")).unwrap();
           entry_string = r.entry_string.replace_all(s);
         }
         else {
-          let r = Regex::new(format!(r#"(?xms)\sul="\[BDS\]UL-{nlid}\[/BDS\]""#)).unwrap();
+          let r = regex_xms(&format!(r#"\sul="\[BDS\]UL-{nlid}\[/BDS\]""#)).unwrap();
           entry_string = r.entry_string.replace_all("");
         }
       }
@@ -1363,24 +1363,30 @@ impl DataList {
         for n in nl.names() {
           let nid = n.get_id();
           if let Some(unsummary) = self.get_unsummary(nlid, nid) {
-            let $str = format!("{unsummary}");
-            $entry_string =~ s|\[BDS\]UNS-$nid\[/BDS\]|$str|gxms;
-            $str = self.get_unpart(nlid, nid);
-            $entry_string =~ s|\[BDS\]UNP-$nid\[/BDS\]|$str|gxms;
+            let s = format!("{unsummary}");
+            let r = regex_xms(&format!(r"\[BDS\]UNS-{nid}\[/BDS\]")).unwrap();
+            entry_string = r.entry_string.replace_all(s);
+            let s = self.get_unpart(nlid, nid);
+            let r = regex_xms(&format!(r"\[BDS\]UNP-{nid}\[/BDS\]")).unwrap();
+            entry_string = r.entry_string.replace_all(s);
             for np in n.get_nameparts() {
-              if (self.is_unbasepart(nlid, nid, np)) {
-                $entry_string =~ s|\sun="\[BDS\]UNP-$np-$nid\[/BDS\]",?||gxms;
+              if self.is_unbasepart(nlid, nid, np) {
+                let r = regex_xms(&format!(r#"\sun="\[BDS\]UNP-{np}-{nid}\[/BDS\]",?"#)).unwrap();
+                entry_string = r.entry_string.replace_all("");
               }
               else {
-                $str = self.get_unparts(nlid, nid, np);
-                $entry_string =~ s|\[BDS\]UNP-$np-$nid\[/BDS\]|$str|gxms;
+                let = self.get_unparts(nlid, nid, np);
+                let r = regex_xms(&format!(r"\[BDS\]UNP-{np}-{nid}\[/BDS\]")).unwrap();
+                entry_string = r.entry_string.replace_all(s);
               }
             }
           }
           else {
-            $entry_string =~ s#\s(?:un|uniquepart)="\[BDS\]UN[SP]-$nid\[/BDS\]",?##gxms;
+            let r = regex_xms(&format!(r#"\s(?:un|uniquepart)="\[BDS\]UN[SP]-{nid}\[/BDS\]",?"#)).unwrap();
+            entry_string = r.entry_string.replace_all("");
             for np in n.get_nameparts() {
-              $entry_string =~ s|\sun="\[BDS\]UNP-$np-$nid\[/BDS\]",?||gxms;
+              let r = regex_xms(&format!(r#"\sun="\[BDS\]UNP-{np}-{nid}\[/BDS\]",?"#)).unwrap();
+              entry_string = r.entry_string.replace_all("");
             }
           }
         }
@@ -1388,42 +1394,46 @@ impl DataList {
 
       // extratitleyear
       if (let $e = self.get_extratitleyeardata_for_key(key)) {
-        let $str = "<bbl:field name=\"extratitleyear\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>EXTRATITLEYEAR</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"extratitleyear\">{e}</bbl:field>");
+        entry_string = regex!(r"<BDS>EXTRATITLEYEAR</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // extratitle
       if (let $e = self.get_extratitledata_for_key(key)) {
-        let $str = "<bbl:field name=\"extratitle\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>EXTRATITLE</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"extratitle\">{e}</bbl:field>");
+        entry_string = regex!(r"<BDS>EXTRATITLE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // per-namelist bibnamehash and namehash
       for namefield in ($dmh->{namelists}->@*) {
 
         // per-namelist bibnamehash
-        if (let $e = self.get_entryfield(key, "${namefield}bibnamehash")) {
-          let $str = "<bbl:field name=\"${namefield}bibnamehash\">$e</bbl:field>";
-          $entry_string =~ s|<BDS>${namefield}BIBNAMEHASH</BDS>|$str|gxms;
+        if (let $e = self.get_entryfield(key, format!("{namefield}bibnamehash"))) {
+          let s = format!("<bbl:field name=\"{namefield}bibnamehash\">{e}</bbl:field>");
+          let r = regex_xms(&format!(r"<BDS>{namefield}BIBNAMEHASH</BDS>")).unwrap();
+          entry_string = r.entry_string.replace_all(&s);
         }
 
         // per-namelist namehash
-        if (let $e = self.get_entryfield(key, "${namefield}namehash")) {
-          let $str = "<bbl:field name=\"${namefield}namehash\">$e</bbl:field>";
-          $entry_string =~ s|<BDS>${namefield}NAMEHASH</BDS>|$str|gxms;
+        if (let $e = self.get_entryfield(key, format!("{namefield}namehash"))) {
+          let s = format!("<bbl:field name=\"{namefield}namehash\">{e}</bbl:field>");
+          let r = regex_xms(&format!(r"<BDS>{namefield}NAMEHASH</BDS>")).unwrap();
+          entry_string = r.entry_string.replace_all(&s);
         }
       }
 
       // bibnamehash
       if (let $e = self.get_entryfield(key, "bibnamehash")) {
-        let $str = "<bbl:field name=\"bibnamehash\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>BIBNAMEHASH</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"bibnamehash\">{e}</bbl:field>");
+        let r = regex_xms(&format!(r"<BDS>BIBNAMEHASH</BDS>")).unwrap();
+        entry_string = r.entry_string.replace_all(&s);
       }
 
       // namehash
       if (let $e = self.get_entryfield(key, "namehash")) {
-        let $str = "<bbl:field name=\"namehash\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>NAMEHASH</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"namehash\">{e}</bbl:field>");
+        let r = regex_xms(&format!(r"<BDS>NAMEHASH</BDS>")).unwrap();
+        entry_string = r.entry_string.replace_all(&s);
       }
 
       // per-namehash
@@ -1435,60 +1445,57 @@ impl DataList {
         for n in nl.names() {
           let nid = n.get_id();
           if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
-            let $str = $e;
-            $entry_string =~ s|\[BDS\]$nid-PERNAMEHASH\[/BDS\]|$str|gxms;
+            let r = regex_xms(&format!(r"\[BDS\]{nid}-PERNAMEHASH\[/BDS\]")).unwrap();
+            entry_string = r.entry_string.replace_all(e);
           }
           else {
-            $entry_string =~ s|hash="\[BDS\]$nid-PERNAMEHASH\[/BDS\]"?,?||gxms;
+            let r = regex_xms(&format!(r#"hash="\[BDS\]{nid}-PERNAMEHASH\[/BDS\]"?,?"#)).unwrap();
+            entry_string = r.entry_string.replace_all("");
           }
         }
       }
 
       // extraname
-      if (let $e = $self->get_extranamedata_for_key($key)) {
-        let $str = "<bbl:field name=\"extraname\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>EXTRANAME</BDS>|$str|gxms;
+      if (let $e = $self->get_extranamedata_for_key(key)) {
+        let s = format!("<bbl:field name=\"extraname\">{e}</bbl:field>");
+        entry_string = regex!(r"<BDS>EXTRANAME</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // extradate
-      if (let $e = $self->get_extradatedata_for_key($key)) {
-        let $str = "<bbl:field name=\"extradate\">$e</bbl:field>";
-        $entry_string =~ s|<BDS>EXTRADATE</BDS>|$str|gxms;
+      if (let $e = $self->get_extradatedata_for_key(key)) {
+        let s = format!("<bbl:field name=\"extradate\">{e}</bbl:field>");
+        entry_string = regex!(r"<BDS>EXTRADATE</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // sortinit + sortinithash
-      let sinit = self.get_sortinit_for_key(key);
-      if (defined($sinit)) {
-        let $str = "<bbl:field name=\"sortinit\">$sinit</bbl:field>";
-        $entry_string =~ s|<BDS>SORTINIT</BDS>|$str|gxms;
+      if let Some(sinit) = self.get_sortinit_for_key(key) {
+        let s = format!("<bbl:field name=\"sortinit\">{sinit}</bbl:field>");
+        entry_string = regex!(r"<BDS>SORTINIT</BDS>"xms).replace_all(&entry_string, &s);
         let $sinithash = md5_hex($self->{sortinitcollator}->viewSortKey($sinit));
-        $str = "<bbl:field name=\"sortinithash\">$sinithash</bbl:field>";
-        $entry_string =~ s|<BDS>SORTINITHASH</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"sortinithash\">{sinithash}</bbl:field>");
+        entry_string = regex!(r"<BDS>SORTINITHASH</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // labelprefix
       if (let $pn = self.get_labelprefix(key)) {
-        let $str = "<bbl:field name=\"labelprefix\">$pn</bbl:field>";
-        $entry_string =~ s|<BDS>LABELPREFIX</BDS>|$str|gxms;
+        let s = format!("<bbl:field name=\"labelprefix\">{pn}</bbl:field>");
+        entry_string = regex!(r"<BDS>LABELPREFIX</BDS>"xms).replace_all(&entry_string, &s);
       }
 
       // singletitle
-      if ($self->get_entryfield($key, "singletitle")) {
-        let $str = "true";
-        $entry_string =~ s|\[BDS\]SINGLETITLE\[/BDS\]|$str|gxms;
+      if (self.get_entryfield(key, "singletitle")) {
+        entry_string = regex!(r"\[BDS\]SINGLETITLE\[/BDS\]"xms).replace_all(&entry_string, "true");
       }
       else {
-        $entry_string =~ s|\ssingletitle="\[BDS\]SINGLETITLE\[/BDS\]"||gxms;
+        entry_string = regex!(r#"\ssingletitle="\[BDS\]SINGLETITLE\[/BDS\]""#xms).replace_all(&entry_string, "");
       }
     }
 
     // Clean up dangling commas
-    $entry_string =~ s|,(?:\n\s+)?\}\}|}}|gxms;
+    entry_string = regex!(r",(?:\n\s+)?\}\}|}}"xms).replace_all(&entry_string, "");
 
     // Clean up generic metadata which was not replaced
-    $entry_string =~ s|^\s+<BDS>[^<]+</BDS>\n||gxms;
-
-    return $entry_string;
+    regex!(r"^\s+<BDS>[^<]+</BDS>\n"xms).replace_all(&entry_string, "")
   }
 
   /// Returns the index where the name list begins to differ from any other list
@@ -1512,13 +1519,14 @@ impl DataList {
         continue;
       }
       for (i, val) in list.iter().enumerate() {
-        if (defined(val) && defined(l[i]) && (val == l[i])) {
-          if (!defined(index) || i > index) {
-            index = Some(i);
+        match (val, l.get(i)) {
+          (Some(val), Some(li)) if val == li => {
+            match index {
+              Some(idx) if i <= idx => {},
+              _ => index = Some(i);
+            }
           }
-        }
-        else {
-          break;
+          _ => break;
         }
       }
     }
@@ -1529,8 +1537,7 @@ impl DataList {
       } else { // Differs with some list, return index of where difference begins
         return index+1;
       }
-    }
-    else { // no similar lists
+    } else { // no similar lists
       return None;
     }
   }

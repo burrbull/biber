@@ -10,10 +10,11 @@ anyhow = "1.0.57"
 base62 = "2.0.0"
 bimap = "0.6.2"
 clap = { version = "3.2.5", features = ["derive"] }
+fancy-regex = "0.10.0"
 isbn2 = "0.4.0"
 itertools = "0.10.3"
 language-tags = "0.3.2"
-lazy-regex = "2.2.2"
+lazy-regex = "2.3.0"
 log = "0.4.17"
 once_cell = "1.12.0"
 phf = { version = "0.10.1", features = ["macros"] }

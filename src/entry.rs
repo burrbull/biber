@@ -1,5 +1,6 @@
 //! `Entry` objects
 
+/*
 use crate::Utils;
 use crate::Internals;
 use crate::Constants;
@@ -8,6 +9,7 @@ use Digest::MD5 qw( md5_hex );
 use Encode;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use List::Util qw( first );
+*/
 
 pub struct XData;
 
@@ -384,8 +386,8 @@ impl Entry {
 
   /// Check whether any parts of a date field exist when passed a datepart field name
   fn date_fields_exist(&self, field: &str) -> bool {
-    let r = Regex::new("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$").unwrap();
-    let t = field.replace(field, "");
+    let r = regex!("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
+    let t = r.replace(field, "");
     for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
       if self.datafields.get(&format!("{t}{dp}")).is_some() || self.datafields.get(&format!("{t}end{dp}")).is_some() {
         return true;
@@ -396,8 +398,8 @@ impl Entry {
 
   /// Delete all parts of a date field when passed any datepart field name
   fn delete_date_fields(&mut self, field: &str)
-    let r = Regex::new("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$").unwrap();
-    let t = field.replace(field, "");
+    let r = regex!("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
+    let t = r.replace(field, "");
     for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
       self.datafields.remove(&format!("{t}{dp}"));
       self.datafields.remove(&format!("{t}end{dp}"));

@@ -4,7 +4,6 @@ use std::collections::HashSet;
 
 use crate::Id;
 use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all};
-use regex::Regex;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -25,7 +24,6 @@ use IPC::Run3; // This works with PAR::Packer and Windows. IPC::Run doesn't
 use crate::Constants;
 use crate::LaTeX::Recode;
 use crate::Entry::Name;
-use Regexp::Common qw( balanced );
 use List::AllUtils qw( first );
 use Log::Log4perl qw(:no_extra_logdie_message);
 use Scalar::Util qw(looks_like_number);
@@ -52,8 +50,7 @@ pub fn glob_data_file($source, $globflag) -> Vec<String> {
   let sources = Vec::new();
 
   // No globbing unless requested. No globbing for remote datasources.
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms ||
-      !_bool_norm($globflag)) {
+  if regex_is_match!(r"\A(?:http|ftp)(s?):\/\/"xms, source) || !_bool_norm($globflag) {
     sources.push(source);
     return @sources;
   }
@@ -122,7 +119,7 @@ pub fn locate_data_file($source) {
   let $sourcepath = $source; // default if nothing else below applies
   let $foundfile;
 
-  if ($source =~ m/\A(?:http|ftp)(s?):\/\//xms) {
+  if regex_is_match!(r"\A(?:http|ftp)(s?):\/\/"xms, source) {
     info!("Data source '{}' is a remote BibTeX data source - fetching ...", source);
     if (let $cf = $REMOTE_MAP{$source}) {
       info!("Found '{}' in remote source cache", source);
@@ -261,7 +258,7 @@ pub fn locate_data_file($source) {
     if ($found) {
         debug!("Found '{}' via kpsewhich", sourcepath);
       chomp $found;
-      $found =~ s/\cM\z//xms; // kpsewhich in cygwin sometimes returns ^M at the end
+      found = regex!(r"\cM\z"xms).replace(&found, ""); // kpsewhich in cygwin sometimes returns ^M at the end
       // filename can be UTF-8 and run3() isn't clever with UTF-8
       let $f = file_exist_check(decode_utf8($found));
       return $f;
@@ -376,7 +373,7 @@ pub fn strip_noinit(string) {
   }
   for opt in ($noinit->@*) {
     let $re = $opt->{value};
-    $string =~ s/$re//gxms;
+    string = regex_xms(&format("{re}")).unwrap().replace_all(&string, "");
   }
   // remove latex macros (assuming they have only ASCII letters)
   $string =~ s{\\[A-Za-z]+\s*(\{([^\}]*)?\})?}{defined($2)?$2:q{}}eg;
@@ -410,7 +407,7 @@ pub fn strip_nosort(string: &str, fieldname: &str) -> String {
     }
 
     for re in &restrings {
-      $string =~ s/$re//gxms;
+      string = regex_xms(&format("{re}")).unwrap().replace_all(&string, "");
     }
   }
   string
@@ -450,7 +447,8 @@ pub fn strip_nonamestring(string, fieldname) {
   }
 
   for re in ($restrings->@*) {
-    string = Regex::new(format!(r"(?xms){re}")).unwrap().replace_all(string, "");
+    let r = regex_xms(&format!(r"{re}")).unwrap();
+    string = r.replace_all(string, "");
   }
   return $string;
 }
@@ -467,7 +465,8 @@ pub fn normalise_string_label(string: &str) -> String {
   string = regex_replace_all!(r"([^\\])~", string, |_, word| format!("{word} ")); // Foo~Bar -> Foo Bar
   for nolabel in nolabels {
     let re = nolabel.value;
-    string = Regex::new(format!(r"(?xms){re}")).unwrap().replace_all(string, "");           // remove nolabel items
+    let r = regex_xms(&format!(r"{re}")).unwrap();
+    string = r.replace_all(string, "");              // remove nolabel items
   }
   string = regex!(r"(?:^\s+|\s+$)").replace_all(""); // Remove leading and trailing spaces
   regex!(r"\s+").replace_all(" ")                    // collapse spaces
@@ -547,9 +546,14 @@ pub fn normalise_string_hash(s: &str) -> String {
   // remove tex macros
   let s = regex_replace_all!(r"\\(\p{L}+)\s*", s, |_, name| format!("{name}:"));
   // remove accent macros like \"a
-  let s = regex_replace_all!(r"\\([^\p{L}])\s*", &s, |_, name| format!("ord({name}).':'")); // TODO: `e` modifier
+  let s = regex_replace_all!(r"\\([^\p{L}])\s*", &s, |_, name| format!("{}:", ord(name)));
   // Remove braces, ties, dots, spaces
   regex!(r"[\{\}~\.\s]+").replace_all(&s, "").into()
+}
+
+fn ord(s: &str) -> u32 {
+  todo!()
+  // https://perldoc.perl.org/functions/ord
 }
 
 /// Like normalise_string, but also substitutes ~ and whitespace with underscore.
@@ -750,40 +754,41 @@ pub fn stringify_hash($hashref) {
 /// Normalise any UTF-8 encoding string immediately to exactly what we want
 /// We want the strict perl utf8 "UTF-8"
 pub fn normalise_utf8 {
-  if (defined(crate::Config->getoption("input_encoding")) &&
-      crate::Config->getoption("input_encoding") =~ m/\Autf-?8\z/xmsi) {
+  if crate::Config->getoption("input_encoding")
+  .filter(|enc| regex_is_match!(r"\Autf-?8\z"xmsi, enc)).is_some() {
     crate::Config->setoption("input_encoding", "UTF-8");
   }
-  if (defined(crate::Config->getoption("output_encoding")) &&
-      crate::Config->getoption("output_encoding") =~ m/\Autf-?8\z/xmsi) {
+  if crate::Config->getoption("output_encoding")
+   .filter(|enc| regex_is_match!(r"\Autf-?8\z"xmsi, enc)).is_some() {
     crate::Config->setoption("output_encoding", "UTF-8");
   }
 }
-
+*/
+/*
 /// We turn the initials into an array so we can be flexible with them later
 /// The tie here is used only so we know what to split on. We don't want to make
 /// any typesetting decisions in Biber, like what to use to join initials so on
 /// output to the .bbl, we only use BibLaTeX macros.
-pub fn inits($istring) {
-  $istring =~ s/[{}]//; // Remove any spurious braces left by btparse inits routines
+pub fn inits(istring: &str) -> impl Iterator<Item=&str> {
+  // Remove any spurious braces left by btparse inits routines
+  let istring = regex!(r"[{}]").replace(istring, "");
   // The map {} is there to remove broken hyphenated initials returned from btparse
   // For example, in the, admittedly strange 'al- Hassan, John', we want the 'al-'
   // interpreted as a prefix (because of the following space) but because of the
   // hypen, this is intialised as "a-" by btparse. So we correct such edge cases here by
   // removing any trailing dashes in initials
-  return [ map {s/\p{Pd}$//r} split(/(?<!\\)~/, $istring) ];
-}
+  fancy_regex::Regex::new(r"(?<!\\)~").unwrap().split(istring).map(|s| regex!(r"\p{Pd}$").replace(s, ""))
+}*/
 
 /// Replace all join typsetting elements in a name part (space, ties) with BibLaTeX macros
 /// so that typesetting decisions are made in BibLaTeX, not hard-coded in Biber
-pub fn join_name($nstring) {
-  $nstring =~ s/(?<!\\\S)\s+/\\bibnamedelimb /gxms; // Don't do spaces in char macros
-  $nstring =~ s/(?<!\\)~/\\bibnamedelima /gxms; // Don't do '\~'
+pub fn join_name(nstring: &str) -> String {
+  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\\S)\s+").unwrap().replace_all(nstring, "\\bibnamedelimb "); // Don't do spaces in char macros
+  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\)~A").unwrap().replace_all(&nstring, "\\bibnamedelima "); // Don't do '\~'
   // Special delim after name parts ending in period
-  $nstring =~ s/(?<=\.)\\bibnamedelim[ab]/\\bibnamedelimi/gxms;
-  return $nstring;
+  fancy_regex::Regex::new(r"(?xms)(?<=\.)\\bibnamedelim[ab]").unwrap().replace_all(&nstring, "\\bibnamedelimi").into()
 }
-
+/*
 /// Process any per_entry option transformations which are necessary on output
 pub fn filter_entry_options($secnum, $be) {
   let $bee = $be->get_field("entrytype");
@@ -1536,3 +1541,11 @@ fn _bool_norm($b) -> bool {
   false;
 }
 */
+
+pub fn regex_xms(re: &str) -> Result<regex::Regex, regex::Error> {
+  regex::RegexBuilder::new(re)
+  .multi_line(true)
+  .dot_matches_new_line(true)
+  .ignore_whitespace(true)
+  .build()
+}

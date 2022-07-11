@@ -1,3 +1,4 @@
+/*
 use Carp;
 use crate::Constants;
 use crate::DataModel;
@@ -20,6 +21,7 @@ use XML::LibXML::Simple;
 use Data::Dump qw(dump);
 use Unicode::Normalize;
 use URI;
+*/
 
 let $orig_key_order = {};
 
@@ -1313,8 +1315,7 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
 // normalise a node name as they have a namsespace and might not be lowercase
 fn _norm(field: &str) -> String {
   let name = field.to_lowercase();
-  let r = Regex::new(&format!(r"(?xms)\A{NS}:")).unwrap();
-  r.replace(&name, "").into()
+  regex_xms(&format!(r"\A{NS}:")).unwrap().replace(&name, "").into()
 }
 
 

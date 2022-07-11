@@ -10,6 +10,7 @@
 use crate::section::{DataSource, DataSourceType};
 use crate::datalist::Filter;
 
+/*
 use parent qw(Class::Accessor crate::Internals);
 
 use constant {
@@ -48,6 +49,7 @@ use Scalar::Util qw(looks_like_number);
 use Sort::Key qw ( multikeysorter );
 use Text::BibTeX qw(:macrosubs);
 use Unicode::Normalize;
+*/
 
 pub struct Biber;
 
@@ -854,7 +856,7 @@ impl Biber {
           // Save dynamic key -> member keys mapping for set entry auto creation later
           // We still need to find these even if allkeys is set
           if (exists($keyc->{type}) && $keyc->{type} == "set") {
-            bib_section.set_dynamic_set(key, Regex::new("\s*,\s*").unwrap().split(&keyc.members));
+            bib_section.set_dynamic_set(key, regex!("\s*,\s*").split(&keyc.members));
             keys.push(key);
             key_flag = true; // There is at least one key, used for error reporting below
           }
@@ -1109,8 +1111,8 @@ impl Biber {
     _resolve_datafieldsets();
 
     // Force output_safechars flag if output to ASCII and input_encoding is not ASCII
-    if (crate::Config->getoption("output_encoding") =~ /(?:x-)?ascii/xmsi &&
-        crate::Config->getoption("input_encoding") !~ /(?:x-)?ascii/xmsi) {
+    if regex_is_match!(r"(?:x-)?ascii"xmsi,  crate::Config->getoption("output_encoding")) &&
+    !regex_is_match!(r"(?:x-)?ascii"xmsi, crate::Config->getoption("input_encoding")) {
       crate::Config->setoption("output_safechars", 1);
     }
   }
@@ -1123,8 +1125,8 @@ impl Biber {
     _resolve_datafieldsets();
 
     // Force output_safechars flag if output to ASCII and input_encoding is not ASCII
-    if (crate::Config->getoption("output_encoding") =~ /(?:x-)?ascii/xmsi &&
-        crate::Config->getoption("input_encoding") !~ /(?:x-)?ascii/xmsi) {
+    if regex_is_match!(r"(?:x-)?ascii"xmsi, crate::Config->getoption("output_encoding")) &&
+    !regex_is_match!(r"(?:x-)?ascii"xmsi, crate::Config->getoption("input_encoding")) {
       crate::Config->setoption("output_safechars", 1);
     }
   }
@@ -2236,7 +2238,7 @@ impl Biber {
     // manual)
     for h_ln in ($lnamespec->@*) {
       let $ln = $h_ln->{content};
-      if ( $ln =~ /\Ashort(.+)\z/xms ) {
+      if regex_is_match!(r"\Ashort(.+)\z"xms, ln) {
         continue;
       }
 

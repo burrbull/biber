@@ -1,5 +1,6 @@
 //! `DataModel` objects
 
+/*
 no autovivification;
 
 use List::Util qw( first );
@@ -7,6 +8,7 @@ use List::AllUtils qw( firstidx );
 use crate::Config;
 use Scalar::Util qw (blessed looks_like_number);
 use Unicode::UCD qw(num);
+*/
 
 #[derive(Debug)]
 pub struct DataModel;

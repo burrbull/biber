@@ -1,5 +1,6 @@
 //! Internal methods for processing the bibliographic data
 
+/*
 use Carp;
 use crate::Constants;
 use crate::Utils;
@@ -16,6 +17,7 @@ use Unicode::GCString;
 use Unicode::Collate::Locale;
 use Unicode::Normalize;
 use Unicode::UCD qw(num);
+*/
 
 // Hashes should not care about use* or sorting name key template etc. We want to generate hashes
 // unique to a name, not a particular representation of a name. So, always statically concatenate
@@ -736,7 +738,8 @@ fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs,
           for nolabelwc in ($nolabelwcs->@*) {
             let $nlwcopt = $nolabelwc->{value};
             let $re = qr/$nlwcopt/;
-            $field_string =~ s/$re//gxms; // remove nolabelwidthcount items
+            // remove nolabelwidthcount items
+            field_string = regex_xms(&format!(r"{re}")).replace_all(&field_string, "");
           }
         }
 
@@ -1621,7 +1624,7 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
     items.iter().map(|i| normalise_string_sort(i, field)).join(lsi)
   };
 
-  s = Regex::new(r"(?xms)\s+\z").unwrap().replace(&s, "");
+  s = regex!(r"\s+\z"xms).replace(&s, "");
   if truncated {
     s.push(trunc);
   }

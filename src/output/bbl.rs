@@ -1,3 +1,4 @@
+/*
 use parent qw(crate::Output::base);
 
 use crate::Config;
@@ -13,6 +14,7 @@ use Text::Wrap;
 use Unicode::Normalize;
 use URI;
 $Text::Wrap::columns = 80;
+*/
 
 /// Class for Biber output of .bbl
 pub struct Bbl;

@@ -1,3 +1,4 @@
+/*
 use parent qw(crate::Output::base);
 
 use crate::Config;
@@ -11,6 +12,7 @@ use Scalar::Util qw(looks_like_number);
 use Text::Wrap;
 $Text::Wrap::columns = 80;
 use Unicode::Normalize;
+*/
 
 /// Class for bibtex output
 pub struct BibTeX;

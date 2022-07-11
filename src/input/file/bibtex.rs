@@ -1,5 +1,6 @@
 use unicase::UniCase;
 
+/*
 use sigtrap qw(handler TBSIG SEGV);
 
 use Carp;
@@ -29,7 +30,7 @@ use Unicode::Normalize;
 use Unicode::GCString;
 use Unicode::UCD qw(num);
 use XML::LibXML::Simple;
-
+*/
 
 state $cache; // state variable so it's persistent across calls to extract_entries()
 use vars qw($cache);
@@ -1727,7 +1728,7 @@ fn parsename(section, namestr, fieldname) {
       $part = strip_noinit($part);
 
       // split on spaces/tilde outside of brace block
-      $namec{"${np}-i"} = [gen_initials(Regex::new(r"[\h~]+(?![^{]*\})").unwrap().split(part))];
+      $namec{"${np}-i"} = [gen_initials(regex!(r"[\h~]+(?![^{]*\})").split(part))];
     }
   }
 
@@ -1801,7 +1802,7 @@ fn parsename_x(section, namestr, fieldname, key) {
         $namec{$npn} = $npv;
       }
       else {
-        $namec{$npn} = join_name_parts(Regex::new(r"\s+").unwrap().split(npv));
+        $namec{$npn} = join_name_parts(regex!(r"\s+").split(npv));
       }
     }
   }
@@ -1822,7 +1823,7 @@ fn parsename_x(section, namestr, fieldname, key) {
 
       // Generate any initials which are missing
       if (!exists($namec{"${np}-i"})) {
-        $namec{"${np}-i"} = [gen_initials(Regex::new(r"[\s~]+").unwrap().split(part))];
+        $namec{"${np}-i"} = [gen_initials(regex!(r"[\s~]+").split(part))];
       }
     }
   }

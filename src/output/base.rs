@@ -1,3 +1,4 @@
+/*
 use crate::Entry;
 use crate::Utils;
 use Encode;
@@ -6,6 +7,7 @@ use Text::Wrap;
 $Text::Wrap::columns = 80;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Unicode::Normalize;
+*/
 
 /// Base class for Biber output modules.
 pub struct Base;

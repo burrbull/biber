@@ -1,3 +1,4 @@
+/*
 use parent qw(crate::Output::base);
 
 use crate::Config;
@@ -8,6 +9,7 @@ use List::AllUtils qw( :all );
 use IO::File;
 use Log::Log4perl qw( :no_extra_logdie_message );
 use Unicode::Normalize;
+*/
 
 /// Class for Biber output of GraphViz .dot files
 pub struct Dot;
