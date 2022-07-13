@@ -827,12 +827,12 @@ fn _create_entry(k, e) {
     }
 
     // Now run any defined handler
-    if ($dm->is_field($fc)) {
+    if dm.is_field(fc) {
       // Check the Text::BibTeX field in case we have e.g. date = {}
-      if ($e->get(encode("UTF-8", NFC($f))) != "") {
+      if ($e->get(encode("UTF-8", NFC(f))) != "") {
         let $ann = $CONFIG_META_MARKERS{annotation};
         let $nam = $CONFIG_META_MARKERS{namedannotation};
-        let v = if ($fc =~ m/$ann(?:$nam.+)?$/) {
+        let v = if regex_is_match!(r"$ann(?:$nam.+)?$", fc) {
           _annotation(&mut bibentry, e, f, k)
         }
         else {
@@ -871,7 +871,6 @@ fn _create_entry(k, e) {
             FieldType::List => {
               match fmt {
                 Format::Default => {
-
                   match dtype => {
                     DataType::Key
                     | DataType::Literal
@@ -912,8 +911,8 @@ fn _create_entry(k, e) {
 // ========
 
 // Data annotation fields
-fn _annotation(bibentry, entry, field, key) {
-  let $fc = UniCase::new($field); // Casefolded field which is what we need internally
+fn _annotation(bibentry: &mut Entry, entry, field: &str, key: &str) {
+  let $fc = UniCase::new(field); // Casefolded field which is what we need internally
   let $value = $entry->get(encode("UTF-8", NFC($field)));
   let $ann = quotemeta(crate::Config->getoption("annotation_marker"));
   let $nam = quotemeta(crate::Config->getoption("named_annotation_marker"));
@@ -924,19 +923,19 @@ fn _annotation(bibentry, entry, field, key) {
   }
   $fc =~ s/$ann$//;
 
-  for a in (split(/\s*;\s*/, $value)) {
-    let ($count, $part, $annotations) = $a =~ /^\s*(\d+)?:?([^=]+)?=(.+)/;
+  for a in regex!(r"\s*;\s*").split(value) {
+    let (_, count, part, mut annotations) = regex_captures!(r"^\s*(\d+)?:?([^=]+)?=(.+)", a).unwrap();
     // Is the annotations a literal annotation?
-    let $literal = 0;
-    if ($annotations =~ m/^\s*"(.+)"\s*$/) {
-      $literal = 1;
-      $annotations = $1;
+    let mut literal = false;
+    if let Some(_, one) = regex_captures!(r#"^\s*"(.+)"\s*$"#, annotations) {
+      literal = true;
+      $annotations = one;
     }
     let ann = &mut crate::annotation::ANN.lock().unwrap();
-    if ($part) {
+    if !part.is_empty() {
       ann.set_part_annotation(key, fc, name, annotations, literal, count, part);
     }
-    else if ($count) {
+    else if !count.is_empty() {
       ann.set_item_annotation(key, fc, name, annotations, literal, count);
     }
     else {
@@ -979,7 +978,7 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
   // Deal with ISBN options
   if fc == UniCase::new("isbn") {
     require Business::ISBN;
-    let ($vol, $dir, undef) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
+    let ($vol, $dir, _) = File::Spec->splitpath( $INC{"Business/ISBN.pm"} );
     $dir =~ s/\/$//;            // splitpath sometimes leaves a trailing '/'
     // Just in case it is already set. We also need to fake this in tests or it will
     // look for it in the blib dir
@@ -1059,51 +1058,50 @@ fn _verbatim(bibentry, entry, field) {
 
 // Range fields
 // m-n -> [m, n]
-// m   -> [m, undef]
+// m   -> [m, None]
 // m-  -> [m, ""]
 // -n  -> ["", n]
-// -   -> ["", undef]
+// -   -> ["", None]
 
-fn _range(bibentry, entry, field, key) {
-  let $values_ref;
+fn _range(bibentry: &mut Entry, entry, field, key) -> Vec<(String, Option<String>)> {
+  let mut values_ref = Vec::new();
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Record any XDATA and skip if we did
-  if ($bibentry->add_xdata_ref($field, $value)) {
+  if (bibentry.add_xdata_ref($field, $value)) {
     return $value; // Return raw value
   }
 
   let @values = split(/\s*[;,]\s*/, $value);
   // If there is a range sep, then we set the end of the range even if it's null
   // If no range sep, then the end of the range is undef
-  for value in (@values) {
+  for mut value in (@values) {
     let $ovalue = $value;
-    $value =~ s/~/ /g; // Some normalisation for malformed fields
-    $value =~ m/\A\s*(\P{Pd}+)\s*\z/xms ||// Simple value without range
-      $value =~ m/\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z/xms ||
-        $value =~ m/\A\s*(.+)(\p{Pd}{2,})(.+)\s*\z/xms || // M-1--M-4
-          $value =~ m/\A\s*(.+)(\p{Pd}+)(.+)\s*\z/xms;// blah M-1
-        let $start = $1;
-    let $end;
-    if ($2) {
-      $end = $3;
-    }
-    else {
-      $end = undef;
-    }
-    $start =~ s/\A\{([^\}]+)\}\z/$1/;
-    if $end {
-      $end =~ s/\A\{([^\}]+)\}\z/$1/;
-    }
-    if ($start) {
-      push $values_ref->@*, [$start || "", $end];
-    }
-    else {
+    value = value.replace("~", " "); // Some normalisation for malformed fields
+    let (start, end) = if let Some((_, one)) = regex_captures!(r"/\A\s*(\P{Pd}+)\s*\z"xms, &value) {
+      // Simple value without range
+      (one, None)
+    } else if let Some((_, one, two, three)) = regex_captures!(r"\A\s*(\{[^\}]+\}|[^\p{Pd} ]+)\s*(\p{Pd}+)\s*(\{[^\}]+\}|\P{Pd}*)\s*\z"xms, &value) {
+      (one, (!two.is_empty()).then_some(three))
+    } else if let Some((_, one, two, three)) = regex_captures!(r"\A\s*(.+)(\p{Pd}{2,})(.+)\s*\z"xms, &value) {
+      // M-1--M-4
+      (one, (!two.is_empty()).then_some(three))
+    } else if let Some((_, one, two, three)) = regex_captures!(r"\A\s*(.+)(\p{Pd}+)(.+)\s*\z"xms, &value) {
+      // blah M-1
+      (one, (!two.is_empty()).then_some(three))
+    } else {
+      panic!()
+    };
+    let start = regex_replace!(r"\A\{([^\}]+)\}\z", start, |_, one: &str| one.to_string());
+    let end = end.skip_empty().map(|end| regex_replace!(r"\A\{([^\}]+)\}\z", end, |_, one: &str| one.to_string()));
+    if !start.is_empty() {
+      values_ref.push(($start || "", $end));
+    } else {
       biber_warn("Range field '$field' in entry '$key' is malformed, falling back to literal", $bibentry);
-      push $values_ref->@*, [$ovalue, undef];
+      values_ref.push(($ovalue, None));
     }
   }
-  return $values_ref;
+  values_ref
 }
 
 // Names
@@ -1581,11 +1579,11 @@ fn preprocess_file(filename, benc) {
   }
 
   // strip UTF-8 BOM if it exists - this just makes T::B complain about junk characters
-  $buf =~ s/\A\x{feff}//;
+  buf = regex_replace!(r"\A\u{feff}", &buf);
 
   // Normalise line breaks because libbtparse can't handle things like CR only
   // in some circumstances
-  $buf =~ s/\R/\n/g;
+  buf = regex_replace_all!(r"\R", &buf, "\n");
 
   slurp_switchw($ufilename, $buf);// Unicode NFC boundary
 
@@ -1602,9 +1600,9 @@ fn preprocess_file(filename, benc) {
 /// We do this because latex_decoding the entire buffer is difficult since
 /// such decoding is regexp based and since braces are used to protect data in
 /// .bib files, it makes it hard to do some parsing.
-fn parse_decode(ufilename) {
+fn parse_decode(ufilename: &Path) -> String {
   let $dmh = crate::config::get_dm_helpers();
-  let $lbuf;
+  let mut lbuf = String::new();
 
   let $bib = Text::BibTeX::File->new();
   $bib->open($ufilename, {binmode => "UTF-8", normalization => "NFD"}) || biber_error("Cannot create Text::BibTeX::File object from $ufilename: $!");
@@ -1612,51 +1610,53 @@ fn parse_decode(ufilename) {
   info!("LaTeX decoding ...");
 
   while ( let $entry = Text::BibTeX::Entry->new($bib) ) {
-  if ( $entry->metatype == BTE_REGULAR ) {
-      $lbuf .= '@' . $entry->type . '{' . $entry->key . ',' . "\n";
-      for f in ($entry->fieldlist) {
-        let $fv = $entry->get(encode("UTF-8", NFC($f))); // NFC boundary: $f is "output" to Text::BibTeX
+    match entry->metatype {
+      BTE_REGULAR => {
+        lbuf.push_str(&format!("@{}{{{},\n", entry->type, entry->key));
+        for f in ($entry->fieldlist) {
+          let mut fv = $entry->get(encode("UTF-8", NFC($f))); // NFC boundary: $f is "output" to Text::BibTeX
 
-        // Don't decode verbatim fields
-        if (!first {unicase::eq(f, $_)} $dmh->{verbs}->@*) {
-          $fv = crate::LaTeX::Recode::latex_decode($fv);
+          // Don't decode verbatim fields
+          if !dmh.verbs.iter().any(|v| unicase::eq(f, v)) {
+            fv = crate::LaTeX::Recode::latex_decode(fv);
+          }
+          lbuf.push_str(&format!("  {f} = {{{fv}}},\n"));
         }
-        $lbuf .= "  $f = {$fv},\n";
+        lbuf.push_str("\n}\n\n");
       }
-      $lbuf .= "\n" . '}' . "\n\n";
-    }
-    else if ($entry->metatype == BTE_PREAMBLE) {
-      $lbuf .= '@PREAMBLE{"';
-      $lbuf .= $entry->value;
-      $lbuf .=  '"}' . "\n";
-    }
-    else if ($entry->metatype == BTE_COMMENT) {
-      $lbuf .= '@COMMENT{';
-      $lbuf .= $entry->value;
-      $lbuf .=  '}' . "\n";
-    }
-    else if ($entry->metatype == BTE_MACRODEF) {
-      $lbuf .= '@STRING{';
-      for f in ($entry->fieldlist) {
-        $lbuf .= $f . ' = {' . $entry->get(encode("UTF-8", NFC($f))) . '}';
+      BTE_PREAMBLE => {
+        lbuf.push_str("@PREAMBLE{\"");
+        lbuf.push_str(entry->value);
+        lbuf.push_str("\"}\n");
       }
-      $lbuf .= "}\n";
-    }
-    else {
-      $lbuf .= crate::LaTeX::Recode::latex_decode($entry->print_s);
+      BTE_COMMENT => {
+        lbuf.push_str("@COMMENT{");
+        lbuf.push_str(entry->value);
+        lbuf.push_str("}\n");
+      }
+      BTE_MACRODEF => {
+        lbuf.push_str("@STRING{");
+        for f in ($entry->fieldlist) {
+          lbuf.push_str(&format!("{f} = {{{}}}", entry.get(encode("UTF-8", NFC(f)))));
+        }
+        lbuf.push_str("}\n");
+      }
+      _ => {
+        lbuf.push_str(&crate::LaTeX::Recode::latex_decode($entry->print_s));
+      }
     }
   }
 
   // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
   if !(crate::Config->getoption("nostdmacros")) {
-    for mon in (keys %MONTHS) {
-      Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
+    for (mon, monn) in &MONTHS {
+      Text::BibTeX::add_macro_text(mon, monn);
     }
   }
 
   $bib->close;
 
-  return $lbuf;
+  lbuf
 }
 
 /// Given a name string, this function returns a crate::Entry::Name object
@@ -1668,8 +1668,8 @@ fn parse_decode(ufilename) {
 /// ```
 /// { given          => {string => "John", initial => ['J']},
 ///   family         => {string => "Doe", initial => ['D']},
-///   prefix         => {string => undef, initial => undef},
-///   suffix         => {string => undef, initial => undef},
+///   prefix         => {string => None, initial => None},
+///   suffix         => {string => None, initial => None},
 ///   id             => 32RS0Wuj0P,
 ///   strip          => {"given"  => 0,
 ///                      "family" => 0,
@@ -1735,8 +1735,9 @@ fn parsename(section, namestr, fieldname) {
   let %nameparts;
   let $strip;
   for np in ("prefix", "family", "given", "suffix") {
-    $nameparts{$np} = {string  => $namec{"${np}-stripped"}.unwrap_or(undef),
-                       initial => $namec{$np} ? $namec{"${np}-i"} : undef};
+    $nameparts{$np} = {string  => $namec{"${np}-stripped"}.unwrap_or(None),
+                       initial => if $namec{$np} { $namec{"${np}-i"} } else { None }
+                      };
     $strip->{$np} = $namec{"${np}-strippedflag"};
 
     // Record max namepart lengths
@@ -1762,8 +1763,8 @@ fn parsename(section, namestr, fieldname) {
 /// ```
 /// { given          => {string => "John", initial => ['J']},
 ///   family         => {string => "Doe", initial => ['D']},
-///   prefix         => {string => undef, initial => undef},
-///   suffix         => {string => undef, initial => undef},
+///   prefix         => {string => None, initial => None},
+///   suffix         => {string => None, initial => None},
 ///   id             => 32RS0Wuj0P,
 ///   sortingnamekeytemplatename => 'template name',
 /// }
@@ -1830,8 +1831,9 @@ fn parsename_x(section, namestr, fieldname, key) {
 
   let %nameparts;
   for np in (keys %nps) {
-    $nameparts{$np} = {string  => $namec{$np}.unwrap_or(undef),
-                       initial => exists($namec{$np}) ? $namec{"${np}-i"} : undef};
+    $nameparts{$np} = {string  => $namec{$np}.unwrap_or(None),
+                       initial => if exists($namec{$np}) { $namec{"${np}-i"} } else { None }
+                      };
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};

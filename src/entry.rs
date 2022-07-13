@@ -28,6 +28,52 @@ pub enum LabelDateInfo {
   },
 }
 
+// $xdata =
+// [
+//  { // xdata info for an actual XDATA field (XDATA = {key, key})
+//    reffield      => "xdata",
+//    refposition   => 0,
+//    xdataentries  => // array ref of XDATA entry keys
+//    xdatafield    => None,
+//    xdataposition => 0,
+//    resolved      => 1 or 0
+//  },
+//  { // xdata info for an granular XDATA ref in another field
+//    reffield      => // field pointing to XDATA
+//    refposition   => // field position pointing to XDATA (or 1), 1-based
+//    xdataentries  => // array ref containing single XDATA entry key
+//    xdatafield    => // field within XDATA entry
+//    xdataposition => // position in list field within XDATA entry (or 1), 1-based
+//    resolved      => 1 or 0
+//  }
+//  {
+//    .
+//    .
+//    .
+//  }
+// ]
+pub struct XDataRef {
+  reffield: String,
+  refposition: u32,
+  xdataentries: Vec<String>,
+  xdatafield: Option<String>,
+  xdataposition: u32,
+  resolved: bool,
+}
+
+impl XDataRef {
+  fn new_xdata(xdataentries: Vec<String>) -> Self {
+    Self {
+      reffield: "xdata".to_string(),
+      refposition: 0,
+      xdataentries,
+      xdatafield: None,
+      xdataposition: 0,
+      resolved: false,
+    }
+  }
+}
+
 pub struct Entry {
   xdatarefs: Vec<XData>,
   labelnameinfo: Unknown,
@@ -204,17 +250,12 @@ impl Entry {
   /// Reference can be simply to an entire XDATA entry or a particular field+position in field
   /// Record reference and target positions so that the XDATA marker can be removed as otherwise
   /// it would break further parsing
-  fn add_xdata_ref(self, $reffield, $value, $reffieldposition) {
-    if ($reffield == "xdata") { // whole XDATA fields are a simple case
-      push $self->{xdatarefs}->@*, {// field pointing to XDATA
-                                    reffield => "xdata",
-                                    refposition => 0,
-                                    xdataentries => $value,
-                                    xdatafield => undef,
-                                    xdataposition => 0};
-      return 1;
-    }
-    else { // Granular XDATA reference
+  fn add_xdata_ref(&mut self, reffield: &str, $value, reffieldposition: Option<u32>) -> bool {
+    if reffield == "xdata" { // whole XDATA fields are a simple case
+      // field pointing to XDATA
+      self.xdatarefs.push(XDataRef::new_xdata(value));
+      true
+    } else { // Granular XDATA reference
       let $xnamesep = crate::Config->getoption("xnamesep");
       let $xdatamarker = crate::Config->getoption("xdatamarker");
       if (let ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
@@ -224,64 +265,67 @@ impl Entry {
           let $entry_key = $self->get_field("citekey");
           let secnum = crate::MASTER.get_current_section();
           biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
-          return 0;
+          false
+        } else {
+          // field pointing to XDATA
+          self.xdatarefs.push(XDataRef { 
+            reffield,
+            // field position pointing to XDATA, 1-based
+            refposition: if let Some(p) = reffieldposition {p + 1} else { 1 },
+            // XDATA entry
+            xdataentries: vec![xe],
+            // XDATA field
+            xdatafield: Some(xf),
+            // XDATA field position, 1-based
+            xdataposition: $xf.unwrap_or("*")
+            resolved: false,
+          });
+          true
         }
-        push $self->{xdatarefs}->@*, {// field pointing to XDATA
-                                      reffield => $reffield,
-                                      // field position pointing to XDATA, 1-based
-                                      refposition => defined($reffieldposition) ? $reffieldposition+1 : 1,
-                                      // XDATA entry
-                                      xdataentries => [$xe],
-                                      // XDATA field
-                                      xdatafield => $xf,
-                                      // XDATA field position, 1-based
-                                      xdataposition => $xf.unwrap_or("*")};
-        return 1;
-      }
-      else {
-        return 0;
+      } else {
+        false
       }
     }
   }
 
   /// Get the XDATA references
-  fn get_xdata_refs(self) {
-    return $self->{xdatarefs};
+  fn get_xdata_refs(&self) -> &Vec<XDataRef> {
+    &self.xdatarefs
   }
 
   /// Get a specific XDATA reference
-  fn get_xdata_ref(self, $field, $pos) {
-    for xdatum in ($self->{xdatarefs}->@*) {
-      if ($xdatum->{reffield} == $field) {
-        if ($pos) {
-          if ($xdatum->{refposition} == $pos) {
-            return $xdatum;
+  fn get_xdata_ref(&self, field: &str, pos: u32) -> Option<&XDataRef> {
+    for xdatum in &self.xdatarefs {
+      if xdatum.reffield == field {
+        if pos != 0 {
+          if xdatum.refposition == pos {
+            return Some(xdatum);
           }
         }
         else {
-          return $xdatum;
+          return Some(xdatum);
         }
       }
     }
-    return undef;
+    return None;
   }
 
   /// Checks if an XDATA reference was resolved. Returns false also for
   /// "no such reference".
-  fn is_xdata_resolved(self, $field, $pos) {
-    for xdatum in ($self->{xdatarefs}->@*) {
+  fn is_xdata_resolved(self, field: &str, pos: u32) -> bool {
+    for xdatum in &self.xdatarefs {
       if ($xdatum->{reffield} == $field) {
-        if ($pos) {
-          if ($xdatum->{refposition} == $pos) {
-            return $xdatum->{resolved};
+        if pos != 0 {
+          if xdatum.refposition == pos {
+            return xdatum.resolved;
           }
         }
         else {
-          return $xdatum->{resolved};
+          return xdatum.resolved;
         }
       }
     }
-    return 0;
+    return false;
   }
 
   /// Record the labelname information. This is special
@@ -451,7 +495,7 @@ impl Entry {
     else {
       return false;
     }
-    return undef; // shouldn't get here
+    return None; // shouldn't get here
   }
 
   /// Append a warning to a crate::Entry object
@@ -515,31 +559,6 @@ impl Entry {
     let section = crate::MASTER.sections().get_section(secnum);
     let $entry_key = $self->get_field("citekey");
     let $dm = crate::config::get_dm();
-
-    // $xdata =
-    // [
-    //  { // xdata info for an actual XDATA field (XDATA = {key, key})
-    //    reffield      => "xdata",
-    //    refposition   => 0,
-    //    xdataentries  => // array ref of XDATA entry keys
-    //    xdatafield    => undef,
-    //    xdataposition => 0,
-    //    resolved      => 1 or 0
-    //  },
-    //  { // xdata info for an granular XDATA ref in another field
-    //    reffield      => // field pointing to XDATA
-    //    refposition   => // field position pointing to XDATA (or 1), 1-based
-    //    xdataentries  => // array ref containing single XDATA entry key
-    //    xdatafield    => // field within XDATA entry
-    //    xdataposition => // position in list field within XDATA entry (or 1), 1-based
-    //    resolved      => 1 or 0
-    //  }
-    //  {
-    //    .
-    //    .
-    //    .
-    //  }
-    // ]
 
     for xdatum in ($xdata->@*) {
       for xdref in ($xdatum->{xdataentries}->@*) {
@@ -688,7 +707,7 @@ impl Entry {
 
     let $type        = $self->get_field("entrytype");
     let $parenttype  = $parent->get_field("entrytype");
-    let $inheritance = crate::Config->getblxoption(undef, "inheritance");
+    let $inheritance = crate::Config->getblxoption(Nonne, "inheritance");
     let %processed;
     // get defaults
     let $defaults = $inheritance->{defaults};
@@ -721,7 +740,7 @@ impl Entry {
             ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
           for field in ($inherit->{field}->@*) {
             // Skip for fields in the per-entry noinerit datafield set
-            if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key) &&
+            if (let $niset = crate::Config->getblxoption($secnum, "noinherit", None, $target_key) &&
               exists($field->{target})) {
               if DATAFIELD_SETS{$niset}.contains(field->{target}) {
                 continue;

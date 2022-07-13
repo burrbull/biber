@@ -91,7 +91,7 @@ impl Recode {
 
       // Deal with the strange world of Par::Packer paths, see similar code in Biber.pm
 
-      if ($data_path =~ m|/par\-| && $data_path !~ m|/inc|) { // a mangled PAR @INC path
+      if regex_is_match!(r"/par\-", data_path) && !regex_is_match!(r"/inc", data_path) { // a mangled PAR @INC path
         $mapdata = File::Spec->catpath($vol, "$data_path/inc/lib/Biber/LaTeX/recode_data.xml");
       }
       else {

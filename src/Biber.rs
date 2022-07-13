@@ -1192,20 +1192,21 @@ impl Biber {
         }
       }
       // XDATA
-      if (let $xdata = $be->get_xdata_refs) {
+      let xdata = be.get_xdata_refs()
+      if !xdata.is_empty() {
         let $resolved_keys;
-        for xdataref in ($xdata->@*) {
-          if (!defined($xdataref->{xdatafield})) { // XDATA ref to whole entry
-            for refkey in ($xdataref->{xdataentries}->@*) { // whole entry XDATA can be xsv
-              $refkey = $section->get_citekey_alias($refkey).unwrap_or($refkey);
-              push $resolved_keys->@*, $refkey;
+        for xdataref in xdata {
+          if xdataref.xdatafield.is_none() { // XDATA ref to whole entry
+            for refkey in xdataref.xdataentries { // whole entry XDATA can be xsv
+              let refkey = section.get_citekey_alias(refkey).unwrap_or(refkey);
+              resolved_keys.push(refkey);
             }
             $xdataref->{xdataentries} = $resolved_keys;
           }
           else { // granular XDATA ref - only one entry key
-            let $refkey = $xdataref->{xdataentries}->[0];
-            $refkey = $section->get_citekey_alias($refkey).unwrap_or($refkey);
-            $xdataref->{xdataentries} = [$refkey];
+            let refkey = $xdataref->{xdataentries}->[0];
+            let refkey = section.get_citekey_alias(refkey).unwrap_or(refkey);
+            $xdataref->{xdataentries} = vec![refkey];
           }
         }
       }
@@ -1298,8 +1299,8 @@ impl Biber {
         continue;
       }
       {
-        let xdata = $be->get_xdata_refs;
-        if !xdata {
+        let xdata = be.get_xdata_refs();
+        if xdata.is_empty() {
           continue;
         }
       }
@@ -2216,7 +2217,7 @@ impl Biber {
         ln.clone()
       };
 
-      if !(first {$ln == $_} $dmh->{namelistsall}->@*) {
+      if !dmh->{namelistsall}.contains(ln) {
         biber_warn("Labelname candidate '$ln' is not a name field - skipping");
         continue;
       }
@@ -2243,7 +2244,7 @@ impl Biber {
       }
 
       // We have already warned about this above
-      if !(first {$ln == $_} $dmh->{namelistsall}->@*) {
+      if !dmh->{namelistsall}.contains(ln) {
         continue;
       }
 
@@ -4025,9 +4026,9 @@ impl Biber {
 
     // (Re-)define the old BibTeX month macros to what biblatex wants unless user stops this
     if !(crate::Config->getoption("nostdmacros")) {
-      for mon in (keys %MONTHS) {
-        Text::BibTeX::delete_macro($mon);
-        Text::BibTeX::add_macro_text($mon, $MONTHS{$mon});
+      for (mon, monn) in &MONTHS {
+        Text::BibTeX::delete_macro(mon);
+        Text::BibTeX::add_macro_text(mon, monn);
       }
     }
 
@@ -4451,7 +4452,7 @@ impl Biber {
       }
     }
 
-    return {locale => locale2bcp47($root_obj->{locale} || crate::Config->getblxoption(undef, "sortlocale")),
+    return {locale => locale2bcp47($root_obj->{locale} || crate::Config->getblxoption(None, "sortlocale")),
             spec   => $sorting};
   }
 

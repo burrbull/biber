@@ -181,7 +181,15 @@ impl Base {
 
     // Sometimes $out_string might still be a scalar ref (tool mode, for example which doesn't use
     // sort lists)
-    return $out ? (ref($out_string) == "SCALAR" ? NFC($$out_string) : NFC($out_string)) : undef;
+    if $out {
+      if ref($out_string) == "SCALAR" {
+        NFC($$out_string)
+      } else {
+        NFC($out_string)
+      }
+    } else {
+      None
+    }
   }
 
   /// Add an entry output to a crate::Output::base object

@@ -351,7 +351,7 @@ fn _dispatch_label(self, $part, $citekey, $secnum, $section, $be, $dlist) {
 //////////////////////////
 
 fn _label_citekey(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlist) {
-  let $k = _process_label_attributes($self, $citekey, $dlist, [[$citekey,undef]], $labelattrs, $args->[0]);
+  let $k = _process_label_attributes($self, $citekey, $dlist, [[$citekey, None]], $labelattrs, $args->[0]);
   return [$k, unescape_label($k)];
 }
 
@@ -367,7 +367,7 @@ fn _label_basic(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dli
     $f = normalise_string_label($be->get_field($e));
   }
   if ($f) {
-    let $b = _process_label_attributes($self, $citekey, $dlist, [[$f, undef]], $labelattrs, $e);
+    let $b = _process_label_attributes($self, $citekey, $dlist, [[$f, None]], $labelattrs, $e);
     return [$b, unescape_label($b)];
   }
   else {
@@ -392,7 +392,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
   let $lantname = $dlist->get_labelalphanametemplatename;
 
   // Override with any entry-specific information
-  $lantname = crate::Config->getblxoption($secnum, "labelalphanametemplatename", undef, $citekey).unwrap_or($lantname);
+  $lantname = crate::Config->getblxoption($secnum, "labelalphanametemplatename", None, $citekey).unwrap_or($lantname);
 
   // Shortcut - if there is no labelname, don't do anything
   if be.get_labelname_info().is_none() {
@@ -485,7 +485,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
       $opts->{useprefix} = $useprefix;
 
       // Now extract the template to use from the global hash of templates
-      let $lnat = crate::Config->getblxoption(undef, "labelalphanametemplate")->{$lantname};
+      let $lnat = crate::Config->getblxoption(None, "labelalphanametemplate")->{$lantname};
 
       let $preacc; // arrayref accumulator for "pre" nameparts
       let $mainacc; // arrayref accumulator for main non "pre" nameparts
@@ -1053,16 +1053,16 @@ fn _dispatch_sorting(self, sortfield: &str, citekey: &str, secnum: u32, section:
   let $dm = crate::config::get_dm();
 
   // If this field is excluded from sorting for this entrytype, then skip it and return
-  if (let $se = crate::Config->getblxoption(undef, "sortexclusion", $be->get_field("entrytype"))) {
+  if (let $se = crate::Config->getblxoption(None, "sortexclusion", $be->get_field("entrytype"))) {
     if ($se->{$sortfield}) {
       return "";
     }
   }
   // If this field is excluded from sorting for all entrytypes, then include it if it's
   // explicitly included
-  if (let $se = crate::Config->getblxoption(undef, "sortexclusion", '*')) {
+  if (let $se = crate::Config->getblxoption(None, "sortexclusion", '*')) {
     if ($se->{$sortfield}) {
-      if (let $si = crate::Config->getblxoption(undef, "sortinclusion", $be->get_field("entrytype"))) {
+      if (let $si = crate::Config->getblxoption(None, "sortinclusion", $be->get_field("entrytype"))) {
         if !($si->{$sortfield}) {
           return "";
         }

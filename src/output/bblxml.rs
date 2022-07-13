@@ -38,7 +38,7 @@ impl BblXML {
   fn set_output_target_file(self, $bblxmlfile, $init) {
 
     // we assume that the schema files are in the same dir as Biber.pm:
-    (let $vol, let $biber_path, undef) = File::Spec->splitpath( $INC{"Biber.pm"} );
+    (let $vol, let $biber_path, _) = File::Spec->splitpath( $INC{"Biber.pm"} );
 
     $self->{output_target_file} = $bblxmlfile;
 

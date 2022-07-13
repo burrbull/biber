@@ -137,7 +137,7 @@ pub fn locate_data_file($source) {
             !defined(crate::Config->getoption("ssl-nointernalca")) &&
             eval {require Mozilla::CA}) {
           // we assume that the default CA file is in .../Mozilla/CA/cacert.pem
-          (let $vol, let $dir, undef) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
+          let (vol, dir, _) = File::Spec->splitpath( $INC{"Mozilla/CA.pm"} );
           $dir =~ s/\/$//;      // splitpath sometimes leaves a trailing '/'
           $ENV{PERL_LWP_SSL_CA_FILE} = File::Spec->catpath($vol, "$dir/CA", "cacert.pem");
         }
@@ -226,7 +226,7 @@ pub fn locate_data_file($source) {
 
   // File is where control file lives
   if (let $cfp = crate::config::get_ctrlfile_path()) {
-    let ($ctlvolume, $ctldir, undef) = File::Spec->splitpath($cfp);
+    let (ctlvolume, ctldir, _) = File::Spec->splitpath($cfp);
     if ($ctlvolume) { // add vol sep for windows if volume is set and there isn't one
       if !($ctlvolume =~ /:\z/) {
         $ctlvolume .= ':' ;
@@ -1167,7 +1167,7 @@ fn parse_date($obj, $string) {
 
 /// Force month/day to ISO8601-2:2016 format with leading zero
 pub fn date_monthday($md) {
-  return $md ? sprintf("%.2d", $md) : undef;
+  if md { sprintf("%.2d", md) } else { None };
 }
 
 /// Perform NFD form conversion as well as UTF-8 conversion. Used to normalize
@@ -1288,7 +1288,7 @@ pub fn match_indices($regexes, $string) {
   }
   // Return last index first so replacements can be done without recalculating
   // indices changed by earlier index replacements
-  return scalar(@ret) ? [reverse @ret] : undef;
+  if scalar(@ret) { [reverse @ret] } else { None }
 }
 
 /// Parses a range of values into a two-value array ref.

@@ -245,8 +245,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
       // defaults to the entrytype unless changed below
       let $last_type = $entry->getAttribute("entrytype");
-      let $last_field = undef;
-      let $last_fieldval = undef;
+      let $last_field = None;
+      let $last_fieldval = None;
       let $cnerror;
 
       let @imatches; // For persisting parenthetical matches over several steps
@@ -1185,8 +1185,8 @@ fn _name(bibentry, entry, f, key) {
 /// { given             => {string => "John", initial => ['J']},
 ///   family            => {string => "Doe", initial => ['D']},
 ///   middle            => {string => "Fred", initial => ['F']},
-///   prefix            => {string => undef, initial => undef},
-///   suffix            => {string => undef, initial => undef},
+///   prefix            => {string => None, initial => None},
+///   suffix            => {string => None, initial => None},
 ///   basenamestring    => "Doe",
 ///   namestring        => 'Doe, John Fred',
 ///   nameinitstring    => "Doe_JF",
@@ -1236,8 +1236,9 @@ fn parsename(section, node, fieldname, key, count) {
 
   let %nameparts;
   for np in ($dm->get_constant_value("nameparts")) { // list type so returns list
-    $nameparts{$np} = {string  => $namec{$np}.unwrap_or(undef),
-                       initial => namec.get(np).map(|_| namec[&format!("{np}-i")])};
+    $nameparts{$np} = {string  => $namec{$np}.unwrap_or(None),
+                       initial => namec.get(np).map(|_| namec[&format!("{np}-i")])
+                      };
 
     // Record max namepart lengths
     $section->set_np_length($np, length($nameparts{$np}{string}))  if $nameparts{$np}{string};

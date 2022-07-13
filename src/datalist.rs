@@ -256,7 +256,7 @@ impl DataList {
   /// Return boolean to say if a namepart is a base part according to
   /// template which created the information
   fn is_unbasepart(&self, nlid: Id, nid: Id, $np) -> bool {
-    if (first {$_ == $np} $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}->@*) {
+    if self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}.contains(np) {
       return true;
     }
     else {
@@ -313,7 +313,7 @@ impl DataList {
   fn get_unpart(&self, nlid: Id, nid: Id) {
     let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
     if !defined($un) {
-      return undef;
+      return None;
     }
     return $un->[0]
   }
