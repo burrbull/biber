@@ -39,22 +39,8 @@ impl<L: Eq + Hash, R: Eq + Hash> BiSet<L, R> {
     pub fn insert(&mut self, left: impl Into<Arc<L>>, right: impl Into<Arc<R>>) {
         let left = Ref(left.into());
         let right = Ref(right.into());
-        match self.lr.entry(left.clone()) {
-            hash_map::Entry::Occupied(mut e) => {
-                e.get_mut().insert(right.clone());
-            }
-            hash_map::Entry::Vacant(e) => {
-                e.insert(HashSet::from([right.clone()]));
-            }
-        }
-        match self.rl.entry(right.clone()) {
-            hash_map::Entry::Occupied(mut e) => {
-                e.get_mut().insert(left.clone());
-            }
-            hash_map::Entry::Vacant(e) => {
-                e.insert(HashSet::from([left.clone()]));
-            }
-        }
+        self.lr.entry(left.clone()).or_default().insert(right.clone());
+        self.rl.entry(right).or_default().insert(left);
     }
 
     pub fn contains_left<Q>(&self, left: &Q) -> bool
@@ -142,7 +128,6 @@ pub trait NestedMap<K1, K2, V> {
         Q1: Hash + Eq, 
         K2: Borrow<Q2>,
         Q2: Hash + Eq;
-    fn insert2(&mut self, k1: K1, k2: K2, v: V) -> Option<V>;
 }
 
 impl<K1: Hash + Eq, K2: Hash + Eq, V> NestedMap<K1, K2, V> for HashMap<K1, HashMap<K2, V>> {
@@ -170,15 +155,6 @@ impl<K1: Hash + Eq, K2: Hash + Eq, V> NestedMap<K1, K2, V> for HashMap<K1, HashM
         Q2: Hash + Eq, 
     {
         self.get_mut(k1).and_then(|h| h.get_mut(k2))
-    }
-    fn insert2(&mut self, k1: K1, k2: K2, v: V) -> Option<V> {
-        match self.entry(k1) {
-            hash_map::Entry::Occupied(mut e) => e.get_mut().insert(k2, v),
-            hash_map::Entry::Vacant(e) => {
-                e.insert(HashMap::from([(k2, v)]));
-                None
-            }
-        }
     }
 }
 

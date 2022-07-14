@@ -3,7 +3,7 @@
 //! Record an annotation for a scope and citekey
 
 use crate::{OptIter, NestedMap};
-use std::collections::{btree_map, hash_map, HashMap, HashSet, BTreeMap};
+use std::collections::{HashMap, HashSet, BTreeMap};
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use unicase::UniCase;
@@ -65,136 +65,40 @@ impl Ann {
   fn set_field_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool) {
     let elem = Annotation { value: value.into(), literal };
 
-    match self.field.entry(key.clone()) {
-        hash_map::Entry::Occupied(mut e) => {
-          match e.get_mut().entry(field.clone()) {
-            hash_map::Entry::Occupied(mut e) => {
-              e.get_mut().insert(name.clone(), elem);
-            }
-            hash_map::Entry::Vacant(e) => {
-              e.insert(BTreeMap::from([(name.clone(), elem)]));
-            }
-          }
-        },
-        hash_map::Entry::Vacant(e) => {
-            e.insert(HashMap::from([(field.clone(), BTreeMap::from([(name.clone(), elem)]))]));
-        }
-    }
+    self.field.entry(key.clone()).or_default()
+      .entry(field.clone()).or_default()
+      .insert(name.clone(), elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    match self.names.entry(key) {
-      hash_map::Entry::Occupied(mut e) => {
-        match e.get_mut().entry(field) {
-          hash_map::Entry::Occupied(mut e) => {
-            e.get_mut().insert(uniname);
-          }
-          hash_map::Entry::Vacant(e) => {
-            e.insert(HashSet::from([uniname]));
-          }
-        }
-      },
-      hash_map::Entry::Vacant(e) => {
-          e.insert(HashMap::from([(field, HashSet::from([uniname]))]));
-      }
-    }
+    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
   }
 
   fn set_item_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool, count: String) {
     let elem = Annotation { value: value.into(), literal };
 
-    match self.item.entry(key.clone()) {
-        hash_map::Entry::Occupied(mut e) => {
-          match e.get_mut().entry(field.clone()) {
-            hash_map::Entry::Occupied(mut e) => {
-              match e.get_mut().entry(name.clone()) {
-                btree_map::Entry::Occupied(mut e) => {
-                  e.get_mut().insert(count, elem);
-                }
-                btree_map::Entry::Vacant(e) => {
-                  e.insert(BTreeMap::from([(count, elem)]));
-                }
-              }
-            },
-            hash_map::Entry::Vacant(e) => {
-              e.insert(BTreeMap::from([(name.clone(), BTreeMap::from([(count, elem)]))]));
-            }
-          }
-        },
-        hash_map::Entry::Vacant(e) => {
-            e.insert(HashMap::from([(field.clone(), BTreeMap::from([(name.clone(), BTreeMap::from([(count, elem)]))]))]));
-        }
-    }
+    self.item.entry(key.clone()).or_default()
+      .entry(field.clone()).or_default()
+      .entry(name.clone()).or_default()
+      .insert(count, elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    match self.names.entry(key) {
-      hash_map::Entry::Occupied(mut e) => {
-        match e.get_mut().entry(field) {
-          hash_map::Entry::Occupied(mut e) => {
-            e.get_mut().insert(uniname);
-          }
-          hash_map::Entry::Vacant(e) => {
-            e.insert(HashSet::from([uniname]));
-          }
-        }
-      },
-      hash_map::Entry::Vacant(e) => {
-          e.insert(HashMap::from([(field, HashSet::from([uniname]))]));
-      }
-    }
+    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
   }
 
   fn set_part_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool, count: String, part: String ) {
     let elem = Annotation { value: value.into(), literal };
 
-    match self.part.entry(key.clone()) {
-        hash_map::Entry::Occupied(mut e) => {
-          match e.get_mut().entry(field.clone()) {
-            hash_map::Entry::Occupied(mut e) => {
-              match e.get_mut().entry(name.clone()) {
-                btree_map::Entry::Occupied(mut e) => {
-                  match e.get_mut().entry(count) {
-                    btree_map::Entry::Occupied(mut e) => {
-                      e.get_mut().insert(part, elem);
-                    }
-                    btree_map::Entry::Vacant(e) => {
-                      e.insert(BTreeMap::from([(part, elem)]));
-                    }
-                  }
-                },
-                btree_map::Entry::Vacant(e) => {
-                  e.insert(BTreeMap::from([(count, BTreeMap::from([(part, elem)]))]));
-                }
-              }
-            },
-            hash_map::Entry::Vacant(e) => {
-              e.insert(BTreeMap::from([(name.clone(), BTreeMap::from([(count, BTreeMap::from([(part, elem)]))]))]));
-            }
-          }
-        },
-        hash_map::Entry::Vacant(e) => {
-            e.insert(HashMap::from([(field.clone(), BTreeMap::from([(name.clone(), BTreeMap::from([(count, BTreeMap::from([(part, elem)]))]))]))]));
-        }
-    }
+    self.part.entry(key.clone()).or_default()
+      .entry(field.clone()).or_default()
+      .entry(name.clone()).or_default()
+      .entry(count).or_default()
+      .insert(part, elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    match self.names.entry(key) {
-      hash_map::Entry::Occupied(mut e) => {
-        match e.get_mut().entry(field) {
-          hash_map::Entry::Occupied(mut e) => {
-            e.get_mut().insert(uniname);
-          }
-          hash_map::Entry::Vacant(e) => {
-            e.insert(HashSet::from([uniname]));
-          }
-        }
-      },
-      hash_map::Entry::Vacant(e) => {
-          e.insert(HashMap::from([(field, HashSet::from([uniname]))]));
-      }
-    }
+    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
   }
 
   /// Copy all annotations from one entry to another

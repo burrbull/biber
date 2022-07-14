@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use crate::Id;
-use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all};
+use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all, regex_captures};
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -958,46 +958,49 @@ pub fn process_entry_options($citekey, $options, $secnum) {
   }
   return;
 }
-
+*/
 /// Merge entry options, dealing with conflicts
-pub fn merge_entry_options($opts, $overrideopts) {
-  if !defined($overrideopts) {
-    return $opts;
+pub fn merge_entry_options(opts: Option<&[&str]>, overrideopts: Option<&[&str]>) -> Vec<String> {
+  if overrideopts.is_none() {
+    return opts.unwrap().into_iter().map(|&s| s.into()).collect();
   }
-  if !defined($opts) {
-    return $overrideopts;
+  let overrideopts = overrideopts.unwrap();
+  if opts.is_none() {
+    return overrideopts.into_iter().map(|&s| s.into()).collect();
   }
-  let $merged = [];
-  let $used_overrides = [];
+  let opts = opts.unwrap();
+  let mut merged = Vec::new();
+  let mut used_overrides = Vec::new();
 
-  for ov in ($opts->@*) {
-    let $or = 0;
-    let ($o, $e, $v) = $ov =~ m/^([^=]+)(=?)(.*)$/;
-    for oov in ($overrideopts->@*) {
-      let ($oo, $eo, $vo) = $oov =~ m/^([^=]+)(=?)(.*)$/;
-      if ($o == $oo) {
-        $or = 1;
-        let $oropt = "$oo" . ($eo.unwrap_or("")) . ($vo.unwrap_or(""));
-        push $merged->@*, $oropt;
-        push $used_overrides->@*, $oropt;
+  for &ov in opts.into_iter() {
+    let mut or = false;
+    let (_, o, e, v) = regex_captures!(r"^([^=]+)(=?)(.*)$", ov).unwrap();
+    for &oov in overrideopts.into_iter() {
+      let (_, oo, eo, vo) = regex_captures!(r"^([^=]+)(=?)(.*)$", oov).unwrap();
+      if o == oo {
+        or = true;
+        let oropt = format!("{oo}{}{}", eo, vo);
+        merged.push(oropt.clone());
+        used_overrides.push(oropt);
         break;
       }
     }
-    if !($or) {
-      push $merged->@*, ("$o" . ($e.unwrap_or("")) .($v.unwrap_or("")));
+    if !or {
+      merged.push(format!("{o}{}{}", e, v));
     }
   }
 
   // Now push anything in the overrides array which had no conflicts
-  for oov in ($overrideopts->@*) {
-    if !(first {$_ == $oov} $used_overrides->@*) {
-      push $merged->@*, $oov;
+  for oov in overrideopts {
+    let oov = oov.to_string();
+    if !used_overrides.contains(&oov) {
+      merged.push(oov);
     }
   }
 
-  return $merged;
+  merged
 }
-
+/*
 /// Expand options such as meta-options coming from biblatex
 pub fn expand_option_input($opt, $val, $cfopt) {
   let $outopts;
@@ -1061,11 +1064,11 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
   }
   // Set start date unknown flag
   if ($sep && !$sd) {
-    $bibentry->set_field($datetype . "dateunknown",1);
+    $bibentry->set_field(&format!("{datetype}dateunknown"), true);
   }
   // Set end date unknown flag
   if ($sep && !$ed) {
-    $bibentry->set_field($datetype . "enddateunknown",1);
+    $bibentry->set_field(format!("{datetype}enddateunknown"), true);
   }
   return (parse_date_start($sd), parse_date_end($ed), $sep, $unspec);
 }
@@ -1090,13 +1093,8 @@ fn parse_date_unspecified($d) {
   // (understands different months and leap years)
   else if ($d =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}XX$/) {
 
-    fn leapyear($year) {
-      if ((($year % 4 == 0) && ($year % 100 != 0))
-          || ($year % 400 == 0)) {
-        return 1;
-      } else {
-        return 0;
-      }
+    fn leapyear(year: i32) -> bool {
+      ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)
     }
 
     let %monthdays;

@@ -302,14 +302,12 @@ impl Dot {
 
   // Graph crossrefs and xdata
   fn _graph_inheritance(type, secnum) {
-    let $edgecolor;
-
-    if ($type == "crossref") {
-      $edgecolor = "#7d7879";
+    let edgecolor = if ($type == "crossref") {
+      "#7d7879"
     }
     else if ($type == "xdata") {
-      $edgecolor = "#2ca314";
-    }
+      "#2ca314"
+    };
 
     if (let $gr = crate::Config->get_graph($type)) {
       // Show fields
@@ -347,8 +345,8 @@ impl Dot {
               if $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"} {
                 continue;
               }
-              $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry} inherits via $type from ${f_entry}\" ]\n";
-              $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"} = 1;
+              $graph_edges .= $i x $in . format!("\"section{secnum}/{f_entry}\" -> \"section{secnum}/{t_entry}\" [ penwidth=\"2.0\", color=\"{edgecolor}\", tooltip=\"{t_entry} inherits via {type} from {f_entry}\" ]\n");
+              $state->{edges}{format!("section{secnum}/{f_entry}")}{format!("section${secnum}/${t_entry}")} = 1;
             }
           }
         }

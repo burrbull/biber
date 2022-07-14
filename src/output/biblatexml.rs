@@ -330,10 +330,10 @@ impl BibLaTeXML {
       let mut attrs = AttributeMap::new();
       let @start;
       let @end;
-      let $overridey;
-      let $overridem;
+      let mut overridey = None;
+      let mut overridem = None;
       let $overrideem;
-      let $overrided;
+      let mut overrided = None;
 
       let ($d) = $datefield =~ m/^(.*)date$/;
       if (let $sf = $be->get_field("${d}year") ) { // date exists if there is a year
@@ -345,25 +345,25 @@ impl BibLaTeXML {
         $xml->startTag([$xml_prefix, "date"], attrs);
 
         // Uncertain and approximate dates
-        if ($be->get_field("${d}dateuncertain") &&
-            $be->get_field("${d}dateapproximate")) {
-          $sf .= '%';
+        if (be.get_field(format!("{d}dateuncertain")) &&
+            be.get_field(format!("{d}dateapproximate"))) {
+          sf.push('%');
         }
         else {
           // Uncertain dates
-          if ($be->get_field("${d}dateuncertain")) {
-            $sf .= '?';
+          if (be.get_field(format!("{d}dateuncertain"))) {
+            sf.push('?');
           }
 
           // Approximate dates
-          if ($be->get_field("${d}dateapproximate")) {
-            $sf .= '~';
+          if (be.get_field(format!("{d}dateapproximate"))) {
+            sf.push('~');
           }
         }
 
         // Unknown dates
         if ($be->get_field("${d}dateunknown")) {
-          $sf = "unknown";
+          sf.push_Str("unknown");
         }
 
         let %yeardivisions = ( "spring"  => 21,
@@ -390,48 +390,50 @@ impl BibLaTeXML {
 
         // Did the date fields come from interpreting an EDTF 5.2.2 unspecified date?
         // If so, do the reverse of crate::Utils::parse_date_unspecified()
-        if (let $unspec = $be->get_field("${d}dateunspecified")) {
-
-          // 1990/1999 -> 199X
-          if ($unspec == "yearindecade") {
-            let ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
-            $overridey = "${decade}X";
-            $be->del_field("${d}endyear");
-          }
-          // 1900/1999 -> 19XX
-          else if ($unspec == "yearincentury") {
-            let ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
-            $overridey = "${century}XX";
-            $be->del_field("${d}endyear");
-          }
-          // 1999-01/1999-12 => 1999-XX
-          else if ($unspec == "monthinyear") {
-            $overridem = "XX";
-            $be->del_field("${d}endyear");
-            $be->del_field("${d}endmonth");
-          }
-          // 1999-01-01/1999-01-31 -> 1999-01-XX
-          else if ($unspec == "dayinmonth") {
-            $overrided = "XX";
-            $be->del_field("${d}endyear");
-            $be->del_field("${d}endmonth");
-            $be->del_field("${d}endday");
-          }
-          // 1999-01-01/1999-12-31 -> 1999-XX-XX
-          else if ($unspec == "dayinyear") {
-            $overridem = "XX";
-            $overrided = "XX";
-            $be->del_field("${d}endyear");
-            $be->del_field("${d}endmonth");
-            $be->del_field("${d}endday");
+        if (let Some(unspec) = be.get_field(format!("{d}dateunspecified"))) {
+          match unspec {
+            // 1990/1999 -> 199X
+            "yearindecade" => {
+              let (_, decade) = regex_captures!(r"^(\d+)\d$", be.get_field(format!("{d}year"))).unwrap();
+              overridey = Some(format!("{decade}X"));
+              $be->del_field(format!("{d}endyear"));
+            }
+            // 1900/1999 -> 19XX
+            "yearincentury" => {
+              let (_, century) = regex_captures!(r"^(\d+)\d\d$", be.get_field(format!("{d}year"))).unwrap();
+              overridey = Some(format!("{century}XX"));
+              $be->del_field(format!("{d}endyear"));
+            }
+            // 1999-01/1999-12 => 1999-XX
+            "monthinyear" => {
+              overridem = Some("XX");
+              $be->del_field(format!("{d}endyear"));
+              $be->del_field(format!("{d}endmonth"));
+            }
+            // 1999-01-01/1999-01-31 -> 1999-01-XX
+            "dayinmonth" => {
+              overrided = Some("XX");
+              $be->del_field(format!("{d}endyear"));
+              $be->del_field(format!("{d}endmonth"));
+              $be->del_field(format!("{d}endday"));
+            }
+            // 1999-01-01/1999-12-31 -> 1999-XX-XX
+            "dayinyear" => {
+              overridem = Some("XX");
+              overrided = Some("XX");
+              $be->del_field(format!("{d}endyear"));
+              $be->del_field(format!("{d}endmonth"));
+              be.del_field(format!("{d}endday"));
+            }
+            _ => {}
           }
         }
 
         // Seasons derived from EDTF dates
-        if (let $s = $be->get_field("${d}yeardivision")) {
+        if (let $s = be.get_field(format!("{d}yeardivision"))) {
           $overridem = $yeardivisions{$s};
         }
-        if (let $s = $be->get_field("${d}endyeardivision")) {
+        if (let $s = be.get_field(format!("{d}endyeardivision"))) {
           $overrideem = $yeardivisions{$s};
         }
         $sf = $overridey || $sf;
