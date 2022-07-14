@@ -498,7 +498,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 
         if ($np = $name->get_namepart($npn)) {
           if ($lnp->{use}) { // only ever defined as 1
-            if !($opts->{"use$npn"}) {
+            if !($opts->{format!("use{npn}")}) {
               continue;
             }
           }
@@ -511,7 +511,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
                 substring_compound => $lnp->{substring_compound}}];
           }
           else {
-            push $mpns->@*, $npn;
+            mpns.push(npn);
             push $mainacc->@*,
               [normalise_string_label($np),
                {substring_width => $lnp->{substring_width},

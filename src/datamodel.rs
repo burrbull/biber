@@ -188,28 +188,29 @@ impl DataModel {
           for c in ($cd->{constraint}->@*) {
             if ($c->{type} == "mandatory") {
               // field
+              let man = &mut self->{entrytypesbyname}{$es}{constraints}{mandatory};
               for f in ($c->{field}->@*) {
-                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $f->{content};
+                man.push(f->{content});
               }
               // xor set of fields
               // [ XOR, field1, field2, ... , fieldn ]
               for fxor in ($c->{fieldxor}->@*) {
-                let $xorset;
+                let mut xorset = Vec::new();
                 for f in ($fxor->{field}->@*) {
-                  push $xorset->@*, $f->{content};
+                  xorset.push(f->{content});
                 }
-                unshift $xorset->@*, "XOR";
-                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $xorset;
+                xorset.insert(0, "XOR");
+                man.push(xorset);
               }
               // or set of fields
               // [ OR, field1, field2, ... , fieldn ]
-              for for in ($c->{fieldor}->@*) {
-                let $orset;
-                for f in ($for->{field}->@*) {
-                  push $orset->@*, $f->{content};
+              for f_or in ($c->{fieldor}->@*) {
+                let mut orset = Vec::new();
+                for f in ($f_or->{field}->@*) {
+                  orset.push(f->{content});
                 }
-                unshift $orset->@*, "OR";
-                push $self->{entrytypesbyname}{$es}{constraints}{mandatory}->@*, $orset;
+                orset.insert(0, "OR");
+                man.push(orset);
               }
             }
             // Conditional constraints

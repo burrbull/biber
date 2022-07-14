@@ -339,12 +339,13 @@ pub fn biber_error($error, nodie: bool) {
     exit EXIT_ERROR;
   }
 }
-
+*/
+/* UNUSED
 /// Given a crate::Names object, return an underscore normalised
 /// concatenation of all of the full name strings.
 pub fn makenamesid($names) {
   let @namestrings;
-  for name in ($names->names->@*) {
+  for name in names.names() {
     push @namestrings, $name->get_namestring;
   }
   let $tmp = namestrings.join(" ");
@@ -356,7 +357,8 @@ pub fn makenamesid($names) {
 pub fn makenameid($name) {
   return normalise_string_underscore($name->get_namestring);
 }
-
+*/
+/*
 /// Tries to convert UTF-8 to TeX macros in passed string
 pub fn latex_recode_output($string) {
   return crate::LaTeX::Recode::latex_encode($string);

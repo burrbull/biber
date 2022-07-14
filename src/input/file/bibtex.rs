@@ -78,21 +78,21 @@ fn extract_entries(filename, encoding, keys) {
   }
 
   // Get a reference to the correct sourcemap sections, if they exist
-  let $smaps = [];
+  let mut smaps = Vec::new();
   // Maps are applied in order USER->STYLE->DRIVER
   if (defined(crate::Config->getoption("sourcemap"))) {
     // User maps, allow multiple \DeclareSourcemap
     if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "user" } crate::Config->getoption("sourcemap")->@* ) {
-      push $smaps->@*, @m;
+      smaps.extend(m);
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
     if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "style" } crate::Config->getoption("sourcemap")->@* ) {
-      push $smaps->@*, @m;
+      smaps.extend(m);
     }
     // Driver default maps
     if (let $m = first {$_->{datatype} == "bibtex" && $_->{level} == "driver"} crate::Config->getoption("sourcemap")->@* ) {
-      push $smaps->@*, $m;
+      smaps.push(m);
     }
   }
 
@@ -951,7 +951,7 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
   let $value = $entry->get(encode("UTF-8", NFC(field)));
 
   // Record any XDATA and skip if we did
-  if ($bibentry->add_xdata_ref($field, $value)) {
+  if bibentry.add_xdata_ref(field, value, None) {
     return $value; // Return raw xdata
   }
 
@@ -1025,11 +1025,11 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
 }
 
 // URI fields
-fn _uri(bibentry, entry, field) {
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+fn _uri(bibentry: &mut Entry, entry, field: &str) {
+  let $value = $entry->get(encode("UTF-8", NFC(field)));
 
   // Record any XDATA
-  $bibentry->add_xdata_ref($field, $value);
+  bibentry.add_xdata_ref(field, value, None);
 
   return $value;
 }
@@ -1038,20 +1038,20 @@ fn _uri(bibentry, entry, field) {
 fn _xsv(bibentry: &mut Entry, entry, field) {
   let $Srx = crate::Config->getoption("xsvsep");
   let $S = qr/$Srx/;
-  let $value = [ split(/$S/, $entry->get(encode("UTF-8", NFC($field)))) ];
+  let $value = [ split(/$S/, $entry->get(encode("UTF-8", NFC(field)))) ];
 
   // Record any XDATA
-  bibentry.add_xdata_ref(field, $value);
+  bibentry.add_xdata_ref(field, value, None);
 
   return $value ;
 }
 
 // Verbatim fields
 fn _verbatim(bibentry, entry, field) {
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+  let $value = $entry->get(encode("UTF-8", NFC(field)));
 
   // Record any XDATA
-  $bibentry->add_xdata_ref($field, $value);
+  bibentry.add_xdata_ref(field, value, None);
 
   return $value;
 }
@@ -1068,7 +1068,7 @@ fn _range(bibentry: &mut Entry, entry, field, key) -> Vec<(String, Option<String
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   // Record any XDATA and skip if we did
-  if (bibentry.add_xdata_ref($field, $value)) {
+  if (bibentry.add_xdata_ref(field, value, None)) {
     return $value; // Return raw value
   }
 
@@ -1124,7 +1124,7 @@ fn _name(bibentry, entry, field, key) {
 
   for (i, name) in tmp.iter().enumerate() {
     // Record any XDATA and skip if we did
-    if ($bibentry.add_xdata_ref(field, name, i)) {
+    if bibentry.add_xdata_ref(field, name, Some(i)) {
       // Add special xdata ref empty name as placeholder
       names.add_name(crate::Entry::Name->new(xdata => $name));
       continue;
@@ -1365,7 +1365,7 @@ fn _datetime(bibentry, entry, field, key) {
 }
 
 // Bibtex list fields with listsep separator
-fn _list(bibentry, entry, field) {
+fn _list(bibentry: &mut Entry, entry, field: &str) {
   let $value = $entry->get(encode("UTF-8", NFC($field)));
 
   let @tmp = Text::BibTeX::split_list(NFC($value),// Unicode NFC boundary
@@ -1375,23 +1375,21 @@ fn _list(bibentry, entry, field) {
                                      None,
                                      {binmode => "UTF-8", normalization => "NFD"});
   @tmp = map { (remove_outer($_))[1] } @tmp;
-  let @result;
+  let mut result = Vec::new();
 
-  for (let $i = 0; $i <= $#tmp; $i++) {
-    let $e = $tmp[$i];
-
+  for (i, e) in tmp.iter().enumerate() {
     // Record any XDATA and skip if we did
-    $bibentry->add_xdata_ref($field, $e, $i);
+    bibentry.add_xdata_ref(field, e, Some(i));
 
-    push @result, $e;
+    result.push(e);
   }
 
   return [ @result ];
 }
 
 // Bibtex uri lists
-fn _urilist(bibentry, entry, field) {
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+fn _urilist(bibentry: &mut Entry, entry, field: &str) {
+  let $value = entry.get(encode("UTF-8", NFC(field)));
 
   // Unicode NFC boundary (passing to external library)
   let @tmp = Text::BibTeX::split_list(NFC($value),
@@ -1404,12 +1402,12 @@ fn _urilist(bibentry, entry, field) {
 
   for (i, e) in tmp.iter().enumerate() {
     // Record any XDATA and skip if we did
-    bibentry.add_xdata_ref(field, e, i);
+    bibentry.add_xdata_ref(field, e, Some(i));
 
     result.push(e);
   }
 
-  return result;
+  result
 
 }
 
@@ -1789,12 +1787,12 @@ fn parsename_x(section, namestr, fieldname, key) {
       continue;
     }
 
-    if !($nps{$npn =~ s/-i$//r}) {
+    if !($nps{regex!(r"-i$").replace(npn, "")}) {
       biber_warn("Invalid namepart '$npn' found in extended name format name '$fieldname' in entry '$key', ignoring");
       continue;
     }
 
-    if ($npn =~ m/-i$/) {
+    if regex_is_match!(r"-i$", npn) {
       $namec{$npn} = _split_initials($npv);
     }
     else {
@@ -1808,7 +1806,7 @@ fn parsename_x(section, namestr, fieldname, key) {
     }
   }
 
-  for np in (keys %nps) {
+  for np in nps.keys() {
     if (exists($namec{$np})) {
       // Generate any stripped information
       (let $s, $namec{$np}) = remove_outer($namec{$np});
@@ -1816,7 +1814,7 @@ fn parsename_x(section, namestr, fieldname, key) {
       // Protect spaces inside {} when splitting to produce intials
       let $part = $namec{$np};
       if ($s) {
-        $part = $namec{$np} =~ s/\s+/_/gr;
+        $part = regex!(r"\s+/_").replace_all(namec{$np}, "");
       }
 
       // strip noinit
@@ -1830,7 +1828,7 @@ fn parsename_x(section, namestr, fieldname, key) {
   }
 
   let %nameparts;
-  for np in (keys %nps) {
+  for np in nps.keys() {
     $nameparts{$np} = {string  => $namec{$np}.unwrap_or(None),
                        initial => if exists($namec{$np}) { $namec{"${np}-i"} } else { None }
                       };
@@ -1866,39 +1864,39 @@ let %months = (
               "dec" => "12"
              );
 
-fn _hack_month(in_month) {
-  if (let ($m) = $in_month =~ m/\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z/i) {
-    months{m.graphemes(true).take(3).collect::<String>().to_lowercase()}
+fn _hack_month(in_month: &str) -> String {
+  if let Some(_, m) = regex_captures!(r"\A\s*((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec).*)\s*\z"i, in_month) {
+    months.get(m.graphemes(true).take(3).collect::<String>().to_lowercase()).unwrap().into()
   } else {
-    in_month
+    in_month.into()
   }
 }
 
 // "ab{cd}e" -> [a,b,cd,e]
-fn _split_initials(npv) {
-  let @npv;
-  let $ci = 0;
-  let $acc;
+fn _split_initials(npv) -> Vec<String> {
+  let mut npv = Vec::new();
+  let mut ci = false;
+  let mut acc = String::new();
 
-  for c in (split(/\b{gcb}/, $npv)) {
+  for c in regex!(r"\b{gcb}".split(npv) {
     // entering compound initial
-    if ($c == '{') {
-      $ci = 1;
+    if c == "{" {
+      ci = true;
     }
     // exiting compound initial, push accumulator and reset
-    else if ($c == '}') {
-      $ci = 0;
-      push @npv, $acc;
-      $acc = "";
+    else if c == "}" {
+      ci = false;
+      npv.push(acc);
+      acc = String::new();
     }
     else {
-      if ($ci) {
-        $acc .= $c;
+      if ci {
+        acc.push_str(c);
       }
       else {
-        push @npv, $c;
+        npv.push(c);
       }
     }
   }
-  return \@npv;
+  npv
 }

@@ -396,183 +396,185 @@ fn _config_file_set(conf) {
   delete $userconf->{datafieldset};
 
   // Set options from config file
-  while (let ($k, $v) = each $userconf->%*) {
+  for (k, v) in userconf.iter() {
     // Has to be an array ref and so must come before
     // the later options tests which assume hash refs
-    if (lc($k) == "labelalphatemplate") {
-      for t in ($v->@*) {
-        let $latype = $t->{type};
-        if ($latype == "global") {
-          crate::Config->setblxoption(0, "labelalphatemplate", $t);
-        }
-        else {
-          crate::Config->setblxoption(0, "labelalphatemplate",
-                                      $t,
-                                      "ENTRYTYPE",
-                                      $latype);
-        }
-      }
-    }
-    else if (lc($k) == "labelalphanametemplate") {
-      for t in ($v->@*) {
-        let $lants;
-        let $lant;
-        for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
-          push $lant->@*, {namepart           => $np->{content},
-                           use                => $np->{use},
-                           pre                => $np->{pre},
-                           substring_compound => $np->{substring_compound},
-                           substring_side     => $np->{substring_side},
-                           substring_width    => $np->{substring_width} };
-
-        }
-        $lants->{$t->{name}} = $lant;
-        crate::Config->setblxoption(0, "labelalphanametemplate", $lants);
-      }
-    }
-    else if (lc($k) == "uniquenametemplate") {
-      let $unts;
-      for unt in ($v->@*) {
-        let $untval = [];
-        for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
-          push $untval->@*, {namepart        => $np->{content},
-                             use             => $np->{use},
-                             disambiguation  => $np->{disambiguation},
-                             base            => $np->{base}};
-        }
-        $unts->{$unt->{name}} = $untval;
-      }
-      crate::Config->setblxoption(0, "uniquenametemplate", $unts);
-    }
-    else if (lc($k) == "sortingnamekeytemplate") {
-      let $snss;
-      for sns in ($v->@*) {
-        let $snkps;
-        for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
-          let $snps;
-          for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
-            let $np;
-            if ($snp->{type} == "namepart") {
-              $np = { type => "namepart", value => $snp->{content} };
-              if (exists($snp->{use})) {
-                $np->{use} = $snp->{use};
-              }
-              if (exists($snp->{inits})) {
-                $np->{inits} = $snp->{inits};
-              }
-            }
-            else if ($snp->{type} == "literal") {
-              $np = { type => "literal", value => $snp->{content} };
-            }
-            push $snps->@*, $np;
+    match k.to_lowercase() {
+      "labelalphatemplate" => {
+        for t in ($v->@*) {
+          let $latype = $t->{type};
+          if ($latype == "global") {
+            crate::Config->setblxoption(0, "labelalphatemplate", $t);
           }
-          push $snkps->@*, $snps;
+          else {
+            crate::Config->setblxoption(0, "labelalphatemplate",
+                                        $t,
+                                        "ENTRYTYPE",
+                                        $latype);
+          }
         }
-        $snss->{$sns->{name}}{visibility} = $sns->{visibility};
-        $snss->{$sns->{name}}{template} = $snkps;
       }
-      crate::Config->setblxoption(0, "sortingnamekeytemplate", $snss);
-    }
-    else if (lc($k) == "transliteration") {
-      for tr in ($v->@*) {
-        if ($tr->{entrytype}[0] == '*') { // already array forced for another option
-          crate::Config->setblxoption(0, "translit", $tr->{translit});
+      "labelalphanametemplate" => {
+        for t in ($v->@*) {
+          let $lants;
+          let $lant;
+          for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
+            push $lant->@*, {namepart           => $np->{content},
+                            use                => $np->{use},
+                            pre                => $np->{pre},
+                            substring_compound => $np->{substring_compound},
+                            substring_side     => $np->{substring_side},
+                            substring_width    => $np->{substring_width} };
+
+          }
+          $lants->{$t->{name}} = $lant;
+          crate::Config->setblxoption(0, "labelalphanametemplate", $lants);
         }
-        else {                  // per_entrytype
-          crate::Config->setblxoption(0, "translit",
-                                      $tr->{translit},
-                                      "ENTRYTYPE",
-                                      $tr->{entrytype}[0]);
+      }
+      "uniquenametemplate" => {
+        let $unts;
+        for unt in ($v->@*) {
+          let $untval = [];
+          for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
+            push $untval->@*, {namepart        => $np->{content},
+                              use             => $np->{use},
+                              disambiguation  => $np->{disambiguation},
+                              base            => $np->{base}};
+          }
+          $unts->{$unt->{name}} = $untval;
+        }
+        crate::Config->setblxoption(0, "uniquenametemplate", $unts);
+      }
+      "sortingnamekeytemplate" => {
+        let $snss;
+        for sns in ($v->@*) {
+          let mut snkps = Vec::new();
+          for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
+            let mut snps = Vec::new();
+            for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
+              let $np;
+              if ($snp->{type} == "namepart") {
+                $np = { type => "namepart", value => $snp->{content} };
+                if let Some(val) = $snp->{use} {
+                  $np->{use} = val;
+                }
+                if let Some(val) = snp->{inits} {
+                  $np->{inits} = val;
+                }
+              }
+              else if ($snp->{type} == "literal") {
+                $np = { type => "literal", value => $snp->{content} };
+              }
+              snps.push(np);
+            }
+            snkps.push(snps);
+          }
+          $snss->{$sns->{name}}{visibility} = $sns->{visibility};
+          $snss->{$sns->{name}}{template} = $snkps;
+        }
+        crate::Config->setblxoption(0, "sortingnamekeytemplate", $snss);
+      }
+      "transliteration" => {
+        for tr in ($v->@*) {
+          if ($tr->{entrytype}[0] == '*') { // already array forced for another option
+            crate::Config->setblxoption(0, "translit", $tr->{translit});
+          }
+          else {                  // per_entrytype
+            crate::Config->setblxoption(0, "translit",
+                                        $tr->{translit},
+                                        "ENTRYTYPE",
+                                        $tr->{entrytype}[0]);
 
 
+          }
         }
       }
-    }
-    // mildly complex options - nosort/collate_options
-    else if (lc($k) == "nosort" ||
-           lc($k) == "noinit" ||
-           lc($k) == "nolabel" ) {
-      crate::Config->setconfigfileoption($k, $v->{option});
-    }
-    // rather complex options
-    else if (lc($k) == "collate_options") {
-      let $collopts = crate::Config->getoption("collate_options");
-      // Override defaults with any user settings
-      for co in ($v->{option}->@*) {
-        $collopts->{$co->{name}} = $co->{value};
+      // mildly complex options - nosort/collate_options
+      "nosort" | "noinit" | "nolabel" => {
+        crate::Config->setconfigfileoption($k, $v->{option});
       }
-      crate::Config->setconfigfileoption($k, $collopts);
-    }
-    else if (lc($k) == "sourcemap") {
-      let $sms;
-      for sm in ($v->{maps}->@*) {
-        if (defined($sm->{level}) && $sm->{level} == "driver") {
-          carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
+      // rather complex options
+      "collate_options" => {
+        let $collopts = crate::Config->getoption("collate_options");
+        // Override defaults with any user settings
+        for co in ($v->{option}->@*) {
+          $collopts->{$co->{name}} = $co->{value};
         }
-        else if (defined($sm->{level}) && $sm->{level} == "style") {
-          carp("You can't set style level sourcemaps via biber - use \\DeclareStyleSourcemap in biblatex. Ignoring map.");
-        }
-        else {
-          push $sms->@*, $sm;
-        }
+        crate::Config->setconfigfileoption($k, $collopts);
       }
-      crate::Config->setconfigfileoption($k, $sms);
-    }
-    else if (lc($k) == "inheritance") {// This is a biblatex option
-      crate::Config->setblxoption(0, $k, $v);
-    }
-    else if (lc($k) == "sortexclusion") {// This is a biblatex option
-      for sex in ($v->@*) {
-        let $excludes;
-        for ex in ($sex->{exclusion}->@*) {
-          $excludes->{$ex->{content}} = 1;
+      "sourcemap" => {
+        let mut sms = Vec::new()
+        for sm in ($v->{maps}->@*) {
+          match sm->{level} {
+            Some("driver") => {
+              carp("You can't set driver level sourcemaps via biber - use \\DeclareDriverSourcemap in biblatex. Ignoring map.");
+            Some("style") => {
+              carp("You can't set style level sourcemaps via biber - use \\DeclareStyleSourcemap in biblatex. Ignoring map.");
+            _ => {
+              sms.push(sm);
+            }
+          }
         }
-        crate::Config->setblxoption(0, "sortexclusion",
-                                    $excludes,
-                                    "ENTRYTYPE",
-                                    $sex->{type});
+        crate::Config->setconfigfileoption($k, $sms);
       }
-    }
-    else if (lc($k) == "sortinclusion") {// This is a biblatex option
-      for sin in ($v->@*) {
-        let $includes;
-        for i_n in ($sin->{inclusion}->@*) {
-          $includes->{i_n->{content}} = 1;
-        }
-        crate::Config->setblxoption(0, "sortinclusion",
-                                    $includes,
-                                    "ENTRYTYPE",
-                                    $sin->{type});
+      "inheritance" => {// This is a biblatex option
+        crate::Config->setblxoption(0, $k, $v);
       }
-    }
-    else if (lc($k) == "presort") {// This is a biblatex option
-      // presort defaults
-      for presort in ($v->@*) {
-        // Global presort default
-        if !(exists($presort->{type})) {
-          crate::Config->setblxoption(0, "presort", $presort->{content});
-        }
-        // Per-type default
-        else {
-          crate::Config->setblxoption(0, "presort",
-                                      $presort->{content},
+      "sortexclusion" => {// This is a biblatex option
+        for sex in v.iter() {
+          let mut excludes = HashSet::new();
+          for ex in ($sex->{exclusion}->@*) {
+            excludes.insert(ex->{content});
+          }
+          crate::Config->setblxoption(0, "sortexclusion",
+                                      $excludes,
                                       "ENTRYTYPE",
-                                      $presort->{type});
+                                      $sex->{type});
         }
       }
-    }
-    else if (lc($k) == "sortingtemplate") {// This is a biblatex option
-      let $sorttemplates;
-      for ss in ($v->@*) {
-        $sorttemplates->{$ss->{name}} = crate::_parse_sort($ss);
+      "sortinclusion" => {// This is a biblatex option
+        for sin in v.iter() {
+          let mut includes = HashSet::new();
+          for i_n in ($sin->{inclusion}->@*) {
+            includes.insert(i_n->{content});
+          }
+          crate::Config->setblxoption(0, "sortinclusion",
+                                      $includes,
+                                      "ENTRYTYPE",
+                                      $sin->{type});
+        }
       }
-      crate::Config->setblxoption(0, "sortingtemplate", $sorttemplates);
-    }
-    else if (lc($k) == "datamodel") {// This is a biblatex option
-      crate::Config->addtoblxoption(0, "datamodel", $v);
-    }
-    else if (exists($v->{content})) { // simple option
-      crate::Config->setconfigfileoption($k, $v->{content});
+      "presort" => {// This is a biblatex option
+        // presort defaults
+        for presort in ($v->@*) {
+          // Global presort default
+          if !(exists($presort->{type})) {
+            crate::Config->setblxoption(0, "presort", $presort->{content});
+          }
+          // Per-type default
+          else {
+            crate::Config->setblxoption(0, "presort",
+                                        $presort->{content},
+                                        "ENTRYTYPE",
+                                        $presort->{type});
+          }
+        }
+      }
+      "sortingtemplate" => {// This is a biblatex option
+        let $sorttemplates;
+        for ss in ($v->@*) {
+          $sorttemplates->{$ss->{name}} = crate::_parse_sort($ss);
+        }
+        crate::Config->setblxoption(0, "sortingtemplate", $sorttemplates);
+      }
+      "datamodel" => {// This is a biblatex option
+        crate::Config->addtoblxoption(0, "datamodel", $v);
+      }
+      _ => {
+        if let Some(content) = v->{content} { // simple option
+          crate::Config->setconfigfileoption($k, content);
+        }
+      }
     }
   }
 }

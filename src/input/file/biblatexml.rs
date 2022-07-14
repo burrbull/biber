@@ -53,21 +53,21 @@ fn extract_entries(filename, _encoding, keys) {
   }
 
   // Get a reference to the correct sourcemap sections, if they exist
-  let $smaps = [];
+  let mut smaps = Vec::new();
   // Maps are applied in order USER->STYLE->DRIVER
   if (defined(crate::Config->getoption("sourcemap"))) {
     // User maps
     if (let @m = grep {$_->{datatype} == "biblatexml" && $_->{level} == "user" } @{crate::Config->getoption("sourcemap")} ) {
-      push $smaps->@*, @m;
+      smaps.extend(m);
     }
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
     if (let @m = grep {$_->{datatype} == "biblatexml" && $_->{level} == "style" } @{crate::Config->getoption("sourcemap")} ) {
-      push $smaps->@*, @m;
+      smaps.extend(m);
     }
     // Driver default maps
     if (let $m = first {$_->{datatype} == "biblatexml" && $_->{level} == "driver"} @{crate::Config->getoption("sourcemap")} ) {
-      push $smaps->@*, $m;
+      smaps.push(m);
     }
   }
 
@@ -829,9 +829,9 @@ fn _literal(bibentry, entry, f, key) {
 
   // XDATA is special, if found, set it
   if (let $xdatav = $node->getAttribute("xdata")) {
-    $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
-    $bibentry->add_xdata_ref(_norm($f), $xdatav);
-    $setval = $xdatav;
+    let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
+    bibentry.add_xdata_ref(_norm($f), &xdatav, None);
+    $setval = xdatav;
   }
 
   // eprint is special case
@@ -856,7 +856,7 @@ fn _xsv(bibentry, entry, f, key) {
   if unicase::eq(_norm($f), "xdata") {
     // Just split with no XDATA setting on list items
     let $value = _split_list($bibentry, $node, $key, $f, 1);
-    $bibentry->add_xdata_ref("xdata", $value);
+    bibentry.add_xdata_ref("xdata", $value, None);
     $bibentry->set_datafield(_norm($f), $value);
   }
   else {
@@ -876,9 +876,9 @@ fn _uri(bibentry, entry, f, key) {
 
   // XDATA is special, if found, set it
   if (let $xdatav = $node->getAttribute("xdata")) {
-    $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
-    $bibentry->add_xdata_ref(_norm($f), $xdatav);
-    $setval = $xdatav;
+    let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
+    bibentry.add_xdata_ref(_norm($f), &xdatav, None);
+    $setval = xdatav;
   }
   else {
     // URL escape if it doesn't look like it already is
@@ -912,8 +912,8 @@ fn _range(bibentry, entry, f, key) {
 
   // XDATA is special, if found, set it
   if (let $xdatav = $node->getAttribute("xdata")) {
-    $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
-    $bibentry->add_xdata_ref(_norm($f), $xdatav);
+    let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
+    bibentry.add_xdata_ref(_norm($f), &xdatav, None);
     $bibentry->set_datafield(_norm($f), [$xdatav]);
     return;
   }
@@ -1156,8 +1156,8 @@ fn _name(bibentry, entry, f, key) {
   for (i, namenode) in names().iter().enumerate() {
     // XDATA is special, if found, set it
     if (let $xdatav = namenode.getAttribute("xdata")) {
-      $xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
-      if (bibentry.add_xdata_ref(_norm(f), xdatav, i)) {
+      let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
+      if bibentry.add_xdata_ref(_norm(f), &xdatav, Some(i)) {
         // Add special xdata ref empty name as placeholder
         names.add_name(crate::Entry::Name->new(xdata => $xdatav));
         continue;
@@ -1288,21 +1288,21 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
 
   if (let @list = $node->findnodes("./$NS:list/$NS:item")) {
 
-    let @result;
+    let mut result = Vec::new();
 
-    for (let $i = 0; $i <= $#list; $i++) {
+    for (i, li) in list.iter().enumerate() {
 
       // Record any XDATA and skip if we did
       // If this field itself is XDATA, don't analyse XDATA further, just split and return
-      if (let $xdatav = $list[$i]->getAttribute("xdata")) {
-        $xdatav = "$xdmi$xnsi$xdatav"; // normalise to same as bibtex input
+      if (let $xdatav = li.getAttribute("xdata")) {
+        let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
         if !($noxdata) {
-          $bibentry->add_xdata_ref(_norm($f), $xdatav, $i);
+          bibentry.add_xdata_ref(_norm($f), &xdatav, Some(i));
         }
-        push @result, $xdatav;
+        result.push(xdatav);
       }
       else {
-        push @result, $list[$i]->textContent();
+        result.push(li.textContent());
       }
     }
 

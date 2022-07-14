@@ -518,7 +518,7 @@ impl Biber {
           // of the doc maps to it. Must also deref the doc maps map element to make
           // sure that they collapse nicely
           let $configmaps = first {$_->{level} == "user"} $usms->@*;
-          unshift($configmaps->{map}->@*, map {$_->{map}->@*} @docmaps);
+          configmaps.map.splice(0..0, docmaps.map(|d| d.map));
         }
 
         // Merge the driver/style maps with the user maps from the config file
@@ -673,26 +673,25 @@ impl Biber {
     // we can use later
     let $snss;
     for sns in ($bcfxml->{sortingnamekeytemplate}->@*) {
-      let $snkps;
+      let mut snkps = Vec::new();
       for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
-        let $snps;
+        let mut snps = Vec::new();
         for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
           let $np;
           if ($snp->{type} == "namepart") {
             $np = { type => "namepart", value => $snp->{content} };
-            if (exists($snp->{use})) {
-              $np->{use} = $snp->{use};
+            if let Some(val) = snp->{use} {
+              $np->{use} = val;
             }
-            if (exists($snp->{inits})) {
-              $np->{inits} = $snp->{inits};
+            if let Some(val) = snp->{inits} {
+              $np->{inits} = val;
             }
-          }
-          else if ($snp->{type} == "literal") {
+          } else if ($snp->{type} == "literal") {
             $np = { type => "literal", value => $snp->{content} };
           }
-          push $snps->@*, $np;
+          snps.push(np);
         }
-        push $snkps->@*, $snps;
+        snkps.push(snps);
       }
       $snss->{$sns->{name}}{visibility} = $sns->{visibility};
       $snss->{$sns->{name}}{template} = $snkps;
@@ -1638,7 +1637,7 @@ impl Biber {
 
         // First construct base part ...
         let mut base = String::new(); // Might not be any base parts at all so make sure it's not undefined
-        let $baseparts;
+        let mut baseparts = Vec::new();
 
         for np in (crate::Config->getblxoption(None, "uniquenametemplate")->{untname}->@*) {
           if !$np->{base} {
@@ -1649,23 +1648,21 @@ impl Biber {
           if (let $p = $n->get_namepart($npn)) {
             if ($np->{use}) {     // only ever defined as 1
               let $method = "get_use$npn";
-              let $useok = crate::Config->getblxoption($secnum, "use$npn",
-                                                      $bee,
-                                                      $citekey);
+              let $useok = crate::Config->getblxoption(secnum, format!("use{npn}"), bee, citekey);
               // Override with per-namelist setting - only for extended name format
-              if (defined($nl->$method)) {
-                $useok = $nl->$method;
+              if let Some(val) = nl->$method {
+                $useok = val;
               }
               // Override with per-name setting - only for extended name format
-              if (defined($n->$method)) {
-                $useok = $n->$method;
+              if let Some(val) = n->$method {
+                $useok = val;
               }
               if !$useok {
                 continue;
               }
             }
             base.push_str(p);
-            push $baseparts->@*, $npn;
+            baseparts.push(npn);
           }
         }
 
@@ -4447,8 +4444,8 @@ impl Biber {
         $sopts->{locale} = $sort->{locale};
       }
       if (defined($sortingitems)) {
-        unshift $sortingitems->@*, $sopts;
-        push $sorting->@*, $sortingitems;
+        sortingitems.insert(0, sopts);
+        sorting.push(sortingitems);
       }
     }
 
