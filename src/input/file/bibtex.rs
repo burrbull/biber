@@ -604,41 +604,41 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               // from Text::BibTeX's list of fields
               $last_fieldval = $fieldsource == "entrykey" ? $etarget->key : $etarget->get(encode("UTF-8", NFC($fieldsource)));
 
-              let $negmatch = 0;
+              let mut negmatch = false;
               let $nm;
               // Negated matches are a normal match with a special flag
               if ($nm = $step->{map_notmatch} || $nm = $step->{map_notmatchi}) {
                 $step->{map_match} = $nm;
-                $negmatch = 1;
+                negmatch = true;
               }
 
-              let $caseinsensitive = 0;
+              let mut caseinsensitive = false;
               let $mi;
               // Case insensitive matches are a normal match with a special flag
               if ($mi = $step->{map_matchi} || $mi = $step->{map_notmatchi}) {
                 $step->{map_match} = $mi;
-                $caseinsensitive = 1;
+                caseinsensitive = true;
               }
 
-              let $caseinsensitives = 0;
+              let mut caseinsensitives = false;
               let $mis;
               // Case insensitive matches are normal matches with a special flag
               if ($mis = $step->{map_matchesi}) {
                 $step->{map_matches} = $mis;
-                $caseinsensitives = 1;
+                caseinsensitives = true;
               }
 
               if (let $ms = $step->{map_matches}) {
-                let @ms = split(/\s*,\s*/,$ms);
-                let @rs = split(/\s*,\s*/,$step->{map_replace});
+                let @ms = regex!(r"\s*,\s*").split(ms);
+                let @rs = regex!(r"\s*,\s*").split(step->{map_replace});
                 if (scalar(@ms) != scalar(@rs)) {
                   debug!("Source mapping (type={}, key={}): Different number of fixed matches vs replaces, skipping ...", level, etargetkey);
                   continue;
                 }
-                for (let $i = 0; $i <= $#ms; $i++) {
-                  if (($caseinsensitives && unicase::eq(last_fieldval, $ms[$i]))
-                      || ($last_fieldval == $ms[$i])) {
-                    $etarget->set(encode("UTF-8", NFC($fieldsource)), $rs[$i]);
+                for (i, msi) in ms.iter().enumerate() {
+                  if ((caseinsensitives && unicase::eq(last_fieldval, msi))
+                      || ($last_fieldval == msi)) {
+                    $etarget->set(encode("UTF-8", NFC($fieldsource)), $rs[i]);
                   }
                 }
               }
@@ -1072,11 +1072,11 @@ fn _range(bibentry: &mut Entry, entry, field, key) -> Vec<(String, Option<String
     return $value; // Return raw value
   }
 
-  let @values = split(/\s*[;,]\s*/, $value);
+  let values = regex!(r"\s*[;,]\s*").split(value);
   // If there is a range sep, then we set the end of the range even if it's null
   // If no range sep, then the end of the range is undef
-  for mut value in (@values) {
-    let $ovalue = $value;
+  for mut value in values {
+    let ovalue = value.clone();
     value = value.replace("~", " "); // Some normalisation for malformed fields
     let (start, end) = if let Some((_, one)) = regex_captures!(r"/\A\s*(\P{Pd}+)\s*\z"xms, &value) {
       // Simple value without range
@@ -1098,7 +1098,7 @@ fn _range(bibentry: &mut Entry, entry, field, key) -> Vec<(String, Option<String
       values_ref.push(($start || "", $end));
     } else {
       biber_warn("Range field '$field' in entry '$key' is malformed, falling back to literal", $bibentry);
-      values_ref.push(($ovalue, None));
+      values_ref.push((ovalue, None));
     }
   }
   values_ref

@@ -3837,8 +3837,7 @@ impl Biber {
       let @d;
       let $key = $keys[$_];
       // Loop over all sorting fields
-      for (let $i=0; $i<=$#{$dlist->get_sortdata_for_key($key)->[1]}; $i++) {
-        let $sortfield = $dlist->get_sortdata_for_key($key)->[1][$i];
+      for (i, sortfield) in dlist.get_sortdata_for_key($key)[1].iter().enumerate() {
         // Resolve real zeros back again
         if ($lsds->[$i]{int}) {
           // There are special cases to be careful of here in that "final" elements

@@ -534,10 +534,10 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
                 debug!("Source mapping (type={}, key={}): Different number of fixed matches vs replaces, skipping ...", level, etargetkey);
                 continue;
               }
-              for (let $i = 0; $i <= $#ms; $i++) {
-                if (($caseinsensitives && unicase::eq(last_fieldval, $ms[$i]))
-                    || ($last_fieldval == $ms[$i])) {
-                  $etarget->set(encode("UTF-8", NFC($xp_fieldsource_s)), $rs[$i]);
+              for (i, msi) in ms.iter().enumerate() {
+                if (($caseinsensitives && unicase::eq(last_fieldval, msi))
+                    || ($last_fieldval == msi)) {
+                  $etarget->set(encode("UTF-8", NFC($xp_fieldsource_s)), $rs[i]);
                 }
               }
             }
@@ -1376,8 +1376,7 @@ fn _changenode(e, xp_target_s, value, error) {
     let @nodes = split(m|/|, $xp_target_s =~ s|^\./||r);
     let $nodepath = '.';
     let $nodeparent = '.';
-    for (let $i = 0; $i <= $#nodes; $i++) {
-      let $node = $nodes[$i];
+    for (i, node) in nodes.iter().enumerate() {
       $nodepath .= "/$node";
       if !($e->findnodes($nodepath)) {
         let $parent = $e->findnodes($nodeparent)->get_node(1);

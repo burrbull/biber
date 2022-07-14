@@ -527,7 +527,7 @@ fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelatt
     }
 
     // Loop over names in range
-    for (let $i = $nr_start-1; $i < $nr_end; $i++) {
+    for i in nr_start-1..nr_end {
       // Deal with pre options
       for fieldinfo in ($parts->{pre}{strings}[$i]->@*) {
         let $np = $fieldinfo->[0];
@@ -587,7 +587,7 @@ fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelatt
 
 // Complicated due to various label disambiguation schemes and also due to dealing with
 // name fields
-fn _process_label_attributes(&mut self, $citekey, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
+fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
   if !($labelattrs) {
     return fieldstrings.iter().map(|s| s[0]).join("");
   }
@@ -595,7 +595,7 @@ fn _process_label_attributes(&mut self, $citekey, $dlist, $fieldstrings, $labela
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let @citekeys = $section.get_citekeys();
-  let $nindex = first_index {$_ == $citekey} @citekeys;
+  let nindex = citekeys.iter().position(|&k| k == citekey);
 
   for fieldinfo in ($fieldstrings->@*) {
     let $field_string = $fieldinfo->[0];
@@ -636,8 +636,8 @@ fn _process_label_attributes(&mut self, $citekey, $dlist, $fieldstrings, $labela
           // This ends up as a flat list due to array interpolation
           let @strings = uniq keys %indices;
           // Look to the index of the longest string or the explicit max width if set
-          let $maxlen = $labelattrs->{substring_width_max} || max map {Unicode::GCString->new($_)->length} @strings;
-          for (let $i = 1; $i <= $maxlen; $i++) {
+          let $maxlen = $labelattrs->{substring_width_max} || strings.iter().map(|s| s.graphemes(true).count()).max();
+          for i in 1..=maxlen {
             for map in (map { let $s = Unicode::GCString->new($_)->substr(0, $i)->as_string; $substr_cache{$s}++; [$_, $s] } @strings) {
               // We construct a list of all substrings, up to the length of the longest string
               // or substring_width_max. Then we save the index of the list element which is
@@ -904,11 +904,10 @@ fn _label_listdisambiguation(strings) {
 // Take substrings of name lists according to a map and save the results
 fn _do_substr(lcache, cache, strings) {
   delete($cache->{keys});
-  for (let $i = 0; $i <= $strings->$#*; $i++) {
-    if defined($lcache->{data}[$i]) { // ignore names already disambiguated
+  for (i, row) in strings.iter().enumerate() {
+    if lcache->{data}[i].is_some() { // ignore names already disambiguated
       continue;
     }
-    let $row = $strings->[$i];
     let mut s = Vec::new();
     for (j, rowj) in row.iter().enumerate() {
       s.push(Unicode::GCString->new(rowj)->substr(0 ,$cache->{substr_map}[i][j])->as_string);
@@ -950,18 +949,17 @@ fn _check_counts(lcache, cache) {
 
 // $cache->{name_map} = [ 1, 1, 1, 1, 2 ]
 fn _gen_first_disambiguating_name_map(cache, array, indices) {
-  for (let $i = 0; $i <= $array->$#*; $i++) {
+  for (i, arrayi) in array.iter().enumerate() {
     let @check_array = $array->@*;
     splice(@check_array, $i, 1);
     // Remove duplicates from the check array otherwise the duplicate makes generating the
     // name disambiguation index fail because there is a same name in every position
-    @check_array = grep {not Compare($array->[$i], $_)} @check_array;
+    @check_array = grep {not Compare(arrayi, $_)} @check_array;
     // all ambiguous must be same length (otherwise they wouldn't be ambiguous)
-    let $len = $#{$array->[0]};
-    for (let $j = 0; $j <= $len; $j++) {
+    for j in 0..array[0].len() {
       // if no other name equal to this one in same place, this is the index of the name
       // to use for disambiguation
-      if !(grep {$array->[$i][$j] == $_} map {$_->[$j]} @check_array) {
+      if !(grep {arrayi[j] == $_} map {$_->[$j]} @check_array) {
         $cache->{name_map}[$indices->[$i]] = $j;
         break;
       }
@@ -1508,8 +1506,7 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
     let $kpa = [];
     for kp in ($snk->{template}->@*) {
       let $kps = "";
-      for (let $i=0; $i<=$kp->$#*; $i++) {
-        let $np = $kp->[$i];
+      for (i, np) in kp.iter().enumerate() {
         if ($np->{type} == "namepart") {
           let $namepart = $np->{value};
           let useopt = if exists($np->{use}) { Some(format!("use{namepart}")) } else { None };
