@@ -382,7 +382,7 @@ fn _label_literal(self, $citekey, $secnum, $section, $be, $args, $labelattrs) {
 }
 
 // names
-fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlist) {
+fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelattrs, $dlist) {
   let $bee = $be->get_field("entrytype");
   let $useprefix = crate::Config->getblxoption($secnum, "useprefix", bee, citekey);
   let $alphaothers = crate::Config->getblxoption(None, "alphaothers", bee);
@@ -547,7 +547,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
       }
 
       $acc .= _process_label_attributes($self,
-                                        $citekey,
+                                        citekey,
                                         $dlist,
                                         $parts->{main}{strings}[$i],
                                         $labelattrs,
@@ -587,7 +587,7 @@ fn _label_name(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlis
 
 // Complicated due to various label disambiguation schemes and also due to dealing with
 // name fields
-fn _process_label_attributes(self, $citekey, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
+fn _process_label_attributes(&mut self, $citekey, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
   if !($labelattrs) {
     return fieldstrings.iter().map(|s| s[0]).join("");
   }

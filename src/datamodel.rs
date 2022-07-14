@@ -537,7 +537,7 @@ impl DataModel {
                 // ignore date field if it has been split into parts
                 !(of == "date" && be.get_field("datesplit")) {
               if xorflag {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Mandatory fields - only one of '{}' must be defined - ignoring field '{of}'", fs.join(", ")));
+                warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Mandatory fields - only one of '{}' must be defined - ignoring field '{of}'", fs.join(", ")));
                 be.del_field(of);
               }
               flag = true;
@@ -545,7 +545,7 @@ impl DataModel {
             }
           }
           if !flag {
-            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined"), fs.join(", "));
+            warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined"), fs.join(", "));
           }
         }
         // One or more of a set is mandatory
@@ -559,14 +559,14 @@ impl DataModel {
             }
           }
           if !flag {
-            warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined", fs.join(", ")));
+            warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Missing mandatory field - one of '{}' must be defined", fs.join(", ")));
           }
         }
       }
       // Simple mandatory field
       else {
         if !be.field_exists(c) {
-          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Missing mandatory field '{c}'"));
+          warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Missing mandatory field '{c}'"));
         }
       }
     }
@@ -610,12 +610,12 @@ impl DataModel {
       let actual_cfs = cfs.iter().filter(|cf| be.field_exists(cf)).collect();
       if cq == "all" {
         if cfs.len() != actual_cfs.len() { // ? -> ALL not satisfied
-          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
+          warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
         }
       }
       else if cq == "none" {
         if !actual_cfs.is_empty() {        // ? -> NONE not satisfied
-          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist. Ignoring them.", actual_cfs.join(", "), afs.join(", ")));
+          warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist. Ignoring them.", actual_cfs.join(", "), afs.join(", ")));
           // delete the offending fields
           for f in &actual_cfs {
             be.del_field(f);
@@ -624,7 +624,7 @@ impl DataModel {
       }
       else if cq == "one" {
         if actual_cfs.is_empty() {    // ? -> ONE not satisfied
-          warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
+          warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Constraint violation - {cq} of fields ({}) must exist when {aq} of fields ({}) exist", cfs.join(", "), afs.join(", ")));
         }
       }
     }
@@ -654,7 +654,7 @@ impl DataModel {
               }
               for i in fv {
                 if (!$DM_DATATYPES{isbn}->(i, f)) {
-                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'"));
+                  warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid ISBN in value of field '{f}'"));
                 }
               }
             }
@@ -670,7 +670,7 @@ impl DataModel {
               }
               for i in fv {
                 if (!$DM_DATATYPES{issn}->(i)) {
-                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISSN in value of field '{f}'"));
+                  warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid ISSN in value of field '{f}'"));
                 }
               }
             }
@@ -686,7 +686,7 @@ impl DataModel {
               }
               for i in fv {
                 if (!$DM_DATATYPES{ismn}->(i)) {
-                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid ISMN in value of field '{f}'"));
+                  warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid ISMN in value of field '{f}'"));
                 }
               }
             }
@@ -697,14 +697,14 @@ impl DataModel {
             if (let $fv = be.get_field(f)) {
               if (let $fmin = $c->{rangemin}) {
                 if !(fv >= fmin) {
-                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '>={fmin}' - ignoring field"));
+                  warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid value of field '{f}' must be '>={fmin}' - ignoring field"));
                   be.del_field(f);
                   continue;
                 }
               }
               if (let $fmax = $c->{rangemax}) {
                 if !(fv <= fmax) {
-                  warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be '<={fmax}' - ignoring field"));
+                  warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid value of field '{f}' must be '<={fmax}' - ignoring field"));
                   be.del_field(f);
                   continue;
                 }
@@ -720,7 +720,7 @@ impl DataModel {
           for f in ($c->{fields}->@*) {
             if (let $fv = be.get_field(f)) {
               if !(imatch($fv, $patt)) {
-                warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value (pattern match fails) for field '{f}'"));
+                warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid value (pattern match fails) for field '{f}'"));
               }
             }
           }
@@ -763,7 +763,7 @@ impl DataModel {
       }
 
       if !($dt->($fv, f)) {
-        warnings.push(format!("Datamodel: Entry '{key}' ({ds}): Invalid value of field '{f}' must be datatype '{fdt}' - ignoring field"));
+        warnings.push(format!("Datamodel: {et} entry '{key}' ({ds}): Invalid value of field '{f}' must be datatype '{fdt}' - ignoring field"));
         be.del_field(f);
       }
     }

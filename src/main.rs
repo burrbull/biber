@@ -512,7 +512,12 @@ struct Args {
     #[clap(long)]
     validate_control: bool,
 
-    /// Validate the data against a data model
+    /// Validate the data against a data model. By default, the data model used is
+    /// the one in the ".bcf" file (normal mode) or in the default config file
+    /// whose path can be shown with the `--tool-config` option (tool mode). Use
+    /// `--no-default-datamodel` to ignore the default data model completely if
+    /// you are using a complete data model via your own config file
+    /// (with `--configfile`).
     #[clap(short('V'), long)]
     validate_datamodel: bool,
 
