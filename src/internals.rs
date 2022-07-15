@@ -1503,9 +1503,9 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
     let $snk = crate::Config->getblxoption(None, "sortingnamekeytemplate")->{$snkname};
 
     // Get the sorting name key specification and use it to construct a sorting key for each name
-    let $kpa = [];
+    let mut kpa = Vec::new();
     for kp in ($snk->{template}->@*) {
-      let $kps = "";
+      let mut kps = String::new();
       for (i, np) in kp.iter().enumerate() {
         if ($np->{type} == "namepart") {
           let $namepart = $np->{value};
@@ -1517,16 +1517,16 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
             $useoptval = map_boolean("useprefix", useprefix, "tonum");
           }
 
-          if (let $npstring = $n->get_namepart($namepart)) {
+          if (let $npstring = n.get_namepart(namepart)) {
             // No use attribute conditionals or the attribute is specified and matches the option
 
             if (!$useopt ||
                 ($useopt && $useoptval == $np->{use})) {
 
-              let $nps = "";
+              let mut nps;
               // Do we only want initials for sorting?
               if ($np->{inits}) {
-                let $npistring = $n->get_namepart_initial($namepart);
+                let npistring = n.get_namepart_initial(namepart);
 
                 // The namepart is padded to the longest namepart in the ref
                 // section as this is the only way to make sorting work
@@ -1534,46 +1534,45 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
                 // glyphs but it also of variable weight and ignorable in
                 // DUCET so we have to set U::C to variable=>"non-ignorable"
                 // as sorting default so that spaces are non-ignorable
-                $nps = normalise_string_sort(join("", $npistring->@*), $field);
+                nps = normalise_string_sort(npistring.join(""), field);
 
                 // Only pad the last namepart
-                if ($i == $kp->$#*) {
-                  $nps = sprintf("%-*s", $section->get_np_length("${namepart}-i"), $nps);
+                if i == kp.len()-1 {
+                  nps = sprintf("%-*s", section.get_np_length("${namepart}-i"), nps);
                 }
-              }
-              else {
-                $nps = normalise_string_sort($npstring, $field);
+              } else {
+                nps = normalise_string_sort(npstring, field);
 
                 // Only pad the last namepart
-                if ($i == $kp->$#*) {
-                  $nps = sprintf("%-*s", $section->get_np_length($namepart), $nps);
+                if i == kp.len()-1 {
+                  nps = sprintf("%-*s", section.get_np_length(namepart), nps);
                 }
               }
-              $kps .= $nps;
+              kps.push_str(nps);
             }
           }
         }
         else if ($np->{type} == "literal") {
-          $kps .= $np->{value};
+          kps.push_str(np->{value});
         }
       }
       // Now append the key part string if the string is not empty
-      if $kps {
-        string .= $kps;
+      if !kps.is_empty() {
+        string.push_str(kps);
       }
-      push $kpa->@*, $kps;
+      kpa.push(kps);
     }
   }
 
-  let $nso = crate::Config->getblxoption($secnum, "nosortothers", $bee, $citekey);
+  let $nso = crate::Config->getblxoption(secnum, "nosortothers", bee, citekey);
 
   // Per-namelist nosortothers
-  if (defined($names->get_nosortothers)) {
-    $nso = $names->get_nosortothers;
+  if let Some(val) = names.get_nosortothers {
+    $nso = val;
   }
 
   if !($nso) {
-    if $visible < $count {
+    if $visible < count {
       string.push(trunc); // name list was truncated
     }
   }
@@ -1582,7 +1581,7 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
 
 }
 
-fn _liststring(self, citekey: &str, $field, $verbatim) {
+fn _liststring(self, citekey: &str, field: &str, $verbatim) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let be = section.bibentry(citekey);
@@ -1604,9 +1603,9 @@ fn _liststring(self, citekey: &str, $field, $verbatim) {
   let trunc = '\x{10FFFD}';  // sort string for truncated list
 
   // perform truncation according to options minitems, maxitems
-  if ( items.len() > crate::Config->getblxoption($secnum, "maxitems", $bee, citekey) ) {
+  if ( items.len() > crate::Config->getblxoption($secnum, "maxitems", bee, citekey) ) {
     truncated = true;
-    @items = splice(@items, 0, crate::Config->getblxoption($secnum, "minitems", $bee, citekey) );
+    @items = splice(@items, 0, crate::Config->getblxoption($secnum, "minitems", bee, citekey) );
   }
 
   // separate the items by a string to give some structure
@@ -1639,7 +1638,7 @@ fn _translit(target, entry, string) {
         if !langid {
           continue;
         }
-        if !(first {unicase::eq(langid, $_)} split(/\s*,\s*/, $tr->{langids})) {
+        if !(first {unicase::eq(langid, $_)} regex!(r"\s*,\s*").split(tr->{langids})) {
           continue;
         }
       }

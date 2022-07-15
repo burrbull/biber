@@ -191,9 +191,9 @@ fn _initopts(opts) {
 
   // Parse output-field-replace into something easier to use
   if (let $ofrs = crate::Config->getoption("output_field_replace")) {
-    for ofr in (split(/\s*,\s*/, $ofrs)) {
-      let ($f, $fr) = $ofr =~ m/^([^:]+):([^:]+)$/;
-      $CONFIG_OUTPUT_FIELDREPLACE{$f} = $fr;
+    for ofr in regex!(r"\s*,\s*").split(ofrs) {
+      let (f, fr) = regex_captures!(r"^([^:]+):([^:]+)$", ofr).unwrap();
+      $CONFIG_OUTPUT_FIELDREPLACE.insert(f, fr);
     }
   }
 
@@ -651,12 +651,12 @@ fn config_file {
 ///////////////////////////////
 
 /// Track uniqueness ignore settings found in inheritance data
-fn add_uniq_ignore(key, field, uniqs) {
+fn add_uniq_ignore(key, field: &str, uniqs) {
   if !($uniqs) {
     return ;
   }
-  for u in (split(/\s*,\s*/, $uniqs)) {
-    push $CONFIG->{state}{uniqignore}{$key}{$u}->@*, $field;
+  for u in regex!(r"\s*,\s*").split(uniqs) {
+    push $CONFIG->{state}{uniqignore}{$key}{$u}->@*, field;
   }
   return;
 }
@@ -675,15 +675,14 @@ fn postprocess_biber_opts() {
   // mirror biblatex option syntax for users, for example
 
   for opt in ("sortcase", "sortupper") {
-    if (exists($CONFIG->{options}{biber}{$opt})) {
-      if ($CONFIG->{options}{biber}{$opt} == "true") {
-        $CONFIG->{options}{biber}{$opt} = 1;
+    if let Some(optval) = CONFIG->{options}{biber}{$opt}.as_mut() {
+      if optval == "true" {
+        *optval = 1;
       }
-      else if ($CONFIG->{options}{biber}{$opt} == "false") {
-        $CONFIG->{options}{biber}{$opt} = 0;
+      else if optval == "false" {
+        *optval = 0;
       }
-      if !($CONFIG->{options}{biber}{$opt} == '1' ||
-              $CONFIG->{options}{biber}{$opt} == '0') {
+      if !(optval == '1' || optval == '0') {
         crate::Utils::biber_error("Invalid value for option '$opt'");
       }
     }
@@ -731,7 +730,8 @@ fn getoption(opt) {
 /// Store a Biber command-line option
 fn setcmdlineoption(opt, val) {
   // Command line options are also options ...
-  $CONFIG->{options}{biber}{$opt} = $CONFIG->{cmdlineoptions}{$opt} = $val;
+  $CONFIG->{options}{biber}{$opt} = $val;
+  $CONFIG->{cmdlineoptions}{$opt} = $val;
   return;
 }
 

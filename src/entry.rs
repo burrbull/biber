@@ -114,7 +114,7 @@ impl Entry {
 
   /// Recursively create related entry clones starting with an entry
   fn relclone(&mut self) {
-    let $citekey = $self->get_field("citekey");
+    let citekey = self.get_field("citekey");
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
@@ -132,13 +132,13 @@ impl Entry {
 
         // Loop avoidance, in case we are back in an entry again in the guise of a clone
         // We can record the related clone but don't create it again
-        if (let $ck = $section->get_keytorelclone($relkey)) {
+        if (let $ck = section.get_keytorelclone(relkey)) {
             debug!("Found RELATED key '{}' already has clone '{}'", relkey, ck);
           clonekeys.push(ck);
 
           // Save graph information if requested
           if (crate::Config->getoption("output_format") == "dot") {
-            crate::Config->set_graph("related", $ck, $relkey, $citekey);
+            crate::Config->set_graph("related", ck, relkey, citekey);
           }
         }
         else {
@@ -150,26 +150,26 @@ impl Entry {
             debug!("Created new related clone for '{}' with clone key '{}'", relkey, clonekey);
 
           // Set related clone options
-          if (let $relopts = $self->get_field("relatedoptions")) {
+          if (let $relopts = self.get_field("relatedoptions")) {
             // Check if this clone was also directly cited. If so, set skipbib/skipbiblist
             // if they are unset as otherwise this entry would appear twice in bibliographies
             // but with different keys.
             if section.has_citekey(relkey) {
-              $relopts = merge_entry_options($relopts, ["skipbib", "skipbiblist"]);
+              relopts = merge_entry_options(relopts, ["skipbib", "skipbiblist"]);
             }
 
-            process_entry_options($clonekey, $relopts, $secnum);
-            $relclone->set_datafield("options", $relopts);
+            process_entry_options(clonekey, relopts, secnum);
+            relclone.set_datafield("options", relopts);
           }
           else {
             // related clone needs its own options plus all the dataonly opts, any conflicts and
             // explicit options win
 
-            let $relopts = merge_entry_options(["skipbib", "skiplab","skipbiblist","uniquename=false","uniquelist=false"], $relentry->get_field("options"));
+            let relopts = merge_entry_options(["skipbib", "skiplab","skipbiblist","uniquename=false","uniquelist=false"], $relentry->get_field("options"));
 
             // Preserve options already in the clone but add "dataonly" options
-            process_entry_options($clonekey, $relopts, $secnum);
-            $relclone->set_datafield("options", $relopts);
+            process_entry_options(clonekey, relopts, secnum);
+            relclone.set_datafield("options", relopts);
           }
 
           section.bibentries().add_entry(clonekey, relclone);
@@ -199,10 +199,10 @@ impl Entry {
     let $new = new crate::Entry;
     let dmh = crate::config::get_dm_helpers();
 
-    while (let ($k, $v) = each(%{$self->{datafields}})) {
+    for (k, v) in self.datafields.iter() {
       $new->{datafields}{$k} = $v;
     }
-    while (let ($k, $v) = each(%{$self->{origfields}})) {
+    for (k, v) in self.origfields.iter() {
       $new->{origfields}{$k} = $v;
     }
 
