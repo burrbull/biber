@@ -847,18 +847,18 @@ fn getblxentryoptions(secnum, key) {
 fn set_graph(type) {
   if ($type == "set") {
     let ($source_key, $target_key) = @_;
-      debug!("Saving DOT graph information type "set" with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
+      debug!(r#"Saving DOT graph information type "set" with SOURCEKEY={}, TARGETKEY={}"#, source_key, target_key);
     $CONFIG->{state}{graph}{$type}{settomem}{$source_key}{$target_key} = 1;
     $CONFIG->{state}{graph}{$type}{memtoset}{$target_key} = $source_key;
   }
   else if ($type == "xref") {
     let ($source_key, $target_key) = @_;
-      debug!("Saving DOT graph information type "xref" with SOURCEKEY={}, TARGETKEY={}", source_key, target_key);
+      debug!(r#"Saving DOT graph information type "xref" with SOURCEKEY={}, TARGETKEY={}"#, source_key, target_key);
     $CONFIG->{state}{graph}{$type}{$source_key} = $target_key;
   }
   else if ($type == "related") {
     let ($clone_key, $related_key, $target_key) = @_;
-      debug!("Saving DOT graph information type "related" with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}", clone_key, related_key, target_key);
+      debug!(r#"Saving DOT graph information type "related" with CLONEKEY={}, RELATEDKEY={}, TARGETKEY={}"#, clone_key, related_key, target_key);
     $CONFIG->{state}{graph}{$type}{reltoclone}{$related_key}{$clone_key} = 1;
     $CONFIG->{state}{graph}{$type}{clonetotarget}{$clone_key}{$target_key} = 1;
   }

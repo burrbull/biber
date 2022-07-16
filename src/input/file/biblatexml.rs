@@ -920,9 +920,9 @@ fn _range(bibentry, entry, f, key) {
 
   // List of ranges/values
   if (let @rangelist = $node->findnodes("./$NS:list/$NS:item")) {
-    let $rl;
+    let mut rl = Vec::new();
     for range in (@rangelist) {
-      push $rl->@*, _parse_range_list($range);
+      rl.push(_parse_range_list($range));
     }
     $bibentry->set_datafield(_norm($f), $rl);
   }

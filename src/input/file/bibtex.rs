@@ -72,7 +72,7 @@ fn extract_entries(filename, encoding, keys) {
   if !(eval {$tbuf = slurp_switchr($filename, $encoding)->$*}) {
     biber_error("Data file '$filename' cannot be read in encoding '$encoding': $@");
   }
-  if !($tbuf =~ m/\@/) {
+  if !regex_is_match!(r"\@", tbuf) {
     biber_warn("Data source '$filename' contains no BibTeX entries/macros, ignoring");
     return @rkeys;
   }
@@ -80,18 +80,14 @@ fn extract_entries(filename, encoding, keys) {
   // Get a reference to the correct sourcemap sections, if they exist
   let mut smaps = Vec::new();
   // Maps are applied in order USER->STYLE->DRIVER
-  if (defined(crate::Config->getoption("sourcemap"))) {
+  if let Some(sourcemap) = crate::Config->getoption("sourcemap") {
     // User maps, allow multiple \DeclareSourcemap
-    if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "user" } crate::Config->getoption("sourcemap")->@* ) {
-      smaps.extend(m);
-    }
+    smaps.extend(sourcemap.iter().filter(|m| m.datatype == "bibtex" && m.level == "user"));
     // Style maps
     // Allow multiple style maps from multiple \DeclareStyleSourcemap
-    if (let @m = grep {$_->{datatype} == "bibtex" && $_->{level} == "style" } crate::Config->getoption("sourcemap")->@* ) {
-      smaps.extend(m);
-    }
+    smaps.extend(sourcemap.iter().filter(|m| m.datatype == "bibtex" && m.level == "style"));
     // Driver default maps
-    if (let $m = first {$_->{datatype} == "bibtex" && $_->{level} == "driver"} crate::Config->getoption("sourcemap")->@* ) {
+    if let Some(m) =  sourcemap.iter().find(|m| m.datatype == "bibtex" && m.level == "driver") {
       smaps.push(m);
     }
   }
@@ -119,7 +115,7 @@ fn extract_entries(filename, encoding, keys) {
   // For example, a datafile might be referenced in more than one section.
   // Some things find this information useful, for example, setting preambles is global
   // and so we need to know if we've already saved the preamble for a datafile.
-  $cache->{counts}{$filename}++;
+  cache.counts.entry(filename).or_default() += 1;
 
   // Don't read the file again if it's already cached
   if !($cache->{data}{$filename}) {
@@ -1208,14 +1204,14 @@ fn _name(bibentry, entry, field, key) {
 }
 
 // Dates
-fn _datetime(bibentry, entry, field, key) {
+fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
   let $datetype = $field =~ s/date\z//xmsr;
   let $date = $entry->get(encode("UTF-8", NFC($field)));
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($key);
 
-  let ($sdate, $edate, $sep, $unspec) = parse_date_range($bibentry, $datetype, $date);
+  let (sdate, edate, sep, unspec) = parse_date_range(bibentry, datetype, date);
 
   // Date had unspecified format
   // This does not differ for *enddate components as these are split into ranges
@@ -1431,15 +1427,14 @@ fn cache_data(filename, encoding) {
 
   while ( let $entry = Text::BibTeX::Entry->new($bib) ) {
     if ( $entry->metatype == BTE_PREAMBLE ) {
-      push $cache->{preamble}{$filename}->@*, $entry->value;
+      cache->{preamble}{$filename}.push(entry->value);
       continue;
     }
 
     // Save comments for output in tool mode unless comment stripping is requested
     if ( $entry->metatype == BTE_COMMENT ) {
-      if (crate::Config->getoption("tool") &&
-          !crate::Config->getoption("strip_comments") ) {
-        push $cache->{comments}{$filename}->@*, process_comment($entry->value);
+      if (crate::Config->getoption("tool") && !crate::Config->getoption("strip_comments") ) {
+        cache->{comments}{$filename}.push(process_comment($entry->value));
       }
       continue;
     }
@@ -1480,16 +1475,16 @@ fn cache_data(filename, encoding) {
     if (let $ids = $entry->get("ids")) {
       let $Srx = crate::Config->getoption("xsvsep");
       let $S = qr/$Srx/;
-      for id in (split(/$S/, $ids)) {
+      for id in Regex::new(format!(r"{S}")).unwrap().split(ids) {
 
         // Skip aliases which are this very key (deep recursion ...)
-        if ($id == $key) {
+        if id == key {
           biber_warn("BAD RECURSION! Entry alias '$id' is identical to the entry key, skipping ...");
           continue;
         }
 
         // Skip aliases which are also real entry keys
-        if ($section->has_everykey($id)) {
+        if section.has_everykey(id) {
           biber_warn("Entry alias '$id' is also a real entry key, skipping ...");
           continue;
         }
@@ -1719,7 +1714,7 @@ fn parsename(section, namestr, fieldname) {
       // Protect spaces inside {} when splitting to produce initials
       let $part = $namec{$np};
       if ($namec{"${np}-strippedflag"}) {
-        $part = $namec{$np} =~ s/\s+/_/gr;
+        $part = regex!(r"\s+").replace_all($namec{$np}, "_");
       }
 
       // strip noinit
@@ -1732,7 +1727,7 @@ fn parsename(section, namestr, fieldname) {
 
   let %nameparts;
   let $strip;
-  for np in ("prefix", "family", "given", "suffix") {
+  for np in ["prefix", "family", "given", "suffix"] {
     $nameparts{$np} = {string  => $namec{"${np}-stripped"}.unwrap_or(None),
                        initial => if $namec{$np} { $namec{"${np}-i"} } else { None }
                       };
@@ -1767,7 +1762,7 @@ fn parsename(section, namestr, fieldname) {
 ///   sortingnamekeytemplatename => 'template name',
 /// }
 /// ```
-fn parsename_x(section, namestr, fieldname, key) {
+fn parsename_x(section: &mut Section, namestr: &str, fieldname: &str, key: &str) -> Name {
   let $xnamesep = crate::Config->getoption("xnamesep");
   let %nps = map {$_ => 1} $dm->get_constant_value("nameparts");
 
@@ -1775,11 +1770,11 @@ fn parsename_x(section, namestr, fieldname, key) {
   let %pernameopts;
   for np in (split_xsv($namestr)) {// Can have x inside records so use Text::CSV
     let ($npn, $npv) = $np =~ m/^(.+)\s*$xnamesep\s*(.+)$/x;
-    $npn = lc($npn);
+    let npn = npn.to_lowercase();
 
     // per-name options
-    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&npn, "NAME") {
-      let $oo = expand_option_input($npn, $npv, $CONFIG_BIBLATEX_OPTIONS{NAME}{$npn}{INPUT});
+    if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(npn, "NAME") {
+      let $oo = expand_option_input(npn, $npv, $CONFIG_BIBLATEX_OPTIONS{NAME}{$npn}{INPUT});
 
       for o in ($oo->@*) {
         $pernameopts{$o->[0]} = $o->[1];
@@ -1821,7 +1816,7 @@ fn parsename_x(section, namestr, fieldname, key) {
       $part = strip_noinit($part);
 
       // Generate any initials which are missing
-      if (!exists($namec{"${np}-i"})) {
+      if (!exists($namec{&format!("{np}-i")})) {
         $namec{"${np}-i"} = [gen_initials(regex!(r"[\s~]+").split(part))];
       }
     }
@@ -1830,7 +1825,7 @@ fn parsename_x(section, namestr, fieldname, key) {
   let %nameparts;
   for np in nps.keys() {
     $nameparts{$np} = {string  => $namec{$np}.unwrap_or(None),
-                       initial => if exists($namec{$np}) { $namec{"${np}-i"} } else { None }
+                       initial => if exists($namec{$np}) { $namec{&format!("{np}-i")} } else { None }
                       };
 
     // Record max namepart lengths
@@ -1841,10 +1836,7 @@ fn parsename_x(section, namestr, fieldname, key) {
   // The "strip" entry tells us which of the name parts had outer braces
   // stripped during processing so we can add them back when printing the
   // .bbl so as to maintain maximum BibTeX compatibility
-  return  crate::Entry::Name->new(
-                                  %nameparts,
-                                  %pernameopts
-                                 );
+  return  crate::Entry::Name->new(%nameparts, %pernameopts);
 }
 
 // Routine to try to hack month into the right biblatex format

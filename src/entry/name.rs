@@ -269,7 +269,7 @@ impl Name {
     }
 
     // Add the name hash to the options
-    push @pno, "<BDS>${nid}-PERNAMEHASH</BDS>";
+    pno.push(format!("<BDS>{nid}-PERNAMEHASH</BDS>"));
     let pno = pno.join(",");
 
     let mut namestring = format!("        {{{{{pno}}}{{%\n");

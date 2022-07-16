@@ -1185,9 +1185,9 @@ impl Biber {
         }
       }
       // CROSSREF
-      if (let $refkey = $be->get_field("crossref")) {
-        if (let $realkey = $section->get_citekey_alias($refkey)) {
-          $be->set_datafield("crossref", $realkey);
+      if (let $refkey = be.get_field("crossref")) {
+        if (let $realkey = section.get_citekey_alias(refkey)) {
+          be.set_datafield("crossref", realkey);
         }
       }
       // XDATA

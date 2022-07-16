@@ -188,14 +188,14 @@ impl Entry {
       // point to clone keys and add to citekeys
       // We have to add the citekeys as we need these clones in the .bbl
       // but the dataonly will cause biblatex not to print them in the bib
-      $section->add_citekeys(@clonekeys);
-      $self->set_datafield("related", [ @clonekeys ]);
+      section.add_citekeys(@clonekeys);
+      self.set_datafield("related", [ @clonekeys ]);
     }
   }
 
   /// Clone a crate::Entry object and return a copy
   /// Accepts optionally a key for the copy
-  fn clone(self, $newkey) {
+  fn clone(&self, newkey: Option<&str>) -> Self {
     let $new = new crate::Entry;
     let dmh = crate::config::get_dm_helpers();
 
@@ -224,20 +224,20 @@ impl Entry {
     }
 
     // Clone annotations
-    crate::annotation::copy_annotations($self->get_field("citekey"), $newkey);
+    crate::annotation::copy_annotations(self.get_field("citekey"), newkey);
 
     // Need to add entrytype and datatype
-    $new->{derivedfields}{entrytype} = $self->{derivedfields}{entrytype};
-    $new->{derivedfields}{datatype} = $self->{derivedfields}{datatype};
+    new.derivedfields.entrytype = self.derivedfields.entrytype;
+    new.derivedfields.datatype = self.derivedfields.datatype;
 
     // put in key if specified
     if ($newkey) {
-      $new->{derivedfields}{citekey} = $newkey;
+      new.derivedfields.citekey = newkey;
     }
     // Record the key of the source of the clone in the clone. Useful for loop detection etc.
     // in biblatex
-    $new->{derivedfields}{clonesourcekey} = $self->get_field("citekey");
-    return $new;
+    new.derivedfields.clonesourcekey = self.get_field("citekey");
+    new
   }
 
   /// Test for an empty object
@@ -424,8 +424,8 @@ impl Entry {
   }
 
   /// Check whether a field exists (even if null)
-  fn field_exists(self, $key) -> bool {
-    return (exists($self->{datafields}{$key}) || exists($self->{derivedfields}{$key}));
+  fn field_exists(self, key: &str) -> bool {
+    self.datafields.contains_key(key) || self.derivedfields.contains_key(key)
   }
 
   /// Check whether any parts of a date field exist when passed a datepart field name
