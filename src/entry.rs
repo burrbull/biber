@@ -258,11 +258,11 @@ impl Entry {
     } else { // Granular XDATA reference
       let $xnamesep = crate::Config->getoption("xnamesep");
       let $xdatamarker = crate::Config->getoption("xdatamarker");
-      if (let ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
+      if let ($xdataref) = $value =~ m/^$xdatamarker$xnamesep(\S+)$/xi) {
         let $xdatasep = crate::Config->getoption("xdatasep");
         let ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
         if !($xf) { // There must be a field in a granular XDATA ref
-          let $entry_key = $self->get_field("citekey");
+          let $entry_key = self.get_field("citekey");
           let secnum = crate::MASTER.get_current_section();
           biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
           false
@@ -474,7 +474,7 @@ impl Entry {
   /// which came from the data file
   fn fields(&self) -> Vec<&String> {
     // use locale;
-    let mut v: Vec<_> = self.derivedfields().keys().chain(self.datafields().keys()).collect();
+    let mut v: Vec<_> = self.derivedfields.keys().chain(self.datafields.keys()).collect();
     v.sort();
     v
   }
@@ -507,7 +507,7 @@ impl Entry {
   /// Inherit fields from first child entry
   ///
   /// ```
-  /// $entry->set_inherit_from($firstchild);
+  /// entry.set_inherit_from(firstchild);
   /// ```
   ///
   /// Takes a second crate::Entry object as argument
@@ -517,12 +517,12 @@ impl Entry {
   /// the set parent itself already has some fields set that will do this. Set
   /// parents only have certain fields output in the .bbl and those that output but
   /// are not used in sorting/labelling data generation should not be inherited.
-  fn set_inherit_from(self, $parent) {
+  fn set_inherit_from(&mut self, parent: &Self) {
     let $dmh = crate::config::get_dm_helpers();
 
     // Data source fields
-    for field in ($parent->datafields) {
-      if $self->field_exists($field) { // Don't overwrite existing fields
+    for field in &parent.datafields {
+      if self.field_exists(field) { // Don't overwrite existing fields
         continue;
       }
 
@@ -534,137 +534,136 @@ impl Entry {
         continue;
       }
 
-      $self->set_datafield($field, $parent->get_field($field));
+      self.set_datafield(field, parent.get_field(field));
     }
 
     // Datesplit is a special non datafield and needs to be inherited for any
     // validation checks which may occur later
     for df in ($dmh->{datefields}->@*) {
       $df =~ s/date$//;
-      if (let $ds = $parent->get_field(format!("{df}datesplit"))) {
-        $self->set_field(format!("{df}datesplit"), $ds);
+      if (let $ds = parent.get_field(format!("{df}datesplit"))) {
+        self.set_field(format!("{df}datesplit"), ds);
       }
     }
-    return;
   }
 
   /// Recursively resolve XDATA in an entry. Sets a flag in the XDATA metadata to
   /// say if the reference was successfully resolved.
   ///
   /// ```
-  /// $entry->resolve_xdata($xdata);
+  /// entry.resolve_xdata(xdata);
   /// ```
-  fn resolve_xdata(self, $xdata) {
+  fn resolve_xdata(&self, xdata: &mut [XDataRef]) {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
-    let $entry_key = $self->get_field("citekey");
+    let entry_key = self.get_field("citekey");
     let $dm = crate::config::get_dm();
 
-    for xdatum in ($xdata->@*) {
-      for xdref in ($xdatum->{xdataentries}->@*) {
+    for xdatum in xdata {
+      for xdref in &xdatum.xdataentries {
         let xdataentry = section.bibentry(xdref);
         if !xdataentry {
           biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
-          $xdatum->{resolved} = 0;
+          xdatum.resolved = false;
           continue;
         }
         else {
-          if !($xdataentry->get_field("entrytype") == "xdata") {
+          if xdataentry.get_field("entrytype") != "xdata" {
             biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
-            $xdatum->{resolved} = 0;
+            xdatum.resolved = false;
             continue;
           }
 
           // record the XDATA resolve between these entries to prevent loops
-          crate::Config->set_inheritance("xdata", $xdref, $entry_key);
+          crate::Config->set_inheritance("xdata", xdref, entry_key);
           // Detect XDATA loops
-          if !(crate::Config->is_inheritance_path("xdata", $entry_key, $xdref)) {
-            if (let $recurse_xdata = $xdataentry->get_xdata_refs) { // recurse
-              $xdataentry->resolve_xdata($recurse_xdata);
+          if !(crate::Config->is_inheritance_path("xdata", entry_key, xdref)) {
+            if (let $recurse_xdata = xdataentry.get_xdata_refs()) { // recurse
+              xdataentry.resolve_xdata(recurse_xdata);
             }
 
             // Whole entry XDATA reference so inherit all fields
-            if (!defined($xdatum->{xdatafield})) {
-              for field in ($xdataentry->datafields()) { // set fields
-                if $field == "ids" { // Never inherit aliases
+            if xdatum.xdatafield.is_none() {
+              for field in xdataentry.datafields() { // set fields
+                if field == "ids" { // Never inherit aliases
                   continue;
                 }
-                $self->set_datafield($field, $xdataentry->get_field($field));
+                self.set_datafield(field, xdataentry.get_field(field));
 
                 // Record graphing information if required
                 if (crate::Config->getoption("output_format") == "dot") {
-                  crate::Config->set_graph("xdata", $xdataentry->get_field("citekey"), $entry_key, $field, $field);
+                  crate::Config->set_graph("xdata", xdataentry.get_field("citekey"), entry_key, field, field);
                 }
                   debug!("Setting field '{}' in entry '{}' via XDATA", field, entry_key);
               }
             }
             else { // Granular XDATA inheritance
-              let $xdatafield = $xdatum->{xdatafield};
-              let $xdataposition = $xdatum->{xdataposition};
-              let $reffield = $xdatum->{reffield};
-              let $refposition = $xdatum->{refposition};
+              let xdatafield = xdatum.xdatafield;
+              let xdataposition = xdatum.xdataposition;
+              let reffield = xdatum.reffield;
+              let refposition = xdatum.refposition;
               let reffielddm = dm.get_dm_for_field(reffield);
               let xdatafielddm = dm.get_dm_for_field(xdatafield);
 
               if !(reffielddm.fieldtype == xdatafielddm.fieldtype &&
                       reffielddm.datatype == xdatafielddm.datatype) {
                 biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
-                $xdatum->{resolved} = 0;
+                xdatum.resolved = false;
                 continue;
               }
 
               if !($xdataentry->get_field($xdatafield)) {
                 biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
-                $xdatum->{resolved} = 0;
+                xdatum.resolved = false;
                 continue;
               }
 
               // Name lists
               if dm.field_is_type(FieldType::List, DataType::Name, reffield) {
-                if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
+                if xdatum.xdataposition == '*' { // insert all positions from XDATA field
                   let bibentries = section.bibentries();
-                  let be = bibentries.entry($xdatum->{xdataentries}[0]);
-                  $self->get_field($reffield)->splice($xdataentry->get_field($xdatafield), $refposition);
+                  let be = bibentries.entry(xdatum.xdataentries[0]);
+                  self.get_field(reffield).splice(xdataentry.get_field(xdatafield), refposition);
                     debug!("Inserting at position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
                 else {
-                  if !($xdataentry->get_field($xdatafield)->is_nth_name($xdataposition)) {
+                  if !(xdataentry.get_field(xdatafield).is_nth_name(xdataposition)) {
                     biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
-                    $xdatum->{resolved} = 0;
+                    xdatum.resolved = false;
                     continue;
                   }
 
-                  $self->get_field($reffield)->replace_name($xdataentry->get_field($xdatafield)->nth_name($xdataposition), $refposition);
+                  self.get_field(reffield).replace_name(xdataentry.get_field(xdatafield).nth_name(xdataposition), refposition);
 
                     debug!("Setting position {} in name field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
               }
               // Non-name lists
-              else if ($dm->field_is_fieldtype("list", $reffield)) {
-                if ($xdatum->{xdataposition} == '*') { // insert all positions from XDATA field
+              else if (dm.field_is_fieldtype("list", reffield)) {
+                if xdatum.xdataposition == '*' { // insert all positions from XDATA field
                   let bibentries = section.bibentries();
-                  let be = bibentries.entry($xdatum->{xdataentries}[0]);
-                  splice($self->get_field($reffield)->@*, $refposition-1, 1, $be->get_field($xdatum->{xdatafield})->@*);
+                  let be = bibentries.entry(xdatum.xdataentries[0]);
+                  splice(self.get_field(reffield)->@*, $refposition-1, 1, be.get_field(xdatum.xdatafield)->@*);
                     debug!("Inserting at position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
                 else {
-                  if !($xdataentry->get_field($xdatafield)->[$xdataposition-1]) {
+                  if !(xdataentry.get_field(xdatafield)[xdataposition-1]) {
                     biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
-                    $xdatum->{resolved} = 0;
+                    xdatum.resolved = false;
                     continue;
                   }
-                  $self->get_field($reffield)->[$refposition-1] =
-                    $xdataentry->get_field($xdatafield)->[$refposition-1];
+                  self.get_field(reffield)[refposition-1] =
+                    xdataentry.get_field(xdatafield)[refposition-1];
                     debug!("Setting position {} in list field '{}' in entry '{}' via XDATA", refposition, reffield, entry_key);
                 }
               }
               // Non-list
               else {
-                $self->set_datafield($reffield, $xdataentry->get_field($xdatafield));
+                self.set_datafield(reffield, xdataentry.get_field(xdatafield));
                   debug!("Setting field '{}' in entry '{}' via XDATA", reffield, entry_key);
               }
             }
-            $xdatum->{resolved} = 1;
+            xdatum.resolved = true;
           }
           else {
             biber_error("Circular XDATA inheritance between '$xdref'<->'$entry_key'");
@@ -677,25 +676,25 @@ impl Entry {
   /// Inherit fields from parent entry (as indicated by the crossref field)
   ///
   /// ```
-  /// $entry->inherit_from($parententry);
+  /// entry.inherit_from(parententry);
   /// ```
   ///
   /// Takes a second crate::Entry object as argument
   /// Uses the crossref inheritance specifications from the .bcf
-  fn inherit_from(self, $parent) {
+  fn inherit_from(&mut self, parent: &Self) {
     let $dmh = crate::config::get_dm_helpers();
 
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
 
-    let $target_key = $self->get_field("citekey"); // target/child key
-    let $source_key = $parent->get_field("citekey"); // source/parent key
+    let target_key = self.get_field("citekey"); // target/child key
+    let source_key = parent.get_field("citekey"); // source/parent key
 
     // record the inheritance between these entries to prevent loops and repeats.
-    crate::Config->set_inheritance("crossref", $source_key, $target_key);
+    crate::Config->set_inheritance("crossref", source_key, target_key);
 
     // Detect crossref loops
-    if !(crate::Config->is_inheritance_path("crossref", $target_key, $source_key)) {
+    if !(crate::Config->is_inheritance_path("crossref", target_key, source_key)) {
       // cascading crossrefs
       if (let $ppkey = parent.get_field("crossref")) {
         parent.inherit_from(section.bibentry(ppkey));
@@ -705,29 +704,29 @@ impl Entry {
       biber_error("Circular inheritance between '$source_key'<->'$target_key'");
     }
 
-    let $type        = $self->get_field("entrytype");
-    let $parenttype  = $parent->get_field("entrytype");
-    let $inheritance = crate::Config->getblxoption(Nonne, "inheritance");
-    let %processed;
+    let $type        = self.get_field("entrytype");
+    let $parenttype  = parent.get_field("entrytype");
+    let $inheritance = crate::Config->getblxoption(None, "inheritance");
+    let processed = HashSet::new();
     // get defaults
-    let $defaults = $inheritance->{defaults};
+    let defaults = inheritance.defaults;
     // global defaults ...
-    let $inherit_all = $defaults->{inherit_all};
-    let $override_target = $defaults->{override_target};
-    let $dignore = $defaults->{ignore};
+    let inherit_all = defaults.inherit_all;
+    let override_target = defaults.override_target;
+    let dignore = defaults.ignore;
 
     // override with type_pair specific defaults if they exist ...
     for type_pair in ($defaults->{type_pair}->@*) {
-      if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
-          ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
-        if $type_pair->{inherit_all} {
-          $inherit_all = $type_pair->{inherit_all};
+      if ((type_pair.source == '*' || type_pair.source == parenttype) &&
+          (type_pair.target == '*' || type_pair.target == $type)) {
+        if type_pair.inherit_all {
+          inherit_all = type_pair.inherit_all;
         }
-        if $type_pair->{override_target} {
-          $override_target = $type_pair->{override_target};
+        if type_pair.override_target {
+          override_target = type_pair.override_target;
         }
-        if defined($type_pair->{ignore}) {
-          $dignore = $type_pair->{ignore};
+        if let Some(val) = type_pair.ignore {
+          dignore = val;
         }
       }
     }
@@ -740,36 +739,36 @@ impl Entry {
             ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
           for field in ($inherit->{field}->@*) {
             // Skip for fields in the per-entry noinerit datafield set
-            if (let $niset = crate::Config->getblxoption($secnum, "noinherit", None, $target_key) &&
+            if (let $niset = crate::Config->getblxoption(secnum, "noinherit", None, target_key) &&
               exists($field->{target})) {
               if DATAFIELD_SETS{$niset}.contains(field->{target}) {
                 continue;
               }
             }
-            if !($parent->field_exists($field->{source})) {
+            if !parent.field_exists(field.source) {
               continue;
             }
-            $processed{$field->{source}} = 1;
+            processed.insert(field->{source});
             // localise defaults according to field, if specified
-            let $field_override_target = $field->{override_target}.unwrap_or("false");
+            let field_override_target = field.override_target.unwrap_or("false");
             // Skip this field if requested
             if ($field->{skip}) {
-              $processed{$field->{source}} = 1;
+              processed.insert(field.source);
             }
             // Set the field if it doesn't exist or override is requested
-            else if (!$self->field_exists($field->{target}) ||
-                  $field_override_target == "true") {
-                debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, $field->{source}, $field->{target}, source_key);
+            else if (!self.field_exists(field.target) ||
+                  field_override_target == "true") {
+                debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, field.source, field.target, source_key);
 
-              $self->set_datafield($field->{target}, $parent->get_field($field->{source}));
+              self.set_datafield(field.target, parent.get_field(field.source));
 
               // Ignore uniqueness information tracking for this inheritance?
-              let $ignore = $inherit->{ignore} || $dignore;
-              crate::Config->add_uniq_ignore($target_key, $field->{target}, $ignore);
+              let ignore = inherit.ignore || dignore;
+              crate::Config->add_uniq_ignore(target_key, field.target, ignore);
 
               // Record graphing information if required
               if (crate::Config->getoption("output_format") == "dot") {
-                crate::Config->set_graph("crossref", $source_key, $target_key, $field->{source}, $field->{target});
+                crate::Config->set_graph("crossref", source_key, target_key, field.source, field.target);
               }
             }
           }
@@ -778,7 +777,7 @@ impl Entry {
     }
 
     // Now process the rest of the (original data only) fields, if necessary
-    if ($inherit_all == "true") {
+    if inherit_all == "true" {
       let @fields = parent.datafields;
 
       // Special case: WITH NO override: If the child has any Xdate datepart,
@@ -835,27 +834,27 @@ impl Entry {
 
       for field in (@fields) {
         // Skip for fields in the per-entry noinherit datafield set
-        if (let $niset = crate::Config->getblxoption($secnum, "noinherit", undef, $target_key)) {
+        if (let $niset = crate::Config->getblxoption($secnum, "noinherit", None, target_key)) {
           if DATAFIELD_SETS{$niset}.contains(field) {
             continue;
           }
         }
-        if $processed{$field} { // Skip if we have already dealt with this field above
+        if processed.contains(field) { // Skip if we have already dealt with this field above
           continue;
         }
 
         // Set the field if it doesn't exist or override is requested
-        if (!$self->field_exists($field) || $override_target == "true") {
+        if (!self.field_exists(field) || override_target == "true") {
             debug!("Entry '{}' is inheriting field '{}' from entry '{}'", target_key, field, source_key);
 
-          $self->set_datafield($field, $parent->get_field($field));
+          self.set_datafield(field, parent.get_field(field));
 
           // Ignore uniqueness information tracking for this inheritance?
-          crate::Config->add_uniq_ignore($target_key, $field, $dignore);
+          crate::Config->add_uniq_ignore(target_key, field, dignore);
 
           // Record graphing information if required
           if (crate::Config->getoption("output_format") == "dot") {
-            crate::Config->set_graph("crossref", $source_key, $target_key, $field, $field);
+            crate::Config->set_graph("crossref", source_key, target_key, field, field);
           }
         }
       }

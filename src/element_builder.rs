@@ -1,4 +1,4 @@
-use xmltree::{Element, EmitterConfig, XMLNode};
+use xmltree::{Element, XMLNode};
 
 pub trait Builder {
   fn builder(name: &str) -> ElementBuilder;

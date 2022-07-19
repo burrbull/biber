@@ -1162,7 +1162,7 @@ impl Biber {
   /// Resolve aliases in xref/crossref/xdata which take keys as values to their real keys
   ///
   /// We use set_datafield as we are overriding the alias in the datasource
-  fn resolve_alias_refs(self) {
+  fn resolve_alias_refs(&mut self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let $dm = crate::config::get_dm();
@@ -1214,7 +1214,7 @@ impl Biber {
 
   /// Remove citekey aliases from citekeys as they don't point to real
   /// entries.
-  fn process_citekey_aliases(self) {
+  fn process_citekey_aliases(&mut self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     for citekey in section.get_citekeys() {
@@ -1230,7 +1230,7 @@ impl Biber {
   /// processing so that when we call `section.bibentry(key)`, as we
   /// do many times in the code, we don't die because there is a key but
   /// no Entry object.
-  fn instantiate_dynamic(self) {
+  fn instantiate_dynamic(&mut self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
 
@@ -1294,7 +1294,7 @@ impl Biber {
       // Don't directly resolve XDATA entrytypes - this is done recursively in the Entry method
       // Otherwise, we will die on loops etc. for XDATA entries which are never referenced from
       // any cited entry
-      if $be->get_field("entrytype") == "xdata" {
+      if be.get_field("entrytype") == "xdata" {
         continue;
       }
       {
@@ -1381,15 +1381,14 @@ impl Biber {
       // Record set information
       // It's best to do this in the loop here as every entry needs the information
       // from all other entries in process_sets()
-      if ($be->get_field("entrytype") == "set") {
-        let $entrysetkeys = $be->get_field("entryset");
+      if be.get_field("entrytype") == "set" {
+        let entrysetkeys = be.get_field("entryset");
         if !($entrysetkeys) {
           biber_warn("Set entry '$citekey' has no entryset field, ignoring", $be);
           continue;
         }
         for member in ($entrysetkeys->@*) {
-          $section->set_set_pc($citekey, $member);
-          $section->set_set_cp($member, $citekey);
+          section.set_set(citekey, member);
 
           // Instantiate any related entry clones we need from static set members
           section.bibentry(member).relclone();
@@ -1416,24 +1415,24 @@ impl Biber {
       // Loop over cited keys and count the cross/xrefs
       // Can't do this when parsing entries as this would count them
       // for potentially uncited children
-      if (let $refkey = $be->get_field("crossref")) {
+      if (let $refkey = be.get_field("crossref")) {
           debug!("Incrementing crossrefkey count for entry '{}' via entry '{}'", refkey, citekey);
 
         // Don't increment if the crossref doesn't exist
         if section.bibentry(refkey) {
-          crate::Config->incr_crossrefkey($refkey);
+          crate::Config->incr_crossrefkey(refkey);
         }
       }
 
-      if (let $refkey = $be->get_field("xref")) {
+      if (let $refkey = be.get_field("xref")) {
           debug!("Incrementing xrefkey count for entry '{}' via entry '{}'", refkey, citekey);
-        crate::Config->incr_xrefkey($refkey);
+        crate::Config->incr_xrefkey(refkey);
       }
 
       // Record xref inheritance for graphing if required
       if (crate::Config->getoption("output_format") == "dot" &&
-          let $xref = $be->get_field("xref")) {
-        crate::Config->set_graph("xref", $citekey, $xref);
+          let $xref = be.get_field("xref")) {
+        crate::Config->set_graph("xref", citekey, xref);
       }
     }
 
@@ -1502,7 +1501,7 @@ impl Biber {
           biber_warn("Cannot inherit from crossref key '$cr' - does it exist?", be);
         }
         else {
-          $be->inherit_from($parent);
+          be.inherit_from(parent);
         }
       }
     }
@@ -3779,7 +3778,7 @@ impl Biber {
     }
 
     // For collecting the collation object settings for retrieval in the sort key extractor
-    let @collateobjs;
+    let mut collateobjs = Vec::new();
 
     // Instantiate Sort::Key sorter with correct data schema
     let $sorter = multikeysorter(map {$_->{spec}} $lsds->@*);
@@ -3789,42 +3788,40 @@ impl Biber {
 
     // Construct data needed for sort key extractor
     for sortset in ($sortingtemplate->{spec}->@*) {
-      let $fc = "";
-      let @fc;
+      let mut fc = Vec::new();
 
       // Re-instantiate collation object if a different locale is required for this sort item.
       // This can't be done in a ->change() method, has to be a new object.
-      let $cobj;
       let $sl = locale2bcp47($sortset->[0]{locale});
-      if (defined($sl) && $sl != $thislocale) {
-        $cobj = format!("crate::UCollate->new('{}','{}')", sl, ($collopts->%*).join("','"));
+      let cobj = if (defined($sl) && $sl != $thislocale) {
+        format!("crate::UCollate->new('{}','{}')", sl, ($collopts->%*).join("','"))
       }
       else {
-        $cobj = "$Collator";
-      }
+        Collator.to_string()
+      };
 
       // If the case or upper option on a field is not the global default
       // set it locally on the $Collator by constructing a change() method call
       let $sc = $sortset->[0]{sortcase};
       if (defined($sc) && $sc != crate::Config->getoption("sortcase")) {
-        push @fc, $sc ? "level => 4" : "level => 2";
+        fc.push(if sc { "level => 4" } else { "level => 2" });
       }
       let $su = $sortset->[0]{sortupper};
       if (defined($su) && $su != crate::Config->getoption("sortupper")) {
-        push @fc, $su ? "upper_before_lower => 1" : "upper_before_lower => 0";
+        fc.push(if su { "upper_before_lower => 1" } else { "upper_before_lower => 0" });
       }
 
-      if (@fc) {
+      let fc = if !fc.is_empty() {
         // This field has custom collation options
-        $fc = format!("->change({})", fc.join(","));
+        format!("->change({})", fc.join(","))
       }
       else {
         // Reset collation options to global defaults if there are no field options
         // We have to do this as ->change modifies the Collation object
-        $fc = format!("->change(level => {} ,upper_before_lower => {})", $collopts->{level}, $collopts->{upper_before_lower});
-      }
+        format!("->change(level => {} ,upper_before_lower => {})", $collopts->{level}, $collopts->{upper_before_lower})
+      };
 
-      push @collateobjs, $cobj . $fc;
+      collateobjs.push(format!("{cobj}{fc}"));
     }
 
     // Sort::Key sort key extractor called on each element of array to be sorted and
@@ -3937,10 +3934,10 @@ impl Biber {
       crate::config::_init();                // (re)initialise Config object
       self.set_current_section(secnum); // Set the section number we are working on
       self.preprocess_options();           // Preprocess any options
-      $self->fetch_data;                   // Fetch cited key and dependent data from sources
-      $self->process_citekey_aliases;      // Remove citekey aliases from citekeys
-      $self->instantiate_dynamic;          // Instantiate any dynamic entries (sets, related)
-      $self->resolve_alias_refs;           // Resolve xref/crossref/xdata aliases to real keys
+      self.fetch_data();                   // Fetch cited key and dependent data from sources
+      self.process_citekey_aliases();      // Remove citekey aliases from citekeys
+      self.instantiate_dynamic();          // Instantiate any dynamic entries (sets, related)
+      self.resolve_alias_refs();           // Resolve xref/crossref/xdata aliases to real keys
       $self->resolve_xdata;                // Resolve xdata entries
       $self->cite_setmembers;              // Cite set members
       $self->preprocess_sets;              // Record set information
@@ -4006,7 +4003,7 @@ impl Biber {
   /// 3: Reference to an array of cite keys to look for
   ///
   /// and returns an array of the cite keys it did not find in the datasource
-  fn fetch_data(self) {
+  fn fetch_data(&mut self) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let $dm = crate::config::get_dm();
@@ -4178,7 +4175,7 @@ impl Biber {
         let be = section.bibentry(citekey);
 
         // xdata
-        if (let $xdata = $be->get_xdata_refs) {
+        if (let $xdata = be.get_xdata_refs()) {
           for xdatum in ($xdata->@*) {
             for xdref in ($xdatum->{xdataentries}->@*) {
               // skip looking for dependent if it's already there (loop suppression)

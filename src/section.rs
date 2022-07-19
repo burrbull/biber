@@ -4,7 +4,7 @@ use std::{
   path::{Path, PathBuf},
 };
 use bimap::BiHashMap;
-use crate::{InputFormat, Entries, Unknown, SkipEmpty};
+use crate::{BiSet, InputFormat, Entries, Unknown, SkipEmpty};
 use crate::utils::reduce_array;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,20 +20,6 @@ pub struct DataSource {
   pub(crate) encoding: String,
   pub(crate) glob: Option<String>,
 } 
-
-struct StateSet {
-  pc: HashMap<String, HashSet<String>>,
-  cp: HashMap<String, HashSet<String>>,
-}
-
-impl StateSet {
-  fn new() -> Self {
-    Self {
-      pc: HashMap::new(),
-      cp: HashMap::new(),
-    }
-  }
-}
 
 pub struct Section {
   number: u32,
@@ -59,7 +45,7 @@ pub struct Section {
   nocite_citekeys: HashSet<String>,
   citekey_alias: HashMap<String, String>,
   //static_keys: {},
-  state_set: StateSet,
+  state_set: BiSet,
   seenkeys: HashMap<String, u32>,
   citecount: HashMap<String, u32>,
   datasources: Option<Vec<Unknown>>,
@@ -89,7 +75,7 @@ impl Section {
       cite_citekeys: HashSet::new(),
       nocite_citekeys: HashSet::new(),
       citekey_alias: HashMap::new(),
-      state_set: StateSet::new(),
+      state_set: BiSet::new(),
       seenkeys: HashMap::new(),
       citecount: HashMap::new(),
       datasources: None, // Vec<PathBuf>?
@@ -150,59 +136,28 @@ impl Section {
   }
 
   /// Record a parent->child set relationship
-  fn set_set_pc(&mut self, parent: &str, child: &str) {
-    match self.state_set.pc.get_mut(parent) {
-      Some(parent) => {
-        parent.insert(child.into());
-      }
-      None => {
-        self.state_set.pc.insert(parent.into(),  HashSet::from([child.into()]));
-      }
-    }
-  }
-
-  /// Record a child->parent set relationship
-  fn set_set_cp(&mut self, child: &str, parent: &str) {
-    match self.state_set.cp.get_mut(child) {
-      Some(child) => {
-        child.insert(parent.into());
-      }
-      None => {
-        self.state_set.cp.insert(child.into(),  HashSet::from([parent.into()]));
-      }
-    }
+  fn set_set(&mut self, parent: &str, child: &str) {
+    self.state_set.insert(parent, child)
   }
 
   /// Return a boolean saying if there is a parent->child set relationship
   fn get_set_pc(&self, parent: &str, child: &str) -> bool {
-    match self.state_set.pc.get(parent) {
-      Some(map) => map.contains(child),
-      None => false,
-    }
+    self.state_set.contains_pair(parent, child)
   }
 
   /// Return a boolean saying if there is a child->parent set relationship
   fn get_set_cp(&self, child: &str, parent: &str) -> bool {
-    match self.state_set.cp.get(child) {
-      Some(map) => map.contains(parent),
-      None => false,
-    }
+    self.state_set.contains_pair(parent, child)
   }
 
   /// Return a list of children for a parent set
   fn get_set_children(&self, parent: &str) -> Vec<&String> {
-    match self.state_set.pc.get(parent) {
-      Some(map) => map.iter().collect(),
-      None => Vec::new(),
-    }
+    self.state_set.iter_by_left(parent)
   }
 
   /// Return a list of parents for a child of a set
   fn get_set_parents(&self, child: &str) -> Vec<&String> {
-    match self.state_set.cp.get(child) {
-      Some(map) => map.iter().collect(),
-      None => Vec::new(),
-    }
+    self.state_set.iter_by_right(child)
   }
 
   ///  Save information about citekey->datasource name mapping. Used for error reporting.

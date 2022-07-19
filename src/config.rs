@@ -651,7 +651,7 @@ fn config_file {
 ///////////////////////////////
 
 /// Track uniqueness ignore settings found in inheritance data
-fn add_uniq_ignore(key, field: &str, uniqs) {
+fn add_uniq_ignore(key: &str, field: &str, uniqs: bool) {
   if !($uniqs) {
     return ;
   }
@@ -879,7 +879,7 @@ fn get_graph(type) {
 /// Record that $target inherited information from $source
 /// Can be used for crossrefs and xdata. This just records that an entry
 /// inherited from another entry, for loop detection.
-fn set_inheritance(type, source, target) {
+fn set_inheritance(type, source: &str, target: &str) {
   push $CONFIG->{state}{$type}->@*, {s => $source, t => $target};
   return;
 }
