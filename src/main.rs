@@ -701,7 +701,9 @@ if (exists $opts->{'help'}) {
 
 if (exists $opts->{'version'}) {
   let $v = "biber version: $Biber::Config::VERSION";
-  $v .= ' (beta)' if $Biber::Config::BETA_VERSION;
+  if $Biber::Config::BETA_VERSION {
+    v.push_str(" (beta)");
+  }
   say "$v";
   exit EXIT_OK;
 }

@@ -160,10 +160,10 @@ impl Dot {
           graph.push_str("\n");
           // NOTE: already sorted
           for field in be.datafields()) {
-            $graph .= $i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . uc($field) . "\" ]\n";
+            graph.push_str($i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . uc($field) . "\" ]\n");
           }
           i_n -= 2;
-          $graph .= $i x $in . "}\n\n";
+          graph.push_str($i x $in . "}\n\n");
 
           // link node for cluster->cluster links
           let middle = be.count_datafields() / 2;
@@ -171,7 +171,7 @@ impl Dot {
 
         }
         else { // Granularity is at the level of entries
-          $graph .= $i x $in . "\"section${secnum}/${citekey}\" [ label=\"$citekey ($et)$aliases\", fillcolor=\"$c\", tooltip=\"$citekey ($et)\" ]\n";
+          graph.push_str($i x $in . "\"section${secnum}/${citekey}\" [ label=\"$citekey ($et)$aliases\", fillcolor=\"$c\", tooltip=\"$citekey ($et)\" ]\n");
 
         }
 
@@ -179,7 +179,7 @@ impl Dot {
         // Close set subgraph if necessary
         if (let $sets = crate::Config->get_graph("set")) {
           if ($sets->{memtoset}{$citekey}) { // entry is a set member
-            $graph .= $i x $in . "}\n\n";
+            graph.push_str($i x $in . "}\n\n");
             i_n -= 2;
           }
         }
@@ -209,15 +209,15 @@ impl Dot {
 
       // Close the section, if any
       if ($gopts->{section}) {
-        $graph .= $i x $in . "}\n\n";
+        graph.push_str($i x $in . "}\n\n");
         $in -= 2;
       }
 
     }
 
-    $graph .= "\n\n${graph_edges}";
+    graph.push_str(&format!("\n\n{graph_edges}"));
 
-    $graph .= "\n}\n";
+    graph.push_str("\n}\n");
 
     out($target, $graph);
 
@@ -244,10 +244,10 @@ impl Dot {
           if ($gopts->{field}) { // links between clusters
             let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
             let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
-            $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n";
+            graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n");
           }
           else {  // links between nodes
-            $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n";
+            graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${f_entry} is a related entry of ${t_entry}\" ]\n");
           }
         }
       }
@@ -266,10 +266,10 @@ impl Dot {
           if ($gopts->{field}) { // links between clusters
             let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
             let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
-            $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n";
+            graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n");
           }
           else {  // links between nodes
-            $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n";
+            graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ style=\"dashed\", penwidth=\"2.0\", color=\"#ad1741\", tooltip=\"${t_entry} is a clone of ${f_entry}\" ]\n");
           }
         }
       }
@@ -291,10 +291,10 @@ impl Dot {
         if ($gopts->{field}) { // links between clusters
           let $f_linknode = $state->{$secnum}{$f_entry}{linknode};
           let $t_linknode = $state->{$secnum}{$t_entry}{linknode};
-          $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n";
+          graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_linknode}\" -> \"section${secnum}/${t_entry}/${t_linknode}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", ltail=\"cluster_section${secnum}/${f_entry}\", lhead=\"cluster_section${secnum}/${t_entry}\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n");
         }
         else {    // links between nodes
-          $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n";
+          graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}\" -> \"section${secnum}/${t_entry}\" [ penwidth=\"2.0\", style=\"dashed\", color=\"#7d7879\", tooltip=\"${f_entry} XREFS ${t_entry}\" ]\n");
         }
       }
     }
@@ -324,7 +324,7 @@ impl Dot {
                 if !$state->{$secnum}{"${secnum}/${t_entry}"} {
                   continue;
                 }
-                $graph_edges .= $i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . uc($t_field) . " inherited via " . uc($type) . " from ${f_entry}/" . uc($f_field) . "\" ]\n";
+                graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . uc($t_field) . " inherited via " . uc($type) . " from ${f_entry}/" . uc($f_field) . "\" ]\n");
               }
             }
           }
@@ -345,7 +345,7 @@ impl Dot {
               if $state->{edges}{"section${secnum}/${f_entry}"}{"section${secnum}/${t_entry}"} {
                 continue;
               }
-              $graph_edges .= $i x $in . format!("\"section{secnum}/{f_entry}\" -> \"section{secnum}/{t_entry}\" [ penwidth=\"2.0\", color=\"{edgecolor}\", tooltip=\"{t_entry} inherits via {type} from {f_entry}\" ]\n");
+              graph_edges.push_str($i x $in . format!("\"section{secnum}/{f_entry}\" -> \"section{secnum}/{t_entry}\" [ penwidth=\"2.0\", color=\"{edgecolor}\", tooltip=\"{t_entry} inherits via {type} from {f_entry}\" ]\n"));
               $state->{edges}{format!("section{secnum}/{f_entry}")}{format!("section${secnum}/${t_entry}")} = 1;
             }
           }

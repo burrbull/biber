@@ -27,33 +27,27 @@ impl BibTeX {
   }
 
   /// Set the output for a comment
-  fn set_output_comment(self, comment) {
-    let $acc = "";
+  fn set_output_comment(self, comment: &str) {
+    let acc = String::new();
 
     // Make the right casing function
-    let $casing;
+    let casing = match crate::Config->getoption("output_fieldcase") {
+      OutputFieldCase::Upper => |s| { s.to_uppercase() },
+      OutputFieldCase::Lower => |s| { s.to_lowercase() },
+      OutputFieldCase::Title => |s| { ucfirst(s) },
+    };
 
-    if (crate::Config->getoption("output_fieldcase") == "upper") {
-      $casing = sub {uc(shift)};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "lower") {
-      $casing = sub {lc(shift)};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "title") {
-      $casing = sub {ucfirst(shift)};
-    }
+    acc.push('@');
+    acc.push_str(casing("comment"));
+    acc.push_str(format!("{comment}\n"));
 
-    $acc .= '@';
-    $acc .= $casing->("comment");
-    $acc .= "{$comment}\n";
-
-    push $self->{output_data}{COMMENTS}->@*, $acc;
+    self.output_data.COMMENTS.push(acc);
     return;
   }
 
   /// Set the output for a macro
   fn set_output_macro(self, macro) {
-    let $acc = "";
+    let mut acc = String::new();
 
     // Only output used macros unless we are asked to output all
     if !(crate::Config->getoption("output_all_macrodefs")) {
@@ -63,24 +57,17 @@ impl BibTeX {
     }
 
     // Make the right casing function
-    let $casing;
+    let casing = match crate::Config->getoption("output_fieldcase") {
+      OutputFieldCase::Upper => |s| { s.to_uppercase() },
+      OutputFieldCase::Lower => |s| { s.to_lowercase() },
+      OutputFieldCase::Title => |s| { ucfirst(s) },
+    };
 
-    if (crate::Config->getoption("output_fieldcase") == "upper") {
-      $casing = sub {uc(shift)};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "lower") {
-      $casing = sub {lc(shift)};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "title") {
-      $casing = sub {ucfirst(shift)};
-    }
+    acc.push('@');
+    acc.push_str(casing("string"));
+    acc.push_str(format!("{{{} = \"{}\"}}\n", casing(macro), Text::BibTeX::macro_text(macro));
 
-    $acc .= '@';
-    $acc .= $casing->("string");
-    $acc .= '{' . $casing->($macro) . ' = "' . Text::BibTeX::macro_text($macro) . "\"}\n";
-
-    push $self->{output_data}{MACROS}->@*, $acc;
-    return;
+    self.output_data.MACROS.push(acc);
   }
 
   /// Set the output for an entry
@@ -90,35 +77,30 @@ impl BibTeX {
     section: crate::Section, // Section object the entry occurs in
     dm: crate::DataModel
   ) { // Data
-    let $bee = $be->get_field("entrytype");
-    let $dmh = $dm->{helpers};
-    let $acc = "";
-    let $secnum = $section->number;
-    let $key = $be->get_field("citekey");
+    let bee = be.get_field("entrytype");
+    let dmh = &dm.helpers;
+    let mut acc = String::new();
+    let secnum = section.number();
+    let key = be.get_field("citekey");
 
     // Make the right casing/output mapping function
-    let $outmap;
-    if (crate::Config->getoption("output_fieldcase") == "upper") {
-      $outmap = |f| {uc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "lower") {
-      $outmap = |f| {lc($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
-    }
-    else if (crate::Config->getoption("output_fieldcase") == "title") {
-      $outmap = |f| {ucfirst($CONFIG_OUTPUT_FIELDREPLACE{$f}.unwrap_or($f))};
-    }
+    let outmap = match crate::Config->getoption("output_fieldcase") {
+      OutputFieldCase::Upper => |f| {CONFIG_OUTPUT_FIELDREPLACE.get(f).unwrap_or(f).to_uppercase()},
+      OutputFieldCase::Lower => |f| {CONFIG_OUTPUT_FIELDREPLACE.get(f).unwrap_or(f).to_lowercase()},
+      OutputFieldCase::Title => |f| {ucfirst(CONFIG_OUTPUT_FIELDREPLACE.get(f).unwrap_or(f))},
+    };
 
-    $acc .= '@';
-    $acc .= $outmap->($bee);
-    $acc .=  "\{$key,\n";
+    acc.push('@');
+    acc.push_str(outmap(bee));
+    acc.push_str(format!("\{{{key},\n"));
 
     // hash accumulator so we can gather all the data before formatting so that things like
     // $max_field_len can be calculated
     let %acc;
 
     // IDs
-    if (let $val = $be->get_field("ids")) {
-      $acc{$outmap->("ids")} = val.join(",");
+    if (let $val = be.get_field("ids")) {
+      $acc{outmap("ids")} = val.join(",");
     }
 
     // Name fields
@@ -153,7 +135,7 @@ impl BibTeX {
         }
 
         // Now add all names to accumulator
-        for name names.names() {
+        for name in names.names() {
           // XDATA is special
           if !(crate::Config->getoption("output_resolve_xdata")) {
             let xdata = name.get_xdata();
@@ -170,7 +152,7 @@ impl BibTeX {
 
         // Deal with morenames
         if names.get_morenames() {
-          $acc{$outmap->($namefield)} .= " $namesep others";
+          $acc{$outmap->($namefield)}.push_str(format!(" {namesep} others"));
         }
       }
     }
@@ -231,7 +213,7 @@ impl BibTeX {
         }
       }
 
-      $acc{$outmap->("${d}date")} = construct_datetime(be, d);
+      $acc{outmap(format!("{d}date"))} = construct_datetime(be, d);
     }
 
     // If CROSSREF and XDATA have been resolved, don't output them
@@ -268,35 +250,35 @@ impl BibTeX {
         continue;
       }
       if (let $f = be.get_field($field)) {
-        let $fl = f.join(",");
+        let mut fl = f.join(",");
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck(fl, false);
-          $fl = $xd.unwrap_or($fl);
+          let xd = xdatarefcheck(fl, false);
+          fl = xd.unwrap_or(fl);
         }
-        $acc{$outmap->($field)} .= $fl;
+        acc{outmap(field)}.push_str(fl);
       }
     }
 
     // Ranges
     for rfield in ($dmh->{ranges}->@*) {
       if ( let $rf = be.get_field(rfield) ) {
-        let $rfl = construct_range($rf);
+        let mut rfl = construct_range(rf);
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck(rfl, false);
-          $rfl = $xd.unwrap_or($rfl);
+          let xd = xdatarefcheck(rfl, false);
+          rfl = xd.unwrap_or(rfl);
         }
-        $acc{$outmap->($rfield)} .= $rfl;
+        acc{outmap(rfield)}.push_str(rfl);
       }
     }
 
     // Verbatim fields
     for vfield in ($dmh->{vfields}->@*) {
-      if ( let $vf = $be->get_field($vfield) ) {
+      if ( let $vf = be.get_field(vfield) ) {
         if !(crate::Config->getoption("output_resolve_xdata")) {
-          let $xd = xdatarefcheck(vf, false);
-          $vf = $xd.unwrap_or($vf);
+          let xd = xdatarefcheck(vf, false);
+          vf = xd.unwrap_or(vf);
         }
-        $acc{$outmap->($vfield)} = $vf;
+        acc{outmap(vfield)} = vf;
       }
     }
 
@@ -304,27 +286,29 @@ impl BibTeX {
     if ( let $k = be.get_field("keywords") ) {
       let mut kl = k.join(",");
       if !(crate::Config->getoption("output_resolve_xdata")) {
-        let $xd = xdatarefcheck(kl, false);
-        kl = $xd.unwrap_or(kl);
+        let xd = xdatarefcheck(kl, false);
+        kl = xd.unwrap_or(kl);
       }
-      $acc{$outmap->("keywords")} = kl;
+      acc{outmap("keywords")} = kl;
     }
 
     // Annotations
     let ann = &crate::annotation::ANN.lock().unwrap();
     for f in acc.keys() {
       if ann.is_annotated_field(key, f.to_lowercase()) {
-        for n in (ann.get_annotation_names(key, f.to_lowercase())) {
-          $acc{$outmap->($f) . crate::Config->getoption("output_annotation_marker") .
-              crate::Config->getoption("output_named_annotation_marker") . $n} = construct_annotation(ann, key, f.to_lowercase(), n);
+        for n in ann.get_annotation_names(key, f.to_lowercase()) {
+          acc.insert(
+            &format!("{}{}{}{n}", outmap(f), crate::Config->getoption("output_annotation_marker"), crate::Config->getoption("output_named_annotation_marker")),
+            construct_annotation(ann, key, f.to_lowercase(), n)
+          );
         }
       }
     }
 
     // Determine maximum length of field names
-    let $max_field_len;
+    let max_field_len;
     if (crate::Config->getoption("output_align")) {
-      $max_field_len = max map {Unicode::GCString->new($_)->length} keys %acc;
+      max_field_len = acc.keys().map(|k| k.graphemes(true).count()).max();
     }
 
     // Determine order of fields
@@ -333,30 +317,28 @@ impl BibTeX {
                     "dates"     => "datefields");
 
 
-    for field in (split(/\s*,\s*/, crate::Config->getoption("output_field_order"))) {
-      if (field == "names" ||
-          field == "lists" ||
-          field == "dates") {
+    for field in regex!(r"\s*,\s*").split(crate::Config->getoption("output_field_order")) {
+      if (field == "names" || field == "lists" || field == "dates") {
         let mut donefields = Vec::new();
-        for key in (sort keys %acc) {
+        for key in acc.keys().sorted() {
           if (first {unicase::eq($_, strip_annotation($key))} $dmh->{$classmap{$field}}->@*) {
-            $acc .= bibfield(key, $acc{$key}, $max_field_len);
+            acc.push_str(bibfield(key, $acc{$key}, max_field_len));
             donefields.push(key);
           }
         }
         delete @acc{@donefields};
       }
       else if (let $value = delete $acc{$outmap->($field)}) {
-        $acc .= bibfield($outmap->($field), $value, $max_field_len);
+        acc.push_str(bibfield($outmap->($field), $value, max_field_len));
       }
     }
 
     // Now rest of fields not explicitly specified
-    for field in (sort keys %acc) {
-      $acc .= bibfield($field, $acc{$field}, $max_field_len);
+    for field in acc.keys().sorted() {
+      acc.push_str(bibfield(field, $acc{$field}, max_field_len));
     }
 
-    $acc .= "}\n\n";
+    acc.push_str("}\n\n");
 
     // If requested to convert UTF-8 to macros ...
     if (crate::Config->getoption("output_safechars")) {
@@ -485,34 +467,28 @@ impl BibTeX {
 
   /// Format a single field
   fn bibfield(field, value, max_field_len) {
-    let $acc;
-    let $inum = crate::Config->getoption("output_indent");
-    let $ichar = ' ';
+    let mut acc = String::new();
+    let inum = crate::Config->getoption("output_indent");
+    let mut ichar = ' ';
     if (substr($inum, -1) == 't') {
-      $ichar = "\t";
+      $ichar = '\t';
       $inum = substr($inum, 0, length($inum)-1);
     }
-    $acc .= $ichar x $inum;
-    $acc .= $field;
+    acc.push_str(&ichar.repeat(inum));
+    acc.push_str(field);
     if $max_field_len {
-      $acc .= ' ' x ($max_field_len - Unicode::GCString->new($field)->length);
+      acc.push_str(' '.repeat(max_field_len - field.graphemes(true).count()));
     }
-    $acc .= ' = ';
+    acc.push_str(" = ");
 
     // Is the field value a macro? If so, replace with macro
     if (let $m = $RSTRINGS{$value}) {
       // Make the right casing function
-      let $casing;
-
-      if (crate::Config->getoption("output_fieldcase") == "upper") {
-        $casing = |s| { s.to_uppercase() };
-      }
-      else if (crate::Config->getoption("output_fieldcase") == "lower") {
-        $casing = |s| { s.to_lowercase() };
-      }
-      else if (crate::Config->getoption("output_fieldcase") == "title") {
-        $casing = |s| { ucfirst(s) };
-      }
+      let casing = match crate::Config->getoption("output_fieldcase") {
+        OutputFieldCase::Upper => |s| { s.to_uppercase() },
+        OutputFieldCase::Lower => |s| { s.to_lowercase() },
+        OutputFieldCase::Title => |s| { ucfirst(s) },
+      };
 
       $value = casing(m);
       USEDSTRINGS.insert(m);
@@ -524,12 +500,11 @@ impl BibTeX {
     // Don't check %RSTRINGS here as macros can come from other places (like %MONTHS). Just check
     // whether a macro is defined as that covers all sources
     if (Text::BibTeX::macro_length($value)) {
-      $acc .= "$value,\n";
+      acc.push_str(&format!("{value},\n"));
+    } else {
+      acc.push_str(format!("\{{{value}\}},\n"));
     }
-    else {
-      $acc .= "\{$value\},\n";
-    }
-    return $acc;
+    acc
   }
 
   /// Construct a field annotation
@@ -576,7 +551,7 @@ impl BibTeX {
   /// Construct a datetime from its components
   fn construct_datetime(be, d) {
     let $datestring = "";
-    let $overridey;
+    let mut overridey = None;
     let $overridem;
     let $overrideem;
     let $overrided;
@@ -605,90 +580,93 @@ impl BibTeX {
 
     // Did the date fields come from interpreting an ISO8601-2:2016 unspecified date?
     // If so, do the reverse of crate::Utils::parse_date_unspecified()
-    if (let $unspec = $be->get_field("${d}dateunspecified")) {
+    if (let $unspec = be.get_field(&format!("{d}dateunspecified"))) {
 
-      // 1990/1999 -> 199X
-      if ($unspec == "yearindecade") {
-        let ($decade) = $be->get_field("${d}year") =~ m/^(\d+)\d$/;
-        $overridey = "${decade}X";
-        $be->del_field("${d}endyear");
-      }
-      // 1900/1999 -> 19XX
-      else if ($unspec == "yearincentury") {
-        let ($century) = $be->get_field("${d}year") =~ m/^(\d+)\d\d$/;
-        $overridey = "${century}XX";
-        $be->del_field("${d}endyear");
-      }
-      // 1999-01/1999-12 => 1999-XX
-      else if ($unspec == "monthinyear") {
-        $overridem = "XX";
-        $be->del_field("${d}endyear");
-        $be->del_field("${d}endmonth");
-      }
-      // 1999-01-01/1999-01-31 -> 1999-01-XX
-      else if ($unspec == "dayinmonth") {
-        $overrided = "XX";
-        $be->del_field("${d}endyear");
-        $be->del_field("${d}endmonth");
-        $be->del_field("${d}endday");
-      }
-      // 1999-01-01/1999-12-31 -> 1999-XX-XX
-      else if ($unspec == "dayinyear") {
-        $overridem = "XX";
-        $overrided = "XX";
-        $be->del_field("${d}endyear");
-        $be->del_field("${d}endmonth");
-        $be->del_field("${d}endday");
+      match unspec {
+        // 1990/1999 -> 199X
+        "yearindecade" => {
+          let (_, decade) = regex_captures!(r"^(\d+)\d$", be.get_field(&format!("{d}year"))).unwrap();
+          overridey = Some(format!("{decade}X"));
+          be.del_field(&format!("{d}endyear"));
+        }
+        // 1900/1999 -> 19XX
+        "yearincentury" => {
+          let (_, century) = regex_captures!(r"^(\d+)\d\d$", be.get_field(&format!("{d}year"))).unwrap();
+          overridey = Some(format!("{century}XX"));
+          be.del_field(&format!("{d}endyear"));
+        }
+        // 1999-01/1999-12 => 1999-XX
+        "monthinyear" => {
+          overridem = "XX";
+          be.del_field(&format!("{d}endyear"));
+          be.del_field(&format!("{d}endmonth"));
+        }
+        // 1999-01-01/1999-01-31 -> 1999-01-XX
+        "dayinmonth" => {
+          overrided = "XX";
+          be.del_field(&format!("{d}endyear"));
+          be.del_field(&format!("{d}endmonth"));
+          be.del_field(&format!("{d}endday"));
+        }
+        // 1999-01-01/1999-12-31 -> 1999-XX-XX
+        "dayinyear" => {
+          $overridem = "XX";
+          $overrided = "XX";
+          be.del_field(&format!("{d}endyear"));
+          be.del_field(&format!("{d}endmonth"));
+          be.del_field(&format!("{d}endday"));
+        }
+        _ => {}
       }
     }
 
     // Seasons derived from ISO 8601 dates
-    if (let $s = $be->get_field("${d}yeardivision")) {
+    if (let $s = be.get_field(&format!("{d}yeardivision"))) {
       $overridem = $yeardivisions{$s};
     }
-    if (let $s = $be->get_field("${d}endyeardivision")) {
+    if (let $s = be.get_field(&format!("{d}endyeardivision"))) {
       $overrideem = $yeardivisions{$s};
     }
 
     // date exists if there is a start year
     if (let $sy = $overridey || $be->get_field("${d}year") ) {
-      $datestring .= $sy;
-      $be->del_field("${d}year");
+      datestring.push_str(sy);
+      be.del_field(&format!("{d}year"));
 
       // Start month
       if (let $sm = $overridem || $be->get_field("${d}month")) {
-        $datestring .= '-' . sprintf('%.2d', $sm);
-        $be->del_field("${d}month");
+        datestring.push_str('-' . sprintf('%.2d', $sm));
+        be.del_field(&format!("{d}month"));
       }
 
       // Start day
       if (let $sd = $overrided || $be->get_field("${d}day")) {
-        $datestring .= '-' . sprintf('%.2d', $sd);
-        $be->del_field("${d}day");
+        datestring.push_str('-' . sprintf('%.2d', $sd));
+        be.del_field(&format!("{d}day"));
       }
 
       // Uncertain and approximate start date
       if ($be->get_field("${d}dateuncertain") &&
           $be->get_field("${d}dateapproximate")) {
-        $datestring .= '%';
+        datestring.push('%');
       }
       else {
         // Uncertain start date
         if ($be->get_field("${d}dateuncertain")) {
-          $datestring .= '?';
+          datestring.push('?');
         }
 
         // Approximate start date
         if ($be->get_field("${d}dateapproximate")) {
-          $datestring .= '~';
+          datestring.push_str('~');
         }
       }
 
       // If start hour, there must be minute and second
-      if (let $sh = $be->get_field("${d}hour")) {
-        $datestring .= 'T' . sprintf('%.2d', $sh) . ':' .
+      if (let $sh = be.get_field("${d}hour")) {
+        datestring.push_str('T' . sprintf('%.2d', $sh) . ':' .
           sprintf('%.2d', $be->get_field("${d}minute")) . ':' .
-            sprintf('%.2d', $be->get_field("${d}second"));
+            sprintf('%.2d', $be->get_field("${d}second")));
         $be->del_field("${d}hour");
         $be->del_field("${d}minute");
         $be->del_field("${d}second");
@@ -697,54 +675,54 @@ impl BibTeX {
       // start timezone
       if (let $stz = $be->get_field("${d}timezone")) {
         $stz =~ s/\\bibtzminsep\s+/:/;
-        $datestring .= $stz;
+        datestring.push_str(stz);
         $be->del_field("${d}timezone");
       }
 
       // End year, can be empty
       if ($be->field_exists("${d}endyear")) {
-        $datestring .= '/';
+        datestring.push('/');
       }
 
       // End year
       if (let $ey = $be->get_field("${d}endyear")) {
-        $datestring .= $ey;
-        $be->del_field("${d}endyear");
+        datestring.push_str(ey);
+        be.del_field("${d}endyear");
 
         // End month
         if (let $em = $overrideem || $be->get_field("${d}endmonth")) {
-          $datestring .= '-' . sprintf('%.2d', $em);
+          datestring.push_str('-' . sprintf('%.2d', $em));
           $be->del_field("${d}endmonth");
         }
 
         // End day
         if (let $ed = $be->get_field("${d}endday")) {
-          $datestring .= '-' . sprintf('%.2d', $ed);
+          datestring.push_str('-' . sprintf('%.2d', $ed));
           $be->del_field("${d}endday");
         }
 
         // Uncertain and approximate end date
         if ($be->get_field("${d}enddateuncertain") &&
             $be->get_field("${d}enddateapproximate")) {
-          $datestring .= '%';
+          datestring.push('%');
         }
         else {
           // Uncertain end date
           if ($be->get_field("${d}enddateuncertain")) {
-            $datestring .= '?';
+            datestring.push('?');
           }
 
           // Approximate end date
           if ($be->get_field("${d}enddateapproximate")) {
-            $datestring .= '~';
+            datestring.push_str('~');
           }
         }
 
         // If end hour, there must be minute and second
         if (let $eh = $be->get_field("${d}endhour")) {
-          $datestring .= 'T' . sprintf('%.2d', $eh) . ':' .
+          datestring.push_str('T' . sprintf('%.2d', $eh) . ':' .
             sprintf('%.2d', $be->get_field("${d}endminute")) . ':' .
-              sprintf('%.2d', $be->get_field("${d}endsecond"));
+              sprintf('%.2d', $be->get_field("${d}endsecond")));
           $be->del_field("${d}endhour");
           $be->del_field("${d}endminute");
           $be->del_field("${d}endsecond");
@@ -753,7 +731,7 @@ impl BibTeX {
         // end timezone
         if (let $etz = $be->get_field("${d}endtimezone")) {
           $etz =~ s/\\bibtzminsep\s+/:/;
-          $datestring .= $etz;
+          datestring.push_str(etz);
           $be->del_field("${d}endtimezone");
         }
       }

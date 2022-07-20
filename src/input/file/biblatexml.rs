@@ -1374,10 +1374,10 @@ fn _changenode(e, xp_target_s, value, error) {
   }
   else {
     let @nodes = split(m|/|, $xp_target_s =~ s|^\./||r);
-    let $nodepath = '.';
-    let $nodeparent = '.';
+    let mut nodepath = '.'.to_string();
+    let mut nodeparent = '.'.to_string();
     for (i, node) in nodes.iter().enumerate() {
-      $nodepath .= "/$node";
+      nodepath.push_str(format!("/{node}"));
       if !($e->findnodes($nodepath)) {
         let $parent = $e->findnodes($nodeparent)->get_node(1);
         // Element
@@ -1415,18 +1415,18 @@ fn _changenode(e, xp_target_s, value, error) {
         }
         // Attribute
         else if ($node =~ m/^@/) {
-          if ($i == $#nodes) {
+          if i == nodes.len() - 1 {
             $parent->setAttribute($node =~ s|^@||r, NFC($value));
           }
         }
         // Text
         else if ($node =~ m/text\(\)$/) {
-          if ($i == $#nodes) {
+          if i == nodes.len() - 1 {
             $parent->appendTextNode(NFC($value));
           }
         }
       }
-      $nodeparent .= "/$node";
+      nodeparent.push_str(format!("/{node}"));
     }
   }
   return 1;

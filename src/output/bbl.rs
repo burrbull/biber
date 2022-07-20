@@ -52,25 +52,24 @@ impl Bbl {
   fn create_output_misc(&mut self) {
 
     if (let $pa = $crate::MASTER->get_preamble) {
-      $pa = pa.join("%\n");
+      let mut pa = pa.join("%\n");
 
       // If requested to convert UTF-8 to macros ...
       if (crate::Config->getoption("output_safechars")) {
-        $pa = latex_recode_output($pa);
-      }
-      else {           // ... or, check for encoding problems and force macros
-        let $outenc = crate::Config->getoption("output_encoding");
-        if ($outenc != "UTF-8") {
+        pa = latex_recode_output(pa);
+      } else {           // ... or, check for encoding problems and force macros
+        let outenc = crate::Config->getoption("output_encoding");
+        if outenc != "UTF-8" {
           // Can this entry be represented in the output encoding?
-          if (encode($outenc, NFC($pa), sub {"\0"}) =~ /\0/) { // Malformed data encoding char
+          if (encode($outenc, NFC(pa), || {"\0"}) =~ /\0/) { // Malformed data encoding char
             // So convert to macro
-            $pa = latex_recode_output($pa);
+            pa = latex_recode_output(pa);
           }
         }
       }
-      $self->{output_data}{HEAD} .= "\\preamble{%\n$pa%\n}\n\n";
+      self.output_data.HEAD.push_str(format!("\\preamble{{%\n{pa}%\n}}\n\n"));
     }
-    $self->{output_data}{TAIL} .= "\\endinput\n\n";
+    self.output_data.TAIL.push_str("\\endinput\n\n");
     return;
   }
 
@@ -79,24 +78,23 @@ impl Bbl {
     let $field_type = "field";
     let $dm = crate::config::get_dm();
 
-    let $outfield = $dm->get_outcase($field);
+    let $outfield = dm.get_outcase(field);
 
-    if is_null($str) && !$dm->field_is_nullok($field) {
+    if is_null($str) && !dm.field_is_nullok(field) {
       return "";
     }
 
     // crossref and xref are of type "strng" in the .bbl
-    if (lc($field) == "crossref" ||
-        lc($field) == "xref") {
+    if field.to_lowercase() == "crossref" || field.to_lowercase() == "xref" {
       $field_type = "strng";
     }
 
     // Output absolute astronomical year by default (with year 0)
     // biblatex will adjust the years when printed with BCE/CE eras
     if ($field =~ m/^(.*)(?!end)year$/) {
-      if (let $y = $be->get_field("$1year")) {
-        if looks_like_number($y) {
-          $str = abs($y);
+      if (let $y = be.get_field("$1year")) {
+        if looks_like_number(y) {
+          $str = abs(y);
         }
       }
     }

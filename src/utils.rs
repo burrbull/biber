@@ -228,12 +228,12 @@ pub fn locate_data_file($source) {
     let (ctlvolume, ctldir, _) = File::Spec->splitpath($cfp);
     if ($ctlvolume) { // add vol sep for windows if volume is set and there isn't one
       if !($ctlvolume =~ /:\z/) {
-        $ctlvolume .= ':' ;
+        ctlvolume.push(':') ;
       }
     }
     if ($ctldir) { // add path sep if there isn't one
       if !($ctldir =~ /\/\z/) {
-        $ctldir .= '/' ;
+        ctldir.push('/') ;
       }
     }
 
@@ -744,7 +744,7 @@ fn is_notnull_object($arg) {
 pub fn stringify_hash($hashref) {
   let $string;
   while (let ($k,$v) = each $hashref->%*) {
-    $string .= "$k => $v, ";
+    string.push_str(format!("{k} => {v}, "));
   }
   // Take off the trailing comma and space
   chop $string;

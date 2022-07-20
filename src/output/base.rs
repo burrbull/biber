@@ -49,50 +49,48 @@ impl Base {
 
   /// Set the output target of a crate::Output::base object
   fn set_output_target(self, target) {
-    $self->{output_target} = $target;
+    self.output_target = target;
     return;
   }
 
   /// Set the output head of a crate::Output::base object
   /// $data could be anything - the caller is expected to know.
   fn set_output_head(self, data) {
-    $self->{output_data}{HEAD} = $data;
+    self.output_data.HEAD = data;
     return;
   }
 
   /// Set the output tail of a crate::Output::base object
   /// $data could be anything - the caller is expected to know.
   fn set_output_tail(self, data) {
-    $self->{output_data}{TAIL} = $data;
+    self.output_data.TAIL = data;
     return;
   }
 
   /// Get the output head of a crate::Output object
   /// $data could be anything - the caller is expected to know.
   /// Mainly used in debugging
-  fn get_output_head(self) {
-    return $self->{output_data}{HEAD};
+  fn get_output_head(&self) -> &String {
+    self.output_data.HEAD
   }
 
   /// Get the output tail of a crate::Output object
   /// $data could be anything - the caller is expected to know.
   /// Mainly used in debugging
-  fn get_output_tail(self) {
-    return $self->{output_data}{TAIL};
+  fn get_output_tail(&self) -> &String {
+    self.output_data.TAIL
   }
 
   /// Add to the head output data of a crate::Output::base object
   /// The base class method just does a string append
-  fn add_output_head(self, data) {
-    $self->{output_data}{HEAD} .= $data;
-    return;
+  fn add_output_head(&mut self, data: &str) {
+    self.output_data.HEAD.push_str(data);
   }
 
   /// Add to the tail output data of a crate::Output::base object
   /// The base class method just does a string append
-  fn add_output_tail(self, data) {
-    $self->{output_data}{TAIL} .= $data;
-    return;
+  fn add_output_tail(&mut self, data: &str) {
+    self.output_data.TAIL.push_str(data);
   }
 
   /// Records the section object in the output object

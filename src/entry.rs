@@ -314,13 +314,12 @@ impl Entry {
   /// "no such reference".
   fn is_xdata_resolved(self, field: &str, pos: u32) -> bool {
     for xdatum in &self.xdatarefs {
-      if ($xdatum->{reffield} == $field) {
+      if xdatum.reffield == field {
         if pos != 0 {
           if xdatum.refposition == pos {
             return xdatum.resolved;
           }
-        }
-        else {
+        } else {
           return xdatum.resolved;
         }
       }

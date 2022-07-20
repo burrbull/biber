@@ -213,10 +213,10 @@ fn _dispatch_table_label(field: &str, dm: &DataModel) {
   // Fields which are part of the datamodel
   let dmf = dm.get_dm_for_field(field);
   if dmf.fieldtype == Some(FieldType::List) && dmf.datatype == Some(DataType::Name) {
-    return [\&_label_name, [$field]];
+    return Some([\&_label_name, [$field]]));
   }
   else {
-    return [\&_label_basic, [$field]];
+    return Some((\&_label_basic, [$field]));
   }
 }
 
@@ -228,13 +228,13 @@ fn _genlabel(self, citekey: &str, $dlist) {
   let $labelalphatemplate = crate::Config->getblxoption($secnum, "labelalphatemplate", $be->get_field("entrytype"));
   let $label;
   let $slabel;
-  $LABEL_FINAL = 0; // reset final shortcut
+  LABEL_FINAL = false; // reset final shortcut
 
   for labelpart in (sort {$a->{order} <=> $b->{order}} $labelalphatemplate->{labelelement}->@*) {
     let $ret = _labelpart($self, $labelpart->{labelpart}, $citekey, $secnum, $section, $be, $dlist);
-    $label .= $ret->[0] || "";
-    $slabel .= $ret->[1] || "";
-    if $LABEL_FINAL {
+    $label.push_str($ret->[0] || "");
+    $slabel.push_str($ret->[1] || "");
+    if LABEL_FINAL {
       break;
     }
   }
@@ -253,15 +253,15 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
 
   for part in ($labelpart->@*) {
     // Implement defaults not set by biblatex itself
-    if !exists($part->{substring_fixed_threshold}) {
-      $part->{substring_fixed_threshold} = 1;
+    if part.substring_fixed_threshold.is_none() {
+      part.substring_fixed_threshold = Some(1);
     }
 
     // Deal with various tests
     // ifnames only uses this label template part if the list it is applied to is a certain
     // length
-    if (let $inc = $part->{ifnames}) {
-      let f = $part->{content};
+    if (let $inc = part.ifnames) {
+      let f = part.content;
       // resolve labelname
       if f == "labelname" {
         f = be.get_labelname_info().unwrap_or("");
@@ -280,40 +280,39 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
         };
 
         // Deal with ifnames
-        if ($inc =~ m/^\d+$/) {// just a number
-          if $visible_names != $inc {
+        if regex_is_match!(r"^\d+$", inc) {// just a number
+          if visible_names != inc {
             continue;
           }
         }
         else {// a range
-          let $incr = parse_range_alt($inc);
-          if (!defined($incr->[0])) {// range -x
-            if $visible_names > $incr->[1] {
+          let incr = parse_range_alt(inc);
+          if !defined(incr.0) {// range -x
+            if visible_names > incr.1 {
               continue;
             }
           }
-          else if (!defined($incr->[1])) {// range x-
-            if $visible_names < $incr->[0] {
+          else if !defined(incr.1) {// range x-
+            if visible_names < incr.0 {
               continue;
             }
           }
           else {// range x-y
-            if !($visible_names >= $incr->[0] &&
-                         $visible_names <= $incr->[1]) {
+            if !(visible_names >= incr.0 && visible_names <= incr.1) {
               continue;
             }
           }
         }
       }
     }
-    let $ret = _dispatch_label($self, $part, $citekey, $secnum, $section, $be, $dlist);
-    $lp .= $ret->[0];
-    $slp .= $ret->[1];
+    let $ret = _dispatch_label(self, part, citekey, secnum, section, be, dlist);
+    lp.push_str(ret.0);
+    slp.push_str(ret.1);
 
     // We use the first one to return something
     if ($ret->[0]) {
       if $part->{final} {
-        $LABEL_FINAL = 1;
+        LABEL_FINAL = true;
       }
       break;
     }
@@ -324,24 +323,23 @@ fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
 
 
 // Main label dispatch method
-fn _dispatch_label(self, $part, $citekey, $secnum, $section, $be, $dlist) {
-  let $code_ref;
-  let $code_args_ref;
+fn _dispatch_label(&mut self, $part, citekey: &str, secnum: u32, $section, $be, $dlist) {
+  let code_ref;
+  let code_args_ref;
   let $lp;
   let $slp;
-  let $dm = crate::config::get_dm();
+  let dm = crate::config::get_dm();
 
 
   // real label field
-  if (let $d = _dispatch_table_label($part->{content}, $dm)) {
-    $code_ref = $d->[0];
-    $code_args_ref = $d->[1];
+  if let Some((d0, d1)) = _dispatch_table_label(part.content, dm) {
+    code_ref = d0;
+    code_args_ref = d1;
+  } else { // if the field is not found in the dispatch table, assume it's a literal string
+    code_ref = \&_label_literal;
+    code_args_ref = [part.content];
   }
-  else { // if the field is not found in the dispatch table, assume it's a literal string
-    $code_ref = \&_label_literal;
-    $code_args_ref = [$part->{content}];
-  }
-  return &{$code_ref}($self, $citekey, $secnum, $section, $be, $code_args_ref, $part, $dlist);
+  return &code_ref(self, citekey, secnum, section, be, code_args_ref, part, dlist);
 }
 
 
@@ -407,15 +405,13 @@ fn _label_name(self, citekey: &str, secnum: u32, _section, be: &Entry, $args, $l
 
   // Careful to extract the information we need about the real name behind labelname
   // as we need this to set the use* options below.
-  let $realname;
-  if ($namename == "labelname") {
-    $realname = be.get_labelname_info().unwrap();
-  }
-  else {
-    $realname = $namename;
-  }
+  let realname = if namename == "labelname" {
+    be.get_labelname_info().unwrap()
+  } else {
+    namename
+  };
 
-  let $names = $be->get_field($realname);
+  let names = be.get_field(realname);
 
   // Account for labelname set to short* when testing use* options
   let lnameopt = if realname.len() > 5 && realname.starts_with("short") {
@@ -424,12 +420,11 @@ fn _label_name(self, citekey: &str, secnum: u32, _section, be: &Entry, $args, $l
     realname.clone()
   };
 
-  if (crate::Config->getblxoption($secnum, "use$lnameopt", $bee, $citekey) &&
-    $names) {
+  if (crate::Config->getblxoption(secnum, format!("use{lnameopt}"), bee, citekey) && names) {
 
     // namelist scope labelalphanametemplate
-    if (defined($names->get_labelalphanametemplatename)) {
-      $lantname = $names->get_labelalphanametemplatename;
+    if let Some(val) = names.get_labelalphanametemplatename() {
+      lantname = val;
     }
 
     // namelist scope useprefix
@@ -543,19 +538,20 @@ fn _label_name(self, citekey: &str, secnum: u32, _section, be: &Entry, $args, $l
         }
       }
 
-      $acc .= _process_label_attributes(self,
+      acc.push_str(_process_label_attributes(self,
                                         citekey,
                                         dlist,
-                                        $parts->{main}{strings}[$i],
+                                        $parts->{main}{strings}[i],
                                         $labelattrs,
                                         $realname,
-                                        $parts->{main}{partnames}[$i],
-                                        $i);
+                                        $parts->{main}{partnames}[i],
+                                        $i)
+      );
 
       // put in names sep, if any
       if (let $nsep = $labelattrs->{namessep}) {
-        if !($i == $nr_end-1) {
-          $acc .= $nsep;
+        if i != nr_end - 1 {
+          acc.push_str(nsep);
         }
       }
     }
@@ -565,8 +561,8 @@ fn _label_name(self, citekey: &str, secnum: u32, _section, be: &Entry, $args, $l
     // Add alphaothers if name list is truncated unless noalphaothers is specified
     if !($labelattrs->{noalphaothers}) {
       if numnames > nr_end || names.get_morenames() {
-        $acc .= $alphaothers.unwrap_or(""); // alphaothers can be undef
-        $sortacc .= $sortalphaothers.unwrap_or(""); // sortalphaothers can be undef
+        acc.push_str(alphaothers.unwrap_or("")); // alphaothers can be undef
+        sortacc.push_str(sortalphaothers.unwrap_or("")); // sortalphaothers can be undef
       }
     }
     return [$acc, unescape_label($sortacc)];

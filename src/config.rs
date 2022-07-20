@@ -162,7 +162,7 @@ fn _initopts(opts) {
     if (defined($ARGV[0])) {         // ARGV is ok even in a module
       let $bcf = $ARGV[0];
       if !($bcf =~ m/\.bcf$/) {
-        $bcf .= ".bcf" ;
+        bcf.push_str(".bcf");
       }
       crate::Config->setoption("bcf", $bcf);
     }
@@ -192,8 +192,8 @@ fn _initopts(opts) {
   // Parse output-field-replace into something easier to use
   if (let $ofrs = crate::Config->getoption("output_field_replace")) {
     for ofr in regex!(r"\s*,\s*").split(ofrs) {
-      let (f, fr) = regex_captures!(r"^([^:]+):([^:]+)$", ofr).unwrap();
-      $CONFIG_OUTPUT_FIELDREPLACE.insert(f, fr);
+      let (_, f, fr) = regex_captures!(r"^([^:]+):([^:]+)$", ofr).unwrap();
+      CONFIG_OUTPUT_FIELDREPLACE.insert(f, fr);
     }
   }
 
@@ -260,7 +260,7 @@ fn _initopts(opts) {
 
   // Only want a logfile appender if --nolog isn't set
   if ($LOGLEVEL_F != "OFF") {
-    $l4pconf .= qq|
+    $l4pconf.push_str(qq|
     log4perl.category.logfile                          = $LOGLEVEL_F, Logfile
     log4perl.appender.Logfile                          = Log::Log4perl::Appender::File
     log4perl.appender.Logfile.utf8                     = 1
@@ -269,14 +269,14 @@ fn _initopts(opts) {
     log4perl.appender.Logfile.mode                     = clobber
     log4perl.appender.Logfile.layout                   = Log::Log4perl::Layout::PatternLayout
     log4perl.appender.Logfile.layout.ConversionPattern = [%r] %F{1}:%L> %p - %m%n
-|;
+|);
   }
 
   Log::Log4perl->init(\$l4pconf);
 
-  let $vn = $VERSION;
-  if $BETA_VERSION {
-    $vn .= " (beta)";
+  let mut vn = VERSION.to_string();
+  if BETA_VERSION {
+    vn.push_str(" (beta)");
   }
   let $tool = crate::Config->getoption("tool") ? " running in TOOL mode" : "";
 
