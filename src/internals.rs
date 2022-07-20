@@ -349,12 +349,12 @@ fn _dispatch_label(self, $part, $citekey, $secnum, $section, $be, $dlist) {
 // Label dispatch routines
 //////////////////////////
 
-fn _label_citekey(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlist) {
-  let $k = _process_label_attributes($self, $citekey, $dlist, [[$citekey, None]], $labelattrs, $args->[0]);
+fn _label_citekey(&mut self, citekey: &str, secnum: u32, $section, $be, $args, $labelattrs, dlist: &DataList) {
+  let $k = _process_label_attributes(self, citekey, dlist, [[citekey, None]], $labelattrs, $args->[0]);
   return [$k, unescape_label($k)];
 }
 
-fn _label_basic(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dlist) {
+fn _label_basic(&mut self, citekey: &str, secnum: u32, $section, $be, $args, $labelattrs, dlist: &DataList) {
   let $e = $args->[0];
 
   let $f;
@@ -366,7 +366,7 @@ fn _label_basic(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dli
     $f = normalise_string_label($be->get_field($e));
   }
   if ($f) {
-    let $b = _process_label_attributes($self, $citekey, $dlist, [[$f, None]], $labelattrs, $e);
+    let $b = _process_label_attributes(self, citekey, dlist, [[$f, None]], $labelattrs, $e);
     return [$b, unescape_label($b)];
   }
   else {
@@ -375,23 +375,23 @@ fn _label_basic(self, $citekey, $secnum, $section, $be, $args, $labelattrs, $dli
 }
 
 // literal string - don't post-process this, there is no point
-fn _label_literal(self, $citekey, $secnum, $section, $be, $args, $labelattrs) {
+fn _label_literal(self, _citekey: &str, _secnum: u32, _section, $be, $args, $labelattrs) {
   let $string = $args->[0];
   return [escape_label(unescape_label($string)), unescape_label($string)];
 }
 
 // names
-fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelattrs, $dlist) {
-  let $bee = $be->get_field("entrytype");
-  let $useprefix = crate::Config->getblxoption($secnum, "useprefix", bee, citekey);
+fn _label_name(self, citekey: &str, secnum: u32, _section, be: &Entry, $args, $labelattrs, dlist: &DataList) {
+  let $bee = be.get_field("entrytype");
+  let $useprefix = crate::Config->getblxoption(secnum, "useprefix", bee, citekey);
   let $alphaothers = crate::Config->getblxoption(None, "alphaothers", bee);
   let $sortalphaothers = crate::Config->getblxoption(None, "sortalphaothers", $bee);
 
   // Get the labelalphanametemplate name or this list context
-  let $lantname = $dlist->get_labelalphanametemplatename;
+  let lantname = dlist.get_labelalphanametemplatename();
 
   // Override with any entry-specific information
-  $lantname = crate::Config->getblxoption($secnum, "labelalphanametemplatename", None, $citekey).unwrap_or($lantname);
+  $lantname = crate::Config->getblxoption($secnum, "labelalphanametemplatename", None, citekey).unwrap_or($lantname);
 
   // Shortcut - if there is no labelname, don't do anything
   if be.get_labelname_info().is_none() {
@@ -467,11 +467,10 @@ fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelatt
     let $parts;
     let $opts;
 
-    for name in ($names->names->@*) {
-
+    for name in names.names() {
       // name scope labelalphanametemplate
-      if (defined($name->get_labelalphanametemplatename)) {
-        $lantname = $name->get_labelalphanametemplatename;
+      if let Some(val) = name.get_labelalphanametemplatename() {
+        lantname = val;
       }
 
       // name scope useprefix
@@ -531,23 +530,22 @@ fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelatt
       for fieldinfo in ($parts->{pre}{strings}[$i]->@*) {
         let $np = $fieldinfo->[0];
         let $npo = $fieldinfo->[1];
-        let $w = $npo->{substring_width}.unwrap_or(1);
-        if ($npo->{substring_compound}) {
-          let $tmpstring;
+        let $w = npo.substring_width.unwrap_or(1);
+        if (npo.substring_compound) {
+          let mut tmpstring = String::new();
           // Splitting on tilde too as libbtparse inserts these into compound prefices
-          for part in (split(/[\s\p{Dash}~]+/, $np)) {
-            $tmpstring .= Unicode::GCString->new($part)->substr(0, $w)->as_string;
+          for part in regex!(r"[\s\p{Dash}~]+").split(np) {
+            tmpstring.extend(part.graphemes(true).take(w));
           }
-          $acc .= $tmpstring;
-        }
-        else {
-          $acc .= Unicode::GCString->new($np)->substr(0, $w)->as_string;
+          acc.push_str(tmpstring);
+        } else {
+          acc.extend(np.graphemes(true).take(w))
         }
       }
 
-      $acc .= _process_label_attributes($self,
+      $acc .= _process_label_attributes(self,
                                         citekey,
-                                        $dlist,
+                                        dlist,
                                         $parts->{main}{strings}[$i],
                                         $labelattrs,
                                         $realname,
@@ -586,7 +584,7 @@ fn _label_name(self, citekey: &str, secnum: u32, $section, $be, $args, $labelatt
 
 // Complicated due to various label disambiguation schemes and also due to dealing with
 // name fields
-fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
+fn _process_label_attributes(&mut self, citekey: &str, dlist: &DataList, $fieldstrings, $labelattrs, $field, $nameparts, $index) {
   if !($labelattrs) {
     return fieldstrings.iter().map(|s| s[0]).join("");
   }
@@ -692,7 +690,7 @@ fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $l
           // This retains the structure of the entries for the "l" list disambiguation
           // Have to be careful if field "$f" is not set for all entries
           let $strings = [map {let $f = section.bibentry($_).get_field(field);
-                              $f ? ($nameparts ? [map {let $n = $_;join("", map {$n->get_namepart($_)} $nameparts->@*)} $f->first_n_names($dlist->get_visible_alpha(f.get_id()))->@*] : [$f]) : [""] }
+                              $f ? ($nameparts ? [map {let $n = $_;join("", map {$n->get_namepart($_)} $nameparts->@*)} $f->first_n_names(dlist.get_visible_alpha(f.get_id()))->@*] : [$f]) : [""] }
                          @citekeys];
           let $lcache = _label_listdisambiguation($strings);
 
@@ -747,9 +745,7 @@ fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $l
         if ($nameparts && $namepartopts->{substring_compound}) {
           let mut tmpstring = String::new();
           for part in regex!(r"[\s\p{Dash}]+").split(&field_string) {
-            for s in part.graphemes(true).skip(subs_offset).take(subs_width) {
-              tmpstring.push_str(s);
-            }
+            tmpstring.extend(part.graphemes(true).skip(subs_offset).take(subs_width));
           }
           field_string = tmpstring;
         }
