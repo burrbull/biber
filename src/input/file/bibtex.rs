@@ -1127,7 +1127,7 @@ fn _name(bibentry, entry, field, key) {
 
     // per-namelist options
     if ($name =~ m/^(\S+)\s*$xnamesep\s*(\S+)?$/) {
-      let $nlo = lc($1);
+      let $nlo = ($1).to_lowercase();
       let $nlov = $2.unwrap_or(1); // bare options are just boolean numerals
       if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&nlo, "NAMELIST") {
         let $oo = expand_option_input($nlo, $nlov, $CONFIG_BIBLATEX_OPTIONS{NAMELIST}{$nlo}{INPUT});
@@ -1271,7 +1271,7 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
         $bibentry->set_datafield($datetype . "year",
                                  $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->year));
         // Save era date information
-        $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
+        $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
       }
 
       if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
@@ -1312,7 +1312,7 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
             $bibentry->set_datafield($datetype . "endyear",
                                      $CONFIG_DATE_PARSERS{end}->resolvescript($edate->year));
             // Save era date information
-            $bibentry->set_field($datetype . "endera", lc($edate->secular_era));
+            $bibentry->set_field($datetype . "endera", edate.secular_era.to_lowercase());
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("month")) {

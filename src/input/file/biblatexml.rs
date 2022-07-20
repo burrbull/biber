@@ -254,14 +254,14 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
       // Check pertype restrictions
       // Logic is "-(-P v Q)" which is equivalent to "P & -Q" but -Q is an array check so
       // messier to write than Q
-      if !(!exists($map->{per_type}) ||
-              first {lc($_->{content}) == $entry->type} @{$map->{per_type}}) {
+      if !(!exists(map.per_type) ||
+              first {($_->{content}).to_lowercase() == $entry->type} @{map.per_type}) {
         continue;
       }
 
       // Check negated pertype restrictions
-      if (exists($map->{per_nottype}) &&
-          first {lc($_->{content}) == $entry->getAttribute("entrytype")} @{$map->{per_nottype}}) {
+      if (exists(map.per_nottype) &&
+          first {($_->{content}).to_lowercase() == $entry->getAttribute("entrytype")} @{map.per_nottype}) {
         continue;
       }
 
@@ -356,8 +356,8 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
 
           // Entrytype map
           if (let $typesource = maploopreplace($step->{map_type_source}, $maploop)) {
-            $typesource = lc($typesource);
-            if !($etarget->getAttribute("entrytype") == $typesource) {
+            typesource = typesource.to_lowercase();
+            if !($etarget->getAttribute("entrytype") == typesource) {
               // Skip the rest of the map if this step doesn't match and match is final
               if ($step->{map_final}) {
                   debug!("Source mapping (type={}, key={}): Entry type is '", level, etargetkey, $etarget->getAttribute("entrytype") . "' but map wants '$typesource' and step has 'final' set, skipping rest of map ...");
@@ -371,7 +371,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
             }
             // Change entrytype if requested
             $last_type = $etarget->getAttribute("entrytype");
-            let $t = lc(maploopreplace($step->{map_type_target}, $maploop));
+            let $t = maploopreplace($step->{map_type_target}, $maploop).to_lowercase();
               debug!("Source mapping (type={}, key={}): Changing entry type from '{}' to {}", level, etargetkey, last_type, t);
             $etarget->setAttribute("entrytype", NFC($t));
           }
@@ -547,7 +547,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               if (defined($step->{map_replace})) { // replace can be null
 
                 // Can't modify entrykey
-                if (lc($xp_fieldsource_s) == './@id') {
+                if (xp_fieldsource_s.to_lowercase() == './@id') {
                   debug!("Source mapping (type={}, key={}): Field xpath '{}' is entrykey- cannot remap the value of this field, skipping ...", level, etargetkey, xp_fieldsource_s);
                   continue;
                 }
@@ -586,7 +586,7 @@ fn create_entry(key, entry, datasource, smaps, rkeys) {
               let $xp_target = XML::LibXML::XPathExpression->new($xp_target_s);
 
               // Can't remap entry key pseudo-field
-              if (lc($xp_target_s) == './@id') {
+              if xp_target_s.to_lowercase() == "./@id" {
                   debug!("Source mapping (type={}, key={}): Field xpath '{}' is entrykey - cannot map this to a new field as you must have an entrykey, skipping ...", level, etargetkey, xp_fieldsource_s);
                   continue;
               }
@@ -977,7 +977,7 @@ fn _datetime(bibentry, entry, f, key) {
         if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
           $bibentry->set_datafield($datetype . "year", $sdate->year);
           // Save era date information
-          $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
+          $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
@@ -1030,7 +1030,7 @@ fn _datetime(bibentry, entry, f, key) {
           if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
             $bibentry->set_datafield($datetype . "endyear", $edate->year);
             // Save era date information
-            $bibentry->set_field($datetype . "endera", lc($edate->secular_era));
+            $bibentry->set_field($datetype . "endera", edate.secular_era.to_lowercase());
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("month")) {
@@ -1094,7 +1094,7 @@ fn _datetime(bibentry, entry, f, key) {
         if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
           $bibentry->set_datafield($datetype . "year", $sdate->year);
           // Save era date information
-          $bibentry->set_field($datetype . "era", lc($sdate->secular_era));
+          $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("month")) {

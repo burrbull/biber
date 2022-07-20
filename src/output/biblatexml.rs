@@ -201,7 +201,7 @@ impl BibLaTeXML {
 
         let mut attrs = AttributeMap::new();
         // Did we have a "more" list?
-        if (lc($lf->[-1]) == crate::Config->getoption("others_string") ) {
+        if (lf->[-1].to_lowercase() == crate::Config->getoption("others_string") ) {
           attrs.insert("morelist", 1);
           lf.pop();               // remove the last element in the array
         }

@@ -869,7 +869,7 @@ if (exists($opts->{dot_include}) and (not exists($opts->{output_format})
 
 
 if (exists($opts->{dot_include})) {
-  $opts->{dot_include} = {map {lc($_) => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
+  $opts->{dot_include} = {map {($_).to_lowercase() => 1} split(/,/,join(',',@{$opts->{dot_include}}))};
   let suboptions = ["section", "field", "crossref", "xref", "xdata", "related"];
   for g in (keys $opts->{dot_include}->%*) {
     if !suboptions.iter().any(|v| v == g.to_lowercase()) {

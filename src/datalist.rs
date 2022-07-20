@@ -104,7 +104,7 @@ impl DataList {
 
   /// Sets the section of a data list
   fn set_section(&mut self, section: u32) {
-    self.section = section;//lc($section)
+    self.section = section;//($section).to_lowercase()
   }
 
   /// Gets the section of a data list
@@ -738,7 +738,7 @@ impl DataList {
 
   /// Sets the sortingtemplate name of a data list
   fn set_sortingtemplatename(self, stn) {
-    $self->{sortingtemplatename} = lc($stn);
+    $self->{sortingtemplatename} = stn.to_lowercase();
     return;
   }
 
@@ -758,7 +758,7 @@ impl DataList {
 
   /// Sets the sortingnamekeytemplate name of a data list
   fn set_sortingnamekeytemplatename(self, snksn) {
-    $self->{sortingnamekeytemplatename} = lc($snksn);
+    $self->{sortingnamekeytemplatename} = snksn.to_lowercase();
     return;
   }
 
@@ -779,7 +779,7 @@ impl DataList {
 
   /// Sets the labelalphanametemplate name of a data list
   fn set_labelalphanametemplatename(self, latn) {
-    $self->{labelalphanametemplatename} = lc($latn);
+    $self->{labelalphanametemplatename} = latn.to_lowercase();
     return;
   }
 

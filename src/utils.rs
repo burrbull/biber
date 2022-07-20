@@ -435,7 +435,7 @@ pub fn strip_nonamestring(string, fieldname) {
     // Specific fieldnames override sets
     if (unicase::eq($nnopt->{name}, fieldname)) {
       push $restrings->@*, $nnopt->{value};
-    } else if (let $set = $DATAFIELD_SETS{lc($nnopt->{name})} ) {
+    } else if (let $set = $DATAFIELD_SETS{nnopt.name.to_lowercase()} ) {
       if (first {unicase::eq($_, fieldname)} $set->@*) {
         push $restrings->@*, $nnopt->{value};
       }
@@ -945,11 +945,11 @@ pub fn process_entry_options($citekey, $options, $secnum) {
   if !($options) {
     return;       // Just in case it's null
   }
-  foreach ($options->@*) {
-    s/\s+=\s+/=/g; // get rid of spaces around any "="
-    m/^([^=]+)=?(.+)?$/;
-    let $val = $2.unwrap_or(1); // bare options are just boolean numerals
-    let $oo = expand_option_input($1, $val, $CONFIG_BIBLATEX_OPTIONS{ENTRY}{lc($1)}{INPUT});
+  for opt in options {
+    let opt = regex!(r"\s+=\s+").replace_all(opt, "="); get rid of spaces around any "="
+    let (_, one, two) = regex_captures!(r"^([^=]+)=?(.+)?$", opt).unwrap();
+    let val = two.unwrap_or(1); // bare options are just boolean numerals
+    let $oo = expand_option_input(one, $val, $CONFIG_BIBLATEX_OPTIONS{ENTRY}{one.to_lowercase()}{INPUT});
 
     for o in ($oo->@*) {
       crate::Config->setblxoption($secnum, $o->[0], $o->[1], "ENTRY", $citekey);

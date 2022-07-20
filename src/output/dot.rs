@@ -160,7 +160,7 @@ impl Dot {
           graph.push_str("\n");
           // NOTE: already sorted
           for field in be.datafields()) {
-            graph.push_str($i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . uc($field) . "\" ]\n");
+            graph.push_str($i x $in . "\"section${secnum}/${citekey}/${field}\" [ label=\"" . field.to_uppercase() . "\" ]\n");
           }
           i_n -= 2;
           graph.push_str($i x $in . "}\n\n");
@@ -324,7 +324,7 @@ impl Dot {
                 if !$state->{$secnum}{"${secnum}/${t_entry}"} {
                   continue;
                 }
-                graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . uc($t_field) . " inherited via " . uc($type) . " from ${f_entry}/" . uc($f_field) . "\" ]\n");
+                graph_edges.push_str($i x $in . "\"section${secnum}/${f_entry}/${f_field}\" -> \"section${secnum}/${t_entry}/${t_field}\" [ penwidth=\"2.0\", color=\"${edgecolor}\", tooltip=\"${t_entry}/" . t_field.to_uppercase() . " inherited via " . $type.to_uppercase() . " from ${f_entry}/" . f_field.to_uppercase() . "\" ]\n");
               }
             }
           }

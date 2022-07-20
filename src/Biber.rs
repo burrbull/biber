@@ -44,7 +44,6 @@ use File::Temp;
 use IO::File;
 use List::AllUtils qw( first uniq max first_index );
 use Log::Log4perl qw( :no_extra_logdie_message );
-use POSIX qw( locale_h ); // for lc()
 use Scalar::Util qw(looks_like_number);
 use Sort::Key qw ( multikeysorter );
 use Text::BibTeX qw(:macrosubs);
@@ -400,11 +399,11 @@ impl Biber {
         }
         CONFIG_OPT_SCOPE_BIBLATEX.insert(opt, scope);
         if (defined($CONFIG_OPTTYPE_BIBLATEX{$opt}) &&
-            lc($CONFIG_OPTTYPE_BIBLATEX{$opt}) != lc($bcfscopeopt->{datatype})) {
+            CONFIG_OPTTYPE_BIBLATEX{$opt}.to_lowercase() != $bcfscopeopt->{datatype}.to_lowercase()) {
           biber_warn("Warning: Datatype for biblatex option '$opt' has conflicting values, probably at different scopes. This is not supported.");
         }
         else {
-          $CONFIG_OPTTYPE_BIBLATEX{$opt} = lc($bcfscopeopt->{datatype});
+          $CONFIG_OPTTYPE_BIBLATEX{$opt} = bcfscopeopt.datatype.to_lowercase();
         }
       }
     }
@@ -482,8 +481,8 @@ impl Biber {
     // Since we have to use the datamodel to resolve some members, just record the settings
     // here for processing after the datamodel is parsed
     for s in ($bcfxml->{datafieldset}->@*) {
-      let $name = lc($s->{name});
-      for m in ($s->{member}->@*) {
+      let $name = s.name.to_lowercase();
+      for m in (s.member->@*) {
         if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
           DATAFIELD_SETS{$name}.push(DataField::String(field));
         }

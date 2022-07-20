@@ -99,12 +99,7 @@ fn _initopts(opts) {
       crate::Config->setoption($k, $v->{content});
     }
     // mildly complex options
-    else if (lc($k) == "dot_include" ||
-           lc($k) == "collate_options" ||
-           lc($k) == "nosort" ||
-           lc($k) == "nolabel" ||
-           lc($k) == "nolabelwidthcount" ||
-           lc($k) == "noinit" ) {
+    else if ["dot_include", "collate_options", "nosort", "nolabel", "nolabelwidthcount", "noinit"].contains(&k.to_lowercase()) {
       crate::Config->setoption($k, $v->{option});
     }
   }
@@ -136,7 +131,7 @@ fn _initopts(opts) {
   for copt in (keys $opts->%*) {
     // This is a tricky option as we need to keep non-overriden defaults
     // If we don't we can get errors when contructing the sorting call to eval() later
-    if (lc($copt) == "collate_options") {
+    if (copt.to_lowercase() == "collate_options") {
       let $collopts = crate::Config->getoption("collate_options");
       let $copt_h = (eval "{ $opts->{$copt} }").expect("Bad command-line collation options");
       // Override defaults with any cmdline settings
@@ -825,8 +820,8 @@ fn getblxoption(secnum, opt, entrytype, citekey: Option<&str>) {
   }
   else if (defined($entrytype) &&
   CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "ENTRYTYPE") &&
-         defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt}) {
-    return $CONFIG->{options}{biblatex}{ENTRYTYPE}{lc($entrytype)}{$opt};
+         defined $CONFIG->{options}{biblatex}{ENTRYTYPE}{entrytype.to_lowercase()}{$opt}) {
+    return $CONFIG->{options}{biblatex}{ENTRYTYPE}{entrytype.to_lowercase()}{$opt};
   }
   else if CONFIG_OPT_SCOPE_BIBLATEX.contains_pair(&opt, "GLOBAL") {
     return $CONFIG->{options}{biblatex}{GLOBAL}{$opt};

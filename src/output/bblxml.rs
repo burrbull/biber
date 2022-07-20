@@ -266,7 +266,7 @@ impl BblXML {
 
         let %plo;
 
-        if ( lc($lf->[-1]) == crate::Config->getoption("others_string") ) {
+        if ( lf->[-1].to_lowercase() == crate::Config->getoption("others_string") ) {
           // Did we have "and others" in the data?
           $plo{more} = "true";
           pop $lf->@*; // remove the last element in the array
@@ -528,7 +528,7 @@ impl BblXML {
           continue;
         }
         let %plo;
-        if ( lc($urilf->[-1]) == crate::Config->getoption("others_string") ) {
+        if ( urilf->[-1].to_lowercase() == crate::Config->getoption("others_string") ) {
           $plo{$uril} = "true";
           pop $urilf->@*; // remove the last element in the array
         }

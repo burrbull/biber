@@ -10,7 +10,6 @@ use Digest::MD5 qw( md5_hex );
 use Encode;
 use List::AllUtils qw( :all );
 use Log::Log4perl qw(:no_extra_logdie_message);
-use POSIX qw( locale_h ); // for lc()
 use Scalar::Util qw(looks_like_number);
 use Text::Roman qw(isroman roman2int);
 use Unicode::Collate::Locale;
@@ -1629,9 +1628,9 @@ fn _translit(target, entry, string) {
           continue;
         }
       }
-      if (lc($tr->{target}) == '*' ||
-          $tr->{target} == $target ||
-          DATAFIELD_SETS{$tr->{target}}.contains(target)) {
+      if (tr.target.to_lowercase() == '*' ||
+          tr.target == $target ||
+          DATAFIELD_SETS{tr.target}.contains(target)) {
         return call_transliterator($target, $tr->{from}, $tr->{to}, $string);
       }
     }
