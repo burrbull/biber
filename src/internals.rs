@@ -13,7 +13,6 @@ use Log::Log4perl qw(:no_extra_logdie_message);
 use POSIX qw( locale_h ); // for lc()
 use Scalar::Util qw(looks_like_number);
 use Text::Roman qw(isroman roman2int);
-use Unicode::GCString;
 use Unicode::Collate::Locale;
 use Unicode::Normalize;
 use Unicode::UCD qw(num);
@@ -705,26 +704,26 @@ fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $l
       }
       // static substring width
       else {
-        let $subs_offset = 0;
-        let $default_substring_width = 1;
-        let $default_substring_side = "left";
-        let $padchar = $labelattrs->{pad_char};
-        let $subs_side = ($labelattrs->{substring_side} || $default_substring_side);
-        let $subs_width = ($labelattrs->{substring_width} || $default_substring_width);
+        let mut subs_offset = 0;
+        let default_substring_width = 1;
+        let default_substring_side = Side::Left;
+        let padchar = labelattrs.pad_char;
+        let mut subs_side = labelattrs.substring_side.unwrap_or(default_substring_side);
+        let mut subs_width = labelattrs.substring_width.unwrap_or(default_substring_width);
 
         // Override subs width with namepart specific setting, if it exists
         if ($nameparts) {
-          if (let $w = $namepartopts->{substring_width}) {
-            $subs_width = $w;
+          if (let $w = namepartopts.substring_width) {
+            subs_width = w;
           }
-          if (let $s = $namepartopts->{substring_side}) {
-            $subs_side = $s;
+          if (let $s = namepartopts.substring_side) {
+            subs_side = s;
           }
         }
 
         // Set offset depending on subs side
-        if ($subs_side == "right") {
-          $subs_offset = 0 - $subs_width;
+        if subs_side == Side::Right {
+          subs_offset = 0 - subs_width;
         }
 
         // Get map of regexps to not count against string width and record their place in the
@@ -746,29 +745,29 @@ fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $l
         // If desired, do the substring on all parts of compound names
         // (with internal spaces or hyphens)
         if ($nameparts && $namepartopts->{substring_compound}) {
-          let $tmpstring;
-          for part in (split(/[\s\p{Dash}]+/, $field_string)) {
-            $tmpstring .= Unicode::GCString->new($part)->substr($subs_offset, $subs_width)->as_string;
+          let mut tmpstring = String::new();
+          for part in regex!(r"[\s\p{Dash}]+").split(&field_string) {
+            for s in part.graphemes(true).skip(subs_offset).take(subs_width) {
+              tmpstring.push_str(s);
+            }
           }
-          $field_string = $tmpstring;
+          field_string = tmpstring;
         }
         else {
-          $field_string = Unicode::GCString->new($field_string)->substr($subs_offset, $subs_width)->as_string;
+          field_string = field_string.graphemes(true).skip(subs_offset).take(subs_width).collect();
         }
         // Padding
         if ($padchar) {
-          $padchar = unescape_label($padchar);
-          let $pad_side = ($labelattrs->{pad_side} || "right");
-          let $paddiff = $subs_width - Unicode::GCString->new($field_string)->length;
-          if ($paddiff > 0) {
-            if ($pad_side == "right") {
-              $field_string .= $padchar x $paddiff;
-            }
-            else if ($pad_side == "left") {
-              $field_string = $padchar x $paddiff . $field_string;
+          padchar = unescape_label(padchar);
+          let pad_side = labelattrs.pad_side.unwrap_or(Side::Right);
+          let paddiff = subs_width - field_string.graphemes(true).count();
+          if paddiff > 0 {
+            match pad_side {
+              Side::Right => field_string.push_str(padchar.repeat(paddiff)),
+              Side::Left => field_string = format!("{}{field_string}", padchar.repeat(paddiff)),
             }
           }
-          $field_string = escape_label($field_string);
+          field_string = escape_label(&field_string);
         }
 
         // Now reinstate any nolabelwidthcount regexps
@@ -776,30 +775,27 @@ fn _process_label_attributes(&mut self, citekey: &str, $dlist, $fieldstrings, $l
           let $gc_string = Unicode::GCString->new($field_string);
           for nolabelwci in ($nolabelwcis->@*) {
             // Don't put back anything at positions which are no longer in the string
-            if ($nolabelwci->[1] +1 <= $gc_string->length) {
-              $gc_string->substr($nolabelwci->[1], 0, $nolabelwci->[0]);
+            if (nolabelwci[1] + 1 <= $gc_string->length) {
+              $gc_string->substr(nolabelwci[1], 0, nolabelwci[0]);
             }
           }
           $field_string = $gc_string->as_string;
         }
       }
     }
-    $rfield_string .= $field_string;
+    rfield_string.push_str(field_string);
   }
 
   // Case changes
-  if ($labelattrs->{uppercase} &&
-      $labelattrs->{lowercase}) {
+  if labelattrs.uppercase && labelattrs.lowercase {
     // do nothing if both are set, for sanity
-  }
-  else if ($labelattrs->{uppercase}) {
-    $rfield_string = uc($rfield_string);
-  }
-  else if ($labelattrs->{lowercase}) {
-    $rfield_string = lc($rfield_string);
+  } else if labelattrs.uppercase {
+    rfield_string = rfield_string.to_uppercase();
+  } else if labelattrs.lowercase {
+    rfield_string = rfield_string.to_lowercase();
   }
 
-  return $rfield_string;
+  rfield_string
 }
 
 // This turns a list of label strings:
@@ -1399,50 +1395,49 @@ fn _sort_string(self, citekey: &str, secnum: u32, section: &Section, be: &Entry,
 // Utility subs used elsewhere but relying on sorting code
 //========================================================
 
-fn _process_sort_attributes(field_string, sortelementattributes) {
-  if $field_string == '0' {
-    return "BIBERZERO"; // preserve real zeros
+fn _process_sort_attributes(field_string: &str, sortelementattributes) -> String {
+  let mut field_string = field_string.to_string();
+  if field_string == "0" {
+    return "BIBERZERO".into(); // preserve real zeros
   }
   if !($sortelementattributes) {
-    return $field_string;
+    return field_string;
   }
   if !($field_string) {
-    return $field_string;
+    return field_string;
   }
   // process substring
-  if ($sortelementattributes->{substring_width} ||
-      $sortelementattributes->{substring_side}) {
-    let $subs_offset = 0;
-    let $default_substring_width = 4;
-    let $default_substring_side = "left";
-    let $subs_width = ($sortelementattributes->{substring_width} || $default_substring_width);
-    let $subs_side = ($sortelementattributes->{substring_side} || $default_substring_side);
-    if ($subs_side == "right") {
-      $subs_offset = 0 - $subs_width;
+  if sortelementattributes.substring_width.is_some() ||
+      sortelementattributes.substring_side.is_some() {
+    let mut subs_offset = 0;
+    let default_substring_width = 4;
+    let default_substring_side = Side::Left;
+    let subs_width = sortelementattributes.substring_width.unwrap_or(default_substring_width);
+    let subs_side = sortelementattributes.substring_side.unwrap_or(default_substring_side);
+    if subs_side == Side::Right {
+      subs_offset = 0 - subs_width;
     }
-    $field_string = Unicode::GCString->new($field_string)->substr($subs_offset, $subs_width)->as_string;
+    field_string = field_string.graphemes(true).skip(subs_offset).take(subs_width).collect();
   }
   // Process padding
-  if ($sortelementattributes->{pad_side} ||
-      $sortelementattributes->{pad_width} ||
-      $sortelementattributes->{pad_char}) {
-    let $default_pad_width = 4;
-    let $default_pad_side = "left";
-    let $default_pad_char = '0';
-    let $pad_width = ($sortelementattributes->{pad_width} || $default_pad_width);
-    let $pad_side = ($sortelementattributes->{pad_side} || $default_pad_side);
-    let $pad_char = ($sortelementattributes->{pad_char} || $default_pad_char);
-    let $pad_length = $pad_width - Unicode::GCString->new($field_string)->length;
-    if ($pad_length > 0) {
-      if ($pad_side == "left") {
-        $field_string = ($pad_char x $pad_length) . $field_string;
-      }
-      else if ($pad_side == "right") {
-        $field_string = $field_string . (pad_char.repeat(pad_length));
+  if (sortelementattributes.pad_side.is_some() ||
+      sortelementattributes.pad_width.is_some() ||
+      sortelementattributes.pad_char.is_some()) {
+    let default_pad_width = 4;
+    let default_pad_side = Side::Left;
+    let default_pad_char = '0';
+    let pad_width = sortelementattributes.pad_width.unwrap_or(default_pad_width);
+    let pad_side = sortelementattributes.pad_side.unwrap_or(default_pad_side);
+    let pad_char = sortelementattributes.pad_char.unwrap_or(default_pad_char);
+    let pad_length = pad_width - field_string.graphemes(true).count();
+    if pad_length > 0 {
+      match pad_side {
+        Side::Left => field_string = format!("{}{field_string}", pad_char.repeat(pad_length)),
+        Side::Right => field_string.push_str(pad_char.repeat(pad_length)),
       }
     }
   }
-  return $field_string;
+  field_string
 }
 
 // This is used to generate sorting string for names

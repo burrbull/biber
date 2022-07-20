@@ -27,7 +27,6 @@ use List::AllUtils qw( :all );
 use Scalar::Util qw(looks_like_number);
 use URI;
 use Unicode::Normalize;
-use Unicode::GCString;
 use Unicode::UCD qw(num);
 use XML::LibXML::Simple;
 */

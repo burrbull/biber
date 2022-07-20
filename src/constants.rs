@@ -1,6 +1,6 @@
 use phf::phf_map;
 use once_cell::sync::Lazy;
-use std::{sync::Mutex, collections::HashMap};
+use std::{sync::Mutex, collections::{HashMap, HashSet}};
 use crate::BiSet;
 
 /* TODO
@@ -31,7 +31,6 @@ our @EXPORT = qw{
                   %DS_EXTENSIONS
                   %UNIQUENAME_CONTEXTS
                   %RSTRINGS
-                  %USEDSTRINGS
               };
 */
 // Version of biblatex control file which this release expects. Matched against version
@@ -91,10 +90,10 @@ pub const YEARDIVISIONS: phf::Map<u32, &'static str> = phf_map! {
 /* TODO
 // Reverse record of macros so we can reverse these for tool mode output
 our %RSTRINGS = ();
+*/
 // Record of macros which are actually used in output in tool mode, so that we don't
 // output unused strings.
-our %USEDSTRINGS = ();
-*/
+pub static USEDSTRINGS: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 pub const MONTHS: phf::Map<&'static str, &'static str> = phf_map! {
   "jan" => "1",

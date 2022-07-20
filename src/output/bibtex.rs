@@ -57,7 +57,7 @@ impl BibTeX {
 
     // Only output used macros unless we are asked to output all
     if !(crate::Config->getoption("output_all_macrodefs")) {
-      if !($USEDSTRINGS{$macro}) {
+      if !USEDSTRINGS.contains(macro) {
         return;
       }
     }
@@ -505,17 +505,17 @@ impl BibTeX {
       let $casing;
 
       if (crate::Config->getoption("output_fieldcase") == "upper") {
-        $casing = sub {uc(shift)};
+        $casing = |s| { s.to_uppercase() };
       }
       else if (crate::Config->getoption("output_fieldcase") == "lower") {
-        $casing = sub {lc(shift)};
+        $casing = |s| { s.to_lowercase() };
       }
       else if (crate::Config->getoption("output_fieldcase") == "title") {
-        $casing = sub {ucfirst(shift)};
+        $casing = |s| { ucfirst(s) };
       }
 
-      $value = $casing->($m);
-      $USEDSTRINGS{$m} = 1;
+      $value = casing(m);
+      USEDSTRINGS.insert(m);
     }
 
     // Don't wrap fields which should be macros in braces - we can only deal with macros

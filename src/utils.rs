@@ -1,6 +1,6 @@
 //! Various utility subs used in Biber
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::Id;
 use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all, regex_captures};
@@ -31,7 +31,6 @@ use Text::Balanced qw(extract_bracketed);
 use Text::CSV;
 use Text::Roman qw(isroman roman2int);
 use Unicode::Normalize;
-use Unicode::GCString;
  */
 pub fn NFC(s: &str) -> String {
   s.nfc().collect()
@@ -868,7 +867,7 @@ pub fn validate_biber_xml($file, $type, $prefix, $schema) {
   if !($schema) {
     // we assume that unspecified schema files are in the same dir as Biber.pm:
     (let $vol, let $biber_path, _) = File::Spec->splitpath( $INC{"Biber.pm"} );
-    $biber_path =~ s/\/$//; // splitpath sometimes leaves a trailing '/'
+    biber_path = regex_replace!(r"\/$", &biber_path, ""); // splitpath sometimes leaves a trailing '/'
 
     if ($biber_path =~ m|/par\-| && $biber_path !~ m|/inc|) { // a mangled PAR @INC path
       $schema = File::Spec->catpath($vol, "$biber_path/inc/lib/Biber", "${type}.rng");
@@ -921,7 +920,7 @@ pub fn map_boolean($bn, $bv, $dir) {
     return $bv;
   }
 
-  let $b = lc($bv);
+  let $b = bv.to_lowercase();
 
   let %map = (true  => 1,
              false => 0,
@@ -1050,7 +1049,7 @@ pub fn expand_option_input($opt, $val, $cfopt) {
 }
 
 /// Parse of ISO8601 date range
-pub fn parse_date_range($bibentry, $datetype, $datestring) {
+pub fn parse_date_range(bibentry: &mut Entry, datetype: &str, datestring: &str) {
   let ($sd, $sep, $ed) = $datestring =~ m|^([^/]+)?(/)?([^/]+)?$|;
 
   // Very bad date format, something like '2006/05/04' catch early
@@ -1072,44 +1071,49 @@ pub fn parse_date_range($bibentry, $datetype, $datestring) {
   }
   return (parse_date_start($sd), parse_date_end($ed), $sep, $unspec);
 }
-
+*/
 /// Parse of ISO8601-2:2016 4.3 unspecified format into date range
 /// Returns range plus specification of granularity of unspecified
-fn parse_date_unspecified($d) {
+fn parse_date_unspecified(d: &str) -> Option<(String, char, String, &str)> {
 
   // 199X -> 1990/1999
-  if ($d =~ m/^(\d{3})X$/) {
-    return ("${1}0", '/', "${1}9", "yearindecade");
+  if let Some((_, decade)) = regex_captures!(r"^(\d{3})X$", d) {
+    return Some((format!("{decade}0"), '/', format!("{decade}9"), "yearindecade"));
   }
   // 19XX -> 1900/1999
-  else if ($d =~ m/^(\d{2})XX$/) {
-    return ("${1}00", '/', "${1}99", "yearincentury");
+  else if let Some((_, century)) = regex_captures!(r"^(\d{2})XX$", d) {
+    return Some((format!("{century}00"), '/', format!("{century}99"), "yearincentury"));
   }
   // 1999-XX -> 1999-01/1999-12
-  else if ($d =~ m/^(\d{4})\p{Dash}XX$/) {
-    return ("${1}-01", '/', "${1}-12", "monthinyear");
+  else if let Some((_, year)) = regex_captures!(r"^(\d{4})\p{Dash}XX$", d) {
+    return Some((format!("{year}-01"), '/', format!("{year}-12"), "monthinyear"));
   }
   // 1999-01-XX -> 1999-01-01/1999-01-31
   // (understands different months and leap years)
-  else if ($d =~ m/^(\d{4})\p{Dash}(\d{2})\p{Dash}XX$/) {
+  else if let Some((_, year, month)) = regex_captures!(r"^(\d{4})\p{Dash}(\d{2})\p{Dash}XX", d) {
 
     fn leapyear(year: i32) -> bool {
       ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)
     }
 
-    let %monthdays;
-    @monthdays{map {sprintf("%.2d", $_)} 1..12} = ("31") x 12;
-    @monthdays{"09", "04", "06", "11"} = ("30") x 4;
-    $monthdays{"02"} = leapyear($1) ? 29 : 28;
+    let mut monthdays = HashMap::new();
+    for m in 1..12 {
+      monthdays.insert(format!("{m:02}"), "31");
+    }
+    for m in ["09", "04", "06", "11"] {
+      monthdays.insert(m.into(), "30");
+    }
+    monthdays.insert("02".into(), if leapyear(year.parse().unwrap()) {"29"} else {"28"});
 
-    return ("${1}-${2}-01", '/', "${1}-${2}-" . $monthdays{$2}, "dayinmonth");
+    return Some((format!("{year}-{month}-01"), '/', format!("{year}-{month}-{}", monthdays.get(month).unwrap()), "dayinmonth"));
   }
   // 1999-XX-XX -> 1999-01-01/1999-12-31
-  else if ($d =~ m/^(\d{4})\p{Dash}XX\p{Dash}XX$/) {
-    return ("${1}-01-01", '/', "${1}-12-31", "dayinyear");
+  else if let Some((_, year)) = regex_captures!(r"^(\d{4})\p{Dash}XX\p{Dash}XX", d) {
+    return Some((format!("{year}-01-01"), '/', format!("{year}-12-31"), "dayinyear"));
   }
+  None
 }
-
+/*
 /// Convenience wrapper
 pub fn parse_date_start(date) {
   return parse_date($CONFIG_DATE_PARSERS{start}, date);

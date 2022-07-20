@@ -477,3 +477,30 @@ impl core::str::FromStr for OutputIndent {
         }
     }
 }
+
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Side {
+    Left,
+    Right,
+}
+
+impl fmt::Display for Side {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Left => f.write_str("left"),
+            Self::Right => f.write_str("right"),
+        }
+    }
+}
+
+impl core::str::FromStr for Side {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        match s {
+            "left" => Ok(Self::Left),
+            "right" => Ok(Self::Right),
+            _ => Err(anyhow::anyhow!("Incorrect side")),
+        }
+    }
+}
