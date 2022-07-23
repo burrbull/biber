@@ -224,7 +224,7 @@ fn _genlabel(self, citekey: &str, $dlist) {
   let secnum = self.get_current_section();
   let section = self.sections().get_section(secnum);
   let be = section.bibentry(citekey);
-  let $labelalphatemplate = crate::Config->getblxoption($secnum, "labelalphatemplate", $be->get_field("entrytype"));
+  let $labelalphatemplate = crate::Config->getblxoption(secnum, "labelalphatemplate", be.get_field("entrytype"));
   let $label;
   let $slabel;
   LABEL_FINAL = false; // reset final shortcut
@@ -243,7 +243,7 @@ fn _genlabel(self, citekey: &str, $dlist) {
 
 // Disjunctive set of label parts
 fn _labelpart(self, $labelpart, $citekey, $secnum, $section, $be, $dlist) {
-  let $bee = $be->get_field("entrytype");
+  let $bee = be.get_field("entrytype");
   let $dm = crate::config::get_dm();
   let $maxan = crate::Config->getblxoption($secnum, "maxalphanames", $bee, $citekey);
   let $minan = crate::Config->getblxoption($secnum, "minalphanames", $bee, $citekey);
@@ -357,10 +357,10 @@ fn _label_basic(&mut self, citekey: &str, secnum: u32, $section, $be, $args, $la
   let $f;
   if ($args->[1] &&
       $args->[1] == "nostrip") {
-    $f = $be->get_field($e);
+    $f = be.get_field(e);
   }
   else {
-    $f = normalise_string_label($be->get_field($e));
+    $f = normalise_string_label(be.get_field(e));
   }
   if ($f) {
     let $b = _process_label_attributes(self, citekey, dlist, [[$f, None]], $labelattrs, $e);
@@ -1038,7 +1038,7 @@ fn _dispatch_sorting(self, sortfield: &str, citekey: &str, secnum: u32, section:
   let $dm = crate::config::get_dm();
 
   // If this field is excluded from sorting for this entrytype, then skip it and return
-  if (let $se = crate::Config->getblxoption(None, "sortexclusion", $be->get_field("entrytype"))) {
+  if (let $se = crate::Config->getblxoption(None, "sortexclusion", be.get_field("entrytype"))) {
     if ($se->{$sortfield}) {
       return "";
     }
@@ -1047,7 +1047,7 @@ fn _dispatch_sorting(self, sortfield: &str, citekey: &str, secnum: u32, section:
   // explicitly included
   if (let $se = crate::Config->getblxoption(None, "sortexclusion", '*')) {
     if ($se->{$sortfield}) {
-      if (let $si = crate::Config->getblxoption(None, "sortinclusion", $be->get_field("entrytype"))) {
+      if (let $si = crate::Config->getblxoption(None, "sortinclusion", be.get_field("entrytype"))) {
         if !($si->{$sortfield}) {
           return "";
         }
@@ -1090,7 +1090,7 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
   $BIBER_SUPPRESS_FINAL = 1;
 
   for sortset in ($sortingtemplate->{spec}->@*) {
-    let $s = $self->_sortset($sortset, $citekey, $secnum, $section, $be, $dlist);
+    let $s = $self->_sortset(sortset, citekey, secnum, section, be, dlist);
 
     // Did we get a real zero? This messes up tests below unless we are careful
     // Don't try and make this more implicit, it is too subtle a problem
@@ -1125,7 +1125,7 @@ fn _generatesortinfo(self, citekey: &str, $dlist) {
   // Generate sortinit. Skip if there is no sortstring, which is possible in tests
   if ($ss || $szero) {
     // This must ignore the presort characters, naturally
-    let $pre = crate::Config->getblxoption($secnum, "presort", $be->get_field("entrytype"), $citekey);
+    let $pre = crate::Config->getblxoption(secnum, "presort", be.get_field("entrytype"), citekey);
 
     // Strip off the prefix
     $ss =~ s/\A$pre$sorting_sep+//;
@@ -1199,13 +1199,13 @@ fn _sort_citecount(self, $citekey, $secnum, $section, $be, $dlist, $sortelementa
 
 fn _sort_integer(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
   let $dmtype = $args->[0]; // get int field type
-  let $bee = $be->get_field("entrytype");
-  if (let $field = $be->get_field($dmtype)) {
+  let bee = be.get_field("entrytype");
+  if (let $field = be.get_field($dmtype)) {
 
     // Make an attempt to map roman numerals to integers for sorting unless suppressed
-    if (isroman(NFKD($field)) &&
-        !crate::Config->getblxoption($secnum, "noroman", $be->get_field("entrytype"), $citekey)) {
-      $field = roman2int(NFKD($field));
+    if (isroman(NFKD(field)) &&
+        !crate::Config->getblxoption(secnum, "noroman", be.get_field("entrytype"), citekey)) {
+      $field = roman2int(NFKD(field));
     }
 
     // Use Unicode::UCD::num() to map Unicode numbers to integers if possible
@@ -1220,9 +1220,9 @@ fn _sort_integer(self, $citekey, $secnum, $section, $be, $dlist, $sortelementatt
 
 fn _sort_editort(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes, $args) {
   let $edtypeclass = $args->[0]; // get editor type/class field
-  if (crate::Config->getblxoption($secnum, "useeditor", $be->get_field("entrytype"), $citekey) &&
-    $be->get_field($edtypeclass)) {
-    let $string = $be->get_field($edtypeclass);
+  if (crate::Config->getblxoption($secnum, "useeditor", be.get_field("entrytype"), citekey) &&
+    be.get_field($edtypeclass)) {
+    let $string = be.get_field($edtypeclass);
     return _translit($edtypeclass, $be, _process_sort_attributes($string, $sortelementattributes));
   }
   else {
@@ -1235,7 +1235,7 @@ fn _sort_entrykey(self, $citekey, $secnum, $section, $be, $dlist, $sortelementat
 }
 
 fn _sort_entrytype(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
-  return _process_sort_attributes($be->get_field("entrytype"), $sortelementattributes);
+  return _process_sort_attributes(be.get_field("entrytype"), $sortelementattributes);
 }
 
 fn _sort_intciteorder(self, $citekey, $secnum, $section, $be, $dlist, $sortelementattributes) {
@@ -1615,23 +1615,23 @@ fn _liststring(self, citekey: &str, field: &str, $verbatim) {
 
 // transliterate if requested
 fn _translit(target, entry, string) {
-  let $entrytype = $entry->get_field("entrytype");
+  let $entrytype = entry.get_field("entrytype");
   if (let $translits = crate::Config->getblxoption(None, "translit", $entrytype)) {
     for tr in ($translits->@*) {
       // Translit is specific to particular langids
-      if (defined($tr->{langids})) {
-        let langid = $entry->get_field("langid");
+      if let Some(val) = tr.langids {
+        let langid = entry.get_field("langid");
         if !langid {
           continue;
         }
-        if !(first {unicase::eq(langid, $_)} regex!(r"\s*,\s*").split(tr->{langids})) {
+        if !regex!(r"\s*,\s*").split(val).any(|v| unicase::eq(langid, v)) {
           continue;
         }
       }
       if (tr.target.to_lowercase() == '*' ||
           tr.target == $target ||
           DATAFIELD_SETS{tr.target}.contains(target)) {
-        return call_transliterator($target, $tr->{from}, $tr->{to}, $string);
+        return call_transliterator($target, tr.from, tr.to, $string);
       }
     }
   }

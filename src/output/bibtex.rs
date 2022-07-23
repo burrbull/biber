@@ -110,7 +110,7 @@ impl BibTeX {
     }
 
     for namefield in ($dmh->{namelists}->@*) {
-      if (let $names = $be->get_field($namefield)) {
+      if (let $names = be.get_field(namefield)) {
 
         // XDATA is special
         if !(crate::Config->getoption("output_resolve_xdata")) { // already resolved
@@ -629,35 +629,35 @@ impl BibTeX {
     }
 
     // date exists if there is a start year
-    if (let $sy = $overridey || $be->get_field("${d}year") ) {
+    if (let $sy = $overridey || be.get_field(&format!("{d}year")) ) {
       datestring.push_str(sy);
       be.del_field(&format!("{d}year"));
 
       // Start month
-      if (let $sm = $overridem || $be->get_field("${d}month")) {
+      if (let $sm = $overridem || be.get_field(&format!("{d}month"))) {
         datestring.push_str('-' . sprintf('%.2d', $sm));
         be.del_field(&format!("{d}month"));
       }
 
       // Start day
-      if (let $sd = $overrided || $be->get_field("${d}day")) {
+      if (let $sd = $overrided || be.get_field(&format!("{d}day"))) {
         datestring.push_str('-' . sprintf('%.2d', $sd));
         be.del_field(&format!("{d}day"));
       }
 
       // Uncertain and approximate start date
-      if ($be->get_field("${d}dateuncertain") &&
-          $be->get_field("${d}dateapproximate")) {
+      if (be.get_field(&format!("{d}dateuncertain")) &&
+          be.get_field(&format!("{d}dateapproximate"))) {
         datestring.push('%');
       }
       else {
         // Uncertain start date
-        if ($be->get_field("${d}dateuncertain")) {
+        if (be.get_field(&format!("{d}dateuncertain"))) {
           datestring.push('?');
         }
 
         // Approximate start date
-        if ($be->get_field("${d}dateapproximate")) {
+        if (be.get_field(&format!("{d}dateapproximate"))) {
           datestring.push_str('~');
         }
       }
@@ -665,74 +665,74 @@ impl BibTeX {
       // If start hour, there must be minute and second
       if (let $sh = be.get_field("${d}hour")) {
         datestring.push_str('T' . sprintf('%.2d', $sh) . ':' .
-          sprintf('%.2d', $be->get_field("${d}minute")) . ':' .
-            sprintf('%.2d', $be->get_field("${d}second")));
-        $be->del_field("${d}hour");
-        $be->del_field("${d}minute");
-        $be->del_field("${d}second");
+          sprintf('%.2d', be.get_field(&format!("{d}minute"))) . ':' .
+            sprintf('%.2d', be.get_field(&format!("{d}second"))));
+        be.del_field(&format!("{d}hour"));
+        be.del_field(&format!("{d}minute"));
+        be.del_field(&format!("{d}second"));
       }
 
       // start timezone
-      if (let $stz = $be->get_field("${d}timezone")) {
-        $stz =~ s/\\bibtzminsep\s+/:/;
+      if (let $stz = be.get_field(&format!("{d}timezone"))) {
+        stz = regex_replace!(r"\\bibtzminsep\s+", stz, ":");
         datestring.push_str(stz);
-        $be->del_field("${d}timezone");
+        be.del_field(&format!("{d}timezone"));
       }
 
       // End year, can be empty
-      if ($be->field_exists("${d}endyear")) {
+      if be.field_exists(&format!("{d}endyear")) {
         datestring.push('/');
       }
 
       // End year
-      if (let $ey = $be->get_field("${d}endyear")) {
+      if (let $ey = be.get_field(&format!("{d}endyear"))) {
         datestring.push_str(ey);
-        be.del_field("${d}endyear");
+        be.del_field(&format!("{d}endyear"));
 
         // End month
-        if (let $em = $overrideem || $be->get_field("${d}endmonth")) {
+        if (let $em = $overrideem || be.get_field(&format!("{d}endmonth"))) {
           datestring.push_str('-' . sprintf('%.2d', $em));
-          $be->del_field("${d}endmonth");
+          be.del_field(&format!("{d}endmonth"));
         }
 
         // End day
-        if (let $ed = $be->get_field("${d}endday")) {
+        if (let $ed = be.get_field(&format!("{d}endday"))) {
           datestring.push_str('-' . sprintf('%.2d', $ed));
-          $be->del_field("${d}endday");
+          be.del_field(&format!("{d}endday"));
         }
 
         // Uncertain and approximate end date
-        if ($be->get_field("${d}enddateuncertain") &&
-            $be->get_field("${d}enddateapproximate")) {
+        if (be.get_field(&format!("{d}enddateuncertain")) &&
+            be.get_field(&format!("{d}enddateapproximate"))) {
           datestring.push('%');
         }
         else {
           // Uncertain end date
-          if ($be->get_field("${d}enddateuncertain")) {
+          if (be.get_field(&format!("{d}enddateuncertain"))) {
             datestring.push('?');
           }
 
           // Approximate end date
-          if ($be->get_field("${d}enddateapproximate")) {
+          if (be.get_field(&format!("{d}enddateapproximate"))) {
             datestring.push_str('~');
           }
         }
 
         // If end hour, there must be minute and second
-        if (let $eh = $be->get_field("${d}endhour")) {
+        if (let $eh = be.get_field(&format!("{d}endhour"))) {
           datestring.push_str('T' . sprintf('%.2d', $eh) . ':' .
-            sprintf('%.2d', $be->get_field("${d}endminute")) . ':' .
-              sprintf('%.2d', $be->get_field("${d}endsecond")));
-          $be->del_field("${d}endhour");
-          $be->del_field("${d}endminute");
-          $be->del_field("${d}endsecond");
+            sprintf('%.2d', be.get_field(&format!("{d}endminute"))) . ':' .
+              sprintf('%.2d', be.get_field(&format!("{d}endsecond"))));
+          be.del_field(&format!("{d}endhour"));
+          be.del_field(&format!("{d}endminute"));
+          be.del_field(&format!("{d}endsecond"));
         }
 
         // end timezone
-        if (let $etz = $be->get_field("${d}endtimezone")) {
-          $etz =~ s/\\bibtzminsep\s+/:/;
+        if (let $etz = be.get_field(&format!("{d}endtimezone"))) {
+          etz = regex_replace!(r"\\bibtzminsep\s+", etz, ":");
           datestring.push_str(etz);
-          $be->del_field("${d}endtimezone");
+          be.del_field(&format!("{d}endtimezone"));
         }
       }
     }

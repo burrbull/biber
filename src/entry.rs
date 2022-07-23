@@ -118,7 +118,7 @@ impl Entry {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let $dmh = crate::config::get_dm_helpers();
-    if (let $relkeys = $self->get_field("related")) {
+    if (let $relkeys = self.get_field("related")) {
         debug!("Found RELATED field in '{}' with contents {}", citekey, relkeys.join(","));
       let @clonekeys;
       for relkey in (@$relkeys) {
@@ -165,7 +165,7 @@ impl Entry {
             // related clone needs its own options plus all the dataonly opts, any conflicts and
             // explicit options win
 
-            let relopts = merge_entry_options(["skipbib", "skiplab","skipbiblist","uniquename=false","uniquelist=false"], $relentry->get_field("options"));
+            let relopts = merge_entry_options(["skipbib", "skiplab","skipbiblist","uniquename=false","uniquelist=false"], relentry.get_field("options"));
 
             // Preserve options already in the clone but add "dataonly" options
             process_entry_options(clonekey, relopts, secnum);
@@ -351,8 +351,8 @@ impl Entry {
   /// Retrieve the fullhash labelname information. This is special
   /// meta-information so we have a separate method for this
   /// Returns a hash ref with the information.
-  fn get_labelnamefh_info(&self) -> Unknown {
-    self.labelnamefhinfo
+  fn get_labelnamefh_info(&self) -> &Option<String> {
+    &self.labelnamefhinfo
   }
 
   /// Record the labeltitle information. This is special
@@ -429,7 +429,7 @@ impl Entry {
 
   /// Check whether any parts of a date field exist when passed a datepart field name
   fn date_fields_exist(&self, field: &str) -> bool {
-    let r = regex!("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
+    let r = regex!(r"(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
     let t = r.replace(field, "");
     for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
       if self.datafields.get(&format!("{t}{dp}")).is_some() || self.datafields.get(&format!("{t}end{dp}")).is_some() {
@@ -441,7 +441,7 @@ impl Entry {
 
   /// Delete all parts of a date field when passed any datepart field name
   fn delete_date_fields(&mut self, field: &str)
-    let r = regex!("(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
+    let r = regex!(r"(?:end)?(?:year|month|day|hour|minute|second|yeardivision|timezone)$");
     let t = r.replace(field, "");
     for dp in ["year", "month", "day", "hour", "minute", "second", "yeardivision", "timezone"] {
       self.datafields.remove(&format!("{t}{dp}"));
@@ -611,7 +611,7 @@ impl Entry {
                 continue;
               }
 
-              if !($xdataentry->get_field($xdatafield)) {
+              if !(xdataentry.get_field(xdatafield)) {
                 biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
                 xdatum.resolved = false;
                 continue;
@@ -862,8 +862,8 @@ impl Entry {
     // validation checks which may occur later
     for df in ($dmh->{datefields}->@*) {
       $df =~ s/date$//;
-      if (let $ds = $parent->get_field("${df}datesplit")) {
-        $self->set_field("${df}datesplit", $ds);
+      if (let $ds = parent.get_field(format!("{df}datesplit"))) {
+        self.set_field(format!("{df}datesplit"), $ds);
       }
     }
 

@@ -799,11 +799,11 @@ fn _create_entry(k, e) {
 
   let $bibentry = crate::Entry->new();
 
-  $bibentry->set_field("citekey", $k);
+  bibentry.set_field("citekey", $k);
     debug!("Creating biber Entry object with key '{}'", k);
 
   // Save pre-mapping data. Might be useful somewhere
-  $bibentry->set_field("rawdata", $e->print_s);
+  bibentry.set_field("rawdata", $e->print_s);
 
   let $entrytype = $e->type;
 
@@ -885,7 +885,7 @@ fn _create_entry(k, e) {
             return 0;
           }
           else {
-            $bibentry->set_datafield($fc, $v);
+            bibentry.set_datafield($fc, $v);
           }
         }
       }
@@ -895,8 +895,8 @@ fn _create_entry(k, e) {
     }
   }
 
-  $bibentry->set_field("entrytype", UniCase::new($entrytype));
-  $bibentry->set_field("datatype", "bibtex");
+  bibentry.set_field("entrytype", UniCase::new($entrytype));
+  bibentry.set_field("datatype", "bibtex");
     debug!("Adding entry with key '{}' to entry list", k);
   section.bibentries().add_entry(k, bibentry);
   return 1;
@@ -908,7 +908,7 @@ fn _create_entry(k, e) {
 // Data annotation fields
 fn _annotation(bibentry: &mut Entry, entry, field: &str, key: &str) {
   let $fc = UniCase::new(field); // Casefolded field which is what we need internally
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+  let $value = $entry->get(encode("UTF-8", NFC(field)));
   let $ann = quotemeta(crate::Config->getoption("annotation_marker"));
   let $nam = quotemeta(crate::Config->getoption("named_annotation_marker"));
   // Get annotation name, "default" if none
@@ -954,7 +954,7 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
   // like date -> year/month/day, don't overwrite them with explicit
   // year/month
   if fc == UniCase::new("year") {
-    if $bibentry->get_datafield("year") {
+    if bibentry.get_datafield("year") {
       return;
     }
     if ($value && !looks_like_number(num($value))) {
@@ -962,7 +962,7 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
     }
   }
   if fc == UniCase::new("month") {
-    if $bibentry->get_datafield("month") {
+    if bibentry.get_datafield("month") {
       return;
     }
     if ($value && !looks_like_number(num($value))) {
@@ -1104,9 +1104,9 @@ fn _name(bibentry, entry, field, key) {
   let fc = UniCase::new($field); // Casefolded field which is what we need internally
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
-  let $value = $entry->get(encode("UTF-8", NFC($field)));
+  let $value = $entry->get(encode("UTF-8", NFC(field)));
   let $xnamesep = crate::Config->getoption("xnamesep");
-  let $bee = $bibentry->get_field("entrytype");
+  let bee = bibentry.get_field("entrytype");
 
   let $names = crate::Entry::Names->new("type" => $fc);
 
@@ -1142,7 +1142,7 @@ fn _name(bibentry, entry, field, key) {
 
     // Consecutive "and" causes Text::BibTeX::Name to segfault
     if !($name) {
-      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", $bibentry);
+      biber_warn("Name in key '$key' is empty (probably consecutive 'and'): skipping entry '$key'", bibentry);
       $section->del_citekey($key);
       return "BIBER_SKIP_ENTRY";
     }
@@ -1216,89 +1216,89 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
   // This does not differ for *enddate components as these are split into ranges
   // from non-ranges only
   if ($unspec) {
-    $bibentry->set_field($datetype . "dateunspecified", $unspec);
+    bibentry.set_field(format!("{datetype}dateunspecified"), $unspec);
   }
 
   if (defined($sdate)) { // Start date was successfully parsed
     if ($sdate) { // Start date is an object not "0"
       // Did this entry get its datepart fields from splitting an IS08601 date field?
-      $bibentry->set_field("${datetype}datesplit", 1);
+      bibentry.set_field(format!("{datetype}datesplit"), 1);
 
       // Some warnings for overwriting YEAR and MONTH from DATE
-      if ($sdate->year &&
-          ($datetype . "year" == "year") &&
-          $entry->get("year") &&
-          $sdate->year != $entry->get("year")) {
+      if (sdate.year &&
+          (format!("{datetype}year") == "year") && // ???
+          entry.get("year") &&
+          sdate.year != entry.get("year")) {
         biber_warn("Overwriting field 'year' with year value from field 'date' for entry '$key'", $bibentry);
       }
       if (!$CONFIG_DATE_PARSERS{start}->missing("month") &&
-          ($datetype . "month" == "month") &&
-          $entry->get("month") &&
-          $sdate->month != $entry->get("month")) {
+          (format!("{datetype}month") == "month") &&
+          entry.get("month") &&
+          sdate.month != entry.get("month")) {
         biber_warn("Overwriting field 'month' with month value from field 'date' for entry '$key'", $bibentry);
       }
 
       // Save julian
       if $CONFIG_DATE_PARSERS{start}->julian {
-        $bibentry->set_field($datetype . "datejulian", 1);
+        bibentry.set_field(format!("{datetype}datejulian"), 1);
       }
       if $CONFIG_DATE_PARSERS{end}->julian {
-        $bibentry->set_field($datetype . "enddatejulian", 1);
+        bibentry.set_field(format!("{datetype}enddatejulian"), 1);
       }
 
       // Save approximate information
       if $CONFIG_DATE_PARSERS{start}->approximate {
-        $bibentry->set_field($datetype . "dateapproximate", 1);
+        bibentry.set_field(format!("{datetype}dateapproximate"), 1);
       }
       if $CONFIG_DATE_PARSERS{end}->approximate {
-        $bibentry->set_field($datetype . "enddateapproximate", 1);
+        bibentry.set_field(format!("{datetype}enddateapproximate"), 1);
       }
 
       // Save uncertain date information
       if $CONFIG_DATE_PARSERS{start}->uncertain {
-        $bibentry->set_field($datetype . "dateuncertain", 1);
+        bibentry.set_field(format!("{datetype}dateuncertain"), 1);
       }
       if $CONFIG_DATE_PARSERS{end}->uncertain {
-        $bibentry->set_field($datetype . "enddateuncertain", 1);
+        bibentry.set_field(format!("{datetype}enddateuncertain"), 1);
       }
 
       // Save start yeardivision date information
       if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-        $bibentry->set_field($datetype . "yeardivision", $yeardivision);
+        bibentry.set_field(format!("{datetype}yeardivision"), $yeardivision);
       }
 
       if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
-        $bibentry->set_datafield($datetype . "year",
-                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->year));
+        bibentry.set_datafield(format!("{datetype}year"),
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.year));
         // Save era date information
-        $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
+        bibentry.set_field(format!("{datetype}era"), sdate.secular_era.to_lowercase());
       }
 
       if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
-        $bibentry->set_datafield($datetype . "month",
-                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->month));
+        bibentry.set_datafield(format!("{datetype}month"),
+                               $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.month));
       }
 
       if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
-        $bibentry->set_datafield($datetype . "day",
-                               $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->day));
+        bibentry.set_datafield(format!("{datetype}day"),
+                               $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.day));
       }
 
       // time
       if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
-        $bibentry->set_datafield($datetype . "hour",
-                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->hour));
-        $bibentry->set_datafield($datetype . "minute",
-                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->minute));
-        $bibentry->set_datafield($datetype . "second",
-                                 $CONFIG_DATE_PARSERS{start}->resolvescript($sdate->second));
-        if !($sdate->time_zone->is_floating) { // ignore floating timezones
-          $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
+        bibentry.set_datafield(format!("{datetype}hour"),
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.hour));
+        bibentry.set_datafield(format!("{datetype}minute"),
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.minute));
+        bibentry.set_datafield(format!("{datetype}second"),
+                                 $CONFIG_DATE_PARSERS{start}->resolvescript(sdate.second));
+        if !(sdate.time_zone.is_floating()) { // ignore floating timezones
+          bibentry.set_datafield(format!("{datetype}timezone"), tzformat(sdate.time_zone.name));
         }
       }
     }
     else { // open ended range - startdate is defined but empty
-      $bibentry->set_datafield($datetype . "year", "");
+      bibentry.set_datafield(format!("{datetype}year"), "");
     }
 
     // End date can be missing
@@ -1306,46 +1306,46 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
       if (defined($edate)) { // End date was successfully parsed
         if ($edate) { // End date is an object not "0"
           // Did this entry get its datepart fields from splitting an EDTF date field?
-          $bibentry->set_field("${datetype}datesplit", 1);
+          bibentry.set_field(format!("{datetype}datesplit"), 1);
 
           if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
-            $bibentry->set_datafield($datetype . "endyear",
-                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->year));
+            bibentry.set_datafield(format!("{datetype}endyear"),
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript(edate.year));
             // Save era date information
-            $bibentry->set_field($datetype . "endera", edate.secular_era.to_lowercase());
+            bibentry.set_field(format!("{datetype}endera"), edate.secular_era.to_lowercase());
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("month")) {
-            $bibentry->set_datafield($datetype . "endmonth",
-                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->month));
+            bibentry.set_datafield(format!("{datetype}endmonth"),
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript(edate.month));
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("day")) {
-            $bibentry->set_datafield($datetype . "endday",
-                                   $CONFIG_DATE_PARSERS{end}->resolvescript($edate->day));
+            bibentry.set_datafield(format!("{datetype}endday"),
+                                   $CONFIG_DATE_PARSERS{end}->resolvescript(edate.day));
           }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
-            $bibentry->set_field($datetype . "endyeardivision", $yeardivision);
-            $bibentry->set_field($datetype . "endseaason", $yeardivision); // legacy
+            bibentry.set_field(format!("{datetype}endyeardivision"), yeardivision);
+            bibentry.set_field(format!("{datetype}endseaason"), yeardivision); // legacy
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
           if !($CONFIG_DATE_PARSERS{end}->missing("time")) {
-            $bibentry->set_datafield($datetype . "endhour",
-                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->hour));
-            $bibentry->set_datafield($datetype . "endminute",
-                                    $CONFIG_DATE_PARSERS{end}->resolvescript($edate->minute));
-            $bibentry->set_datafield($datetype . "endsecond",
-                                     $CONFIG_DATE_PARSERS{end}->resolvescript($edate->second));
-            if !($edate->time_zone->is_floating) { // ignore floating timezones
-              $bibentry->set_datafield($datetype . "endtimezone", tzformat($edate->time_zone->name));
+            bibentry.set_datafield(format!("{datetype}endhour"),
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript(edate.hour));
+            bibentry.set_datafield(format!("{datetype}endminute"),
+                                    $CONFIG_DATE_PARSERS{end}->resolvescript(edate.minute));
+            bibentry.set_datafield(format!("{datetype}endsecond"),
+                                     $CONFIG_DATE_PARSERS{end}->resolvescript(edate.second));
+            if !(edate.time_zone.is_floating()) { // ignore floating timezones
+              bibentry.set_datafield(format!("{datetype}endtimezone"), tzformat(edate.time_zone.name));
             }
           }
         }
         else { // open ended range - enddate is defined but empty
-          $bibentry->set_datafield($datetype . "endyear", "");
+          bibentry.set_datafield(format!("{datetype}endyear"), "");
         }
       }
       else {

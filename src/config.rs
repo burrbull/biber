@@ -380,11 +380,13 @@ fn _config_file_set(conf) {
     let $name = $s->{name};
     for m in ($s->{member}->@*) {
       if (let $field = $m->{field}[0]) {// "field" has forcearray for other things
-        push $DATAFIELD_SETS{$name}->@*, $field;
+        DATAFIELD_SETS{$name}.push(DataField::String(field));
       }
       else {
-          push $DATAFIELD_SETS{$name}->@*, {fieldtype => $m->{fieldtype},
-                                            datatype  => $m->{datatype}};
+        DATAFIELD_SETS{$name}.push(DataField::Field {
+          fieldtype: $m->{fieldtype},
+          datatype: $m->{datatype}
+        });
       }
     }
   }
@@ -397,77 +399,77 @@ fn _config_file_set(conf) {
     match k.to_lowercase() {
       "labelalphatemplate" => {
         for t in ($v->@*) {
-          let $latype = $t->{type};
-          if ($latype == "global") {
-            crate::Config->setblxoption(0, "labelalphatemplate", $t);
+          let latype = t.type;
+          if latype == "global" {
+            crate::Config->setblxoption(0, "labelalphatemplate", t);
           }
           else {
-            crate::Config->setblxoption(0, "labelalphatemplate",
-                                        $t,
-                                        "ENTRYTYPE",
-                                        $latype);
+            crate::Config->setblxoption(0, "labelalphatemplate", t, "ENTRYTYPE", latype);
           }
         }
       }
       "labelalphanametemplate" => {
         for t in ($v->@*) {
           let $lants;
-          let $lant;
-          for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
-            push $lant->@*, {namepart           => $np->{content},
-                            use                => $np->{use},
-                            pre                => $np->{pre},
-                            substring_compound => $np->{substring_compound},
-                            substring_side     => $np->{substring_side},
-                            substring_width    => $np->{substring_width} };
+          let mut lant = Vec::new();
+          for np in t.namepart.sorted_by_key(|a| a.order) {
+            lant.push({namepart           => np.content,
+                            use                => np.use,
+                            pre                => np.pre,
+                            substring_compound => np.substring_compound,
+                            substring_side     => np.substring_side,
+                            substring_width    => np.substring_width
+                           });
 
           }
-          $lants->{$t->{name}} = $lant;
-          crate::Config->setblxoption(0, "labelalphanametemplate", $lants);
+          lants->{t.name} = lant;
+          crate::Config->setblxoption(0, "labelalphanametemplate", lants);
         }
       }
       "uniquenametemplate" => {
         let $unts;
         for unt in ($v->@*) {
-          let $untval = [];
-          for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
-            push $untval->@*, {namepart        => $np->{content},
-                              use             => $np->{use},
-                              disambiguation  => $np->{disambiguation},
-                              base            => $np->{base}};
+          let mut untval = Vec::new();
+          for np in unt.namepart.sorted_by_key(|a| a.order) {
+            untval.push({
+                              namepart        => np.content,
+                              use             => np.use,
+                              disambiguation  => np.disambiguation,
+                              base            => np.base
+                            });
           }
-          $unts->{$unt->{name}} = $untval;
+          unts->{unt.name} = untval;
         }
-        crate::Config->setblxoption(0, "uniquenametemplate", $unts);
+        crate::Config->setblxoption(0, "uniquenametemplate", unts);
       }
       "sortingnamekeytemplate" => {
         let $snss;
         for sns in ($v->@*) {
           let mut snkps = Vec::new();
-          for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
+          for snkp in sns.keypart.iter().sorted_by_key(|a| a.order) {
             let mut snps = Vec::new();
-            for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
-              let $np;
-              if ($snp->{type} == "namepart") {
-                $np = { type => "namepart", value => $snp->{content} };
-                if let Some(val) = $snp->{use} {
-                  $np->{use} = val;
+            for snp in snkp.part.iter().sorted_by_key(|a| a.order) {
+              let np;
+              if (snp.type == "namepart") {
+                np = { type => "namepart", value => snp.content };
+                if let Some(val) = snp.use {
+                  np.use = val;
                 }
-                if let Some(val) = snp->{inits} {
-                  $np->{inits} = val;
+                if let Some(val) = snp.inits {
+                  np.inits = val;
                 }
               }
               else if ($snp->{type} == "literal") {
-                $np = { type => "literal", value => $snp->{content} };
+                $np = { type => "literal", value => snp.content };
               }
               snps.push(np);
             }
             snkps.push(snps);
           }
-          $snss->{$sns->{name}}{visibility} = $sns->{visibility};
-          $snss->{$sns->{name}}{template} = $snkps;
+          snss->{sns.name}.visibility = sns.visibility;
+          snss->{sns.name}.template = snkps;
         }
-        crate::Config->setblxoption(0, "sortingnamekeytemplate", $snss);
+        crate::Config->setblxoption(0, "sortingnamekeytemplate", snss);
       }
       "transliteration" => {
         for tr in ($v->@*) {
@@ -577,19 +579,19 @@ fn _config_file_set(conf) {
 /// Returns the full path of the B<Biber> configuration file.
 /// It returns the first file found among:
 ///
-/// * C<biber.conf> or C<.biber.conf> in the current directory
+/// * `biber.conf` or `.biber.conf` in the current directory
 ///
-/// * C<$HOME/.biber.conf>
+/// * `$HOME/.biber.conf`
 ///
-/// * C<$ENV{XDG_CONFIG_HOME}/biber/biber.conf>
+/// * `$ENV{XDG_CONFIG_HOME}/biber/biber.conf`
 ///
-/// * C<$HOME/.config/biber/biber.conf>
+/// * `$HOME/.config/biber/biber.conf`
 ///
-/// * C<$HOME/Library/biber/biber.conf> (Mac OSX only)
+/// * `$HOME/Library/biber/biber.conf` (Mac OSX only)
 ///
-/// * C<$ENV{APPDATA}/biber.conf> (Windows only)
+/// * `$ENV{APPDATA}/biber.conf` (Windows only)
 ///
-/// * the output of C<kpsewhich biber.conf> (if available on the system).
+/// * the output of `kpsewhich biber.conf` (if available on the system).
 ///
 /// If no file is found, it returns C<undef>.
 fn config_file {

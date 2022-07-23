@@ -193,7 +193,7 @@ impl Base {
   /// Add an entry output to a crate::Output::base object
   /// The base class method just does a dump
   fn set_output_entry(self, entry, secnum, struc) {
-    $self->{output_data}{ENTRIES}{$secnum}{index}{$entry->get_field("citekey")} = $entry->dump;
+    $self->{output_data}{ENTRIES}{$secnum}{index}{entry.get_field("citekey")} = $entry->dump;
     return;
   }
 

@@ -89,14 +89,14 @@ impl BblXML {
     section: crate::Section, // Section object the entry occurs in
     dm: crate::DataModel
   ) {
-    let $bee = $be->get_field("entrytype");
+    let $bee = be.get_field("entrytype");
     let $dmh = crate::config::get_dm_helpers();
     let $acc = "";
-    let $secnum = $section->number;
-    let $key = $be->get_field("citekey");
+    let $secnum = section.number();
+    let $key = be.get_field("citekey");
     let $xml_prefix = "https://sourceforge.net/projects/biblatex/bblxml";
-    let $un = crate::Config->getblxoption($secnum, "uniquename", $bee, $key);
-    let $ul = crate::Config->getblxoption($secnum, "uniquelist", $bee, $key);
+    let $un = crate::Config->getblxoption(secnum, "uniquename", bee, key);
+    let $ul = crate::Config->getblxoption(secnum, "uniquelist", bee, key);
     let nl = be.get_field(be.get_labelname_info());
     let lni = be.get_labelname_info();
 
@@ -123,16 +123,16 @@ impl BblXML {
 
 
     // Skip entrytypes we don't want to output according to datamodel
-    if $dm->entrytype_is_skipout($bee) {
+    if dm.entrytype_is_skipout(bee) {
       return;
     }
 
     let mut entryopts = AttributeMap::new();
-    if (defined($be->get_field("crossrefsource"))) {
+    if be.get_field("crossrefsource").is_some() {
       entryopts.insert("source", "crossref");
     }
 
-    if (defined($be->get_field("xrefsource"))) {
+    if be.get_field("xrefsource").is_some() {
       entryopts.insert("source", "xref");
     }
 
@@ -175,12 +175,12 @@ impl BblXML {
       $xml->dataElement("BDS", "LABELPREFIX");
 
       // Label can be in set parents
-      if (let $lab = $be->get_field("label")) {
+      if (let $lab = be.get_field("label")) {
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($lab), attribute_map!("name" => "label"));
       }
 
       // Annotation can be in set parents
-      if (let $ann = $be->get_field("annotation")) {
+      if (let $ann = be.get_field("annotation")) {
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ann), attribute_map!("name" => "annotation"));
       }
 
@@ -190,7 +190,7 @@ impl BblXML {
 
     }
     else { // Everything else that isn't a set parent ...
-      if (let $es = $be->get_field("entryset")) { // ... gets a <inset> if it's a set member
+      if (let $es = be.get_field("entryset")) { // ... gets a <inset> if it's a set member
         $xml->startTag([$xml_prefix, "inset"]);
         for m in ($es->@*) {
           $xml->dataElement([$xml_prefix, "member"], _bblxml_norm($m));
@@ -253,14 +253,14 @@ impl BblXML {
 
     // Output list fields
     for listfield in ($dm->get_fields_of_fieldtype("list")->@*) {
-      if (let $lf = $be->get_field($listfield)) {
-        if $dm->field_is_datatype("name", $listfield) { // name is a special list
+      if (let $lf = be.get_field(listfield)) {
+        if dm.field_is_datatype("name", listfield) { // name is a special list
           continue;
         }
-        if $dm->field_is_datatype("uri", $listfield) { // special lists
+        if dm.field_is_datatype("uri", listfield) { // special lists
           continue;
         }
-        if $dm->field_is_skipout($listfield) {
+        if dm.field_is_skipout(listfield) {
           continue;
         }
 
@@ -283,7 +283,7 @@ impl BblXML {
 
     // Output labelname hashes
     $xml->dataElement("BDS", "NAMEHASH");
-    let $fullhash = $be->get_field("fullhash");
+    let $fullhash = be.get_field("fullhash");
     if $fullhash {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($fullhash), name => "fullhash");
     }
@@ -291,11 +291,11 @@ impl BblXML {
 
     // Output namelist hashes
     for namefield in ($dmh->{namelists}->@*) {
-      if !($be->get_field($namefield)) {
+      if !(be.get_field($namefield)) {
         continue;
       }
       $xml->dataElement("BDS", "${namefield}NAMEHASH");
-      if (let $fullhash = $be->get_field("${namefield}fullhash")) {
+      if (let $fullhash = be.get_field(format!("{namefield}fullhash"))) {
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($fullhash), name => "${namefield}fullhash");
       }
       $xml->dataElement("BDS", "${namefield}BIBNAMEHASH");
@@ -316,17 +316,17 @@ impl BblXML {
     // The labeldateparts option determines whether "extradate" is output
     if (crate::Config->getblxoption(None, "labeldateparts", $bee, $key)) {
       $xml->dataElement("BDS", "EXTRADATE");
-      if (let $edscope = $be->get_field("extradatescope")) {
+      if (let $edscope = be.get_field("extradatescope")) {
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($edscope), name => "extradatescope");
       }
-      if ($be->field_exists("labeldatesource")) {
-        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($be->get_field("labeldatesource")), name => "labeldatesource");
+      if (be.field_exists("labeldatesource")) {
+        $xml->dataElement([$xml_prefix, "field"], _bblxml_norm(be.get_field("labeldatesource")), name => "labeldatesource");
       }
     }
 
     // labelprefix is list-specific. It is only defined if there is no shorthand
     // (see biblatex documentation)
-    if !($be->get_field("shorthand")) {
+    if !(be.get_field("shorthand")) {
       $xml->dataElement("BDS", "LABELPREFIX");
     }
 
@@ -355,7 +355,7 @@ impl BblXML {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($lti), name => "labeltitlesource");
     }
 
-    if (let $ck = $be->get_field("clonesourcekey")) {
+    if (let $ck = be.get_field("clonesourcekey")) {
       $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($ck), name => "clonesourcekey");
     }
 
@@ -367,14 +367,14 @@ impl BblXML {
                                                     DataType::Literal,
                                                     DataType::Code,
                                                     DataType::Verbatim], None) {
-      let $val = $be->get_field($field);
+      let $val = be.get_field(field);
       if ( length($val) || // length() catches '0' values, which we want
-          ($dm->field_is_nullok($field) &&
-            $be->field_exists($field))) {
-        if $dm->field_is_skipout($field) {
+          (dm.field_is_nullok(field) &&
+            be.field_exists(field))) {
+        if dm.field_is_skipout(field) {
           continue;
         }
-        if $dm->get_fieldformat($field) == "xsv" {
+        if dm.get_fieldformat(field) == "xsv" {
           continue;
         }
         // we skip outputting the crossref or xref when the parent is not cited
@@ -382,10 +382,10 @@ impl BblXML {
         // sets are a special case so always output crossref/xref for them since their
         // children will always be in the .bbl otherwise they make no sense.
         if !($bee == "set") {
-          if field == "crossref" && !section.has_citekey($be->get_field("crossref")) {
+          if field == "crossref" && !section.has_citekey(be.get_field("crossref")) {
             continue;
           }
-          if field == "xref" && !section.has_citekey($be->get_field("xref")) {
+          if field == "xref" && !section.has_citekey(be.get_field("xref")) {
             continue;
           }
         }
@@ -452,14 +452,14 @@ impl BblXML {
           // Only output era for date if:
           // The field is "year" and it came from splitting a date
           // The field is any other startyear
-          if ($d == "" && $be->get_field("datesplit")) {
-            if (let $era = $be->get_field("${d}era")) {
+          if ($d == "" && be.get_field("datesplit")) {
+            if (let $era = be.get_field(format!("{d}era"))) {
               attrs.insert("startera", era);
             }
-            if (let $era = $be->get_field("${d}endera")) {
+            if (let $era = be.get_field(format!("{d}endera"))) {
               attrs.insert("endera", era);
             }
-            _bblxml_norm($be->get_field("${d}year"))
+            _bblxml_norm(be.get_field(format!("{d}year")))
           }
           else {
             _bblxml_norm($val)
@@ -474,8 +474,8 @@ impl BblXML {
 
     // XSV fields
     for field in ($dmh->{xsv}->@*) {
-      if (let $f = $be->get_field($field)) {
-        if $dm->field_is_skipout($field) {
+      if (let $f = be.get_field(field)) {
+        if dm.field_is_skipout(field) {
           continue;
         }
         // keywords is by default field/xsv/keyword but it is in fact
@@ -492,8 +492,8 @@ impl BblXML {
     }
 
     for rfield in ($dmh->{ranges}->@*) {
-      if ( let $rf = $be->get_field($rfield) ) {
-        if $dm->field_is_skipout($rfield) {
+      if ( let $rf = be.get_field(rfield) ) {
+        if dm.field_is_skipout(rfield) {
           continue;
         }
         // range fields are an array ref of two-element array refs [range_start, range_end]
@@ -513,8 +513,8 @@ impl BblXML {
 
     // uri fields
     for uri in ($dmh->{uris}->@*) {
-      if ( let $f = $be->get_field($uri) ) {
-        if $dm->field_is_skipout($uri) {
+      if ( let $f = be.get_field(uri) ) {
+        if $dm->field_is_skipout(uri) {
           continue;
         }
         $xml->dataElement([$xml_prefix, "field"], _bblxml_norm($f), name => $uri);
@@ -523,8 +523,8 @@ impl BblXML {
 
     // uri lists
     for uril in ($dmh->{urils}->@*) {
-      if ( let $urilf = $be->get_field($uril) ) {
-        if $dm->field_is_skipout($uril) {
+      if ( let $urilf = be.get_field(uril) ) {
+        if dm.field_is_skipout(uril) {
           continue;
         }
         let %plo;
@@ -543,7 +543,7 @@ impl BblXML {
     }
 
     // Keywords
-    if ( let $kws = $be->get_field("keywords") ) {
+    if ( let $kws = be.get_field("keywords") ) {
       $xml->startTag([$xml_prefix, "keywords"]);
       for k in ($kws->@*) {
         $xml->dataElement([$xml_prefix, "keyword"], _bblxml_norm($k));
@@ -553,7 +553,7 @@ impl BblXML {
 
 
     // Output nocite boolean
-    if ($be->get_field("nocite")) {
+    if (be.get_field("nocite")) {
       $xml->emptyTag([$xml_prefix, "nocite"]);
     }
 

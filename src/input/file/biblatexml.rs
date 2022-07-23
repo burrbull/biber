@@ -807,13 +807,13 @@ fn _related(bibentry, entry, f, key) {
   let $S = qr/$Srx/;
   let $node = $entry->findnodes("./$f")->get_node(1);
   for item in ($node->findnodes("./$NS:list/$NS:item")) {
-    $bibentry->set_datafield("related", [ split(/$S/, $item->getAttribute("ids")) ]);
-    $bibentry->set_datafield("relatedtype", $item->getAttribute("type"));
+    bibentry.set_datafield("related", [ split(/$S/, $item->getAttribute("ids")) ]);
+    bibentry.set_datafield("relatedtype", $item->getAttribute("type"));
     if (let $string = $item->getAttribute("string")) {
-      $bibentry->set_datafield("relatedstring", $string);
+      bibentry.set_datafield("relatedstring", string);
     }
     if (let $string = $item->getAttribute("options")) {
-      $bibentry->set_datafield("relatedoptions",
+      bibentry.set_datafield("relatedoptions",
                                [ split(/$S/, $item->getAttribute("relatedoptions")) ]);
     }
   }
@@ -830,19 +830,19 @@ fn _literal(bibentry, entry, f, key) {
   // XDATA is special, if found, set it
   if (let $xdatav = $node->getAttribute("xdata")) {
     let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
-    bibentry.add_xdata_ref(_norm($f), &xdatav, None);
+    bibentry.add_xdata_ref(_norm(f), &xdatav, None);
     $setval = xdatav;
   }
 
   // eprint is special case
   if ($f == "$NS:eprint") {
-    $bibentry->set_datafield("eprinttype", $node->getAttribute("type"));
+    bibentry.set_datafield("eprinttype", $node->getAttribute("type"));
     if (let $ec = $node->getAttribute("class")) {
-      $bibentry->set_datafield("eprintclass", $ec);
+      bibentry.set_datafield("eprintclass", ec);
     }
   }
   else {
-    $bibentry->set_datafield(_norm($f), $setval);
+    bibentry.set_datafield(_norm(f), setval);
   }
 
   return;
@@ -855,12 +855,12 @@ fn _xsv(bibentry, entry, f, key) {
   // XDATA is special
   if unicase::eq(_norm($f), "xdata") {
     // Just split with no XDATA setting on list items
-    let $value = _split_list($bibentry, $node, $key, $f, 1);
-    bibentry.add_xdata_ref("xdata", $value, None);
-    $bibentry->set_datafield(_norm($f), $value);
+    let $value = _split_list($bibentry, $node, $key, $f, true);
+    bibentry.add_xdata_ref("xdata", value, None);
+    bibentry.set_datafield(_norm(f), value);
   }
   else {
-    $bibentry->set_datafield(_norm($f), _split_list($bibentry, $node, $key, $f));
+    bibentry.set_datafield(_norm(f), _split_list(bibentry, node, key, f, false));
   }
 
   return;
@@ -889,7 +889,7 @@ fn _uri(bibentry, entry, f, key) {
     }
   }
 
-  $bibentry->set_datafield(_norm($f), $setval);
+  bibentry.set_datafield(_norm(f), $setval);
 
   return;
 }
@@ -899,7 +899,7 @@ fn _uri(bibentry, entry, f, key) {
 fn _list(bibentry, entry, f, key) {
   let $node = $entry->findnodes("./$f")->get_node(1);
 
-  $bibentry->set_datafield(_norm($f), _split_list($bibentry, $node, $key, $f));
+  bibentry.set_datafield(_norm($f), _split_list(bibentry, node, key, f, false));
 
   return;
 }
@@ -913,8 +913,8 @@ fn _range(bibentry, entry, f, key) {
   // XDATA is special, if found, set it
   if (let $xdatav = $node->getAttribute("xdata")) {
     let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
-    bibentry.add_xdata_ref(_norm($f), &xdatav, None);
-    $bibentry->set_datafield(_norm($f), [$xdatav]);
+    bibentry.add_xdata_ref(_norm(f), &xdatav, None);
+    bibentry.set_datafield(_norm(f), [$xdatav]);
     return;
   }
 
@@ -924,7 +924,7 @@ fn _range(bibentry, entry, f, key) {
     for range in (@rangelist) {
       rl.push(_parse_range_list($range));
     }
-    $bibentry->set_datafield(_norm($f), $rl);
+    bibentry.set_datafield(_norm(f), rl);
   }
 
   return;
@@ -942,7 +942,7 @@ fn _datetime(bibentry, entry, f, key) {
 
     let $datetype = $node->getAttribute("type").unwrap_or("");
 
-    $bibentry->set_field("${datetype}datesplit", 1);
+    bibentry.set_field(format!("{datetype}datesplit"), 1);
 
     if (let $start = $node->findnodes("./$NS:start")) { // Date range
       let $end = $node->findnodes("./$NS:end");
@@ -955,51 +955,51 @@ fn _datetime(bibentry, entry, f, key) {
 
         // Save julian
         if $CONFIG_DATE_PARSERS{start}->julian {
-          $bibentry->set_field($datetype . "datejulian", 1);
+          bibentry.set_field(format!("{datetype}datejulian"), 1);
         }
         // Save approximate information
         if $CONFIG_DATE_PARSERS{start}->approximate {
-          $bibentry->set_field($datetype . "dateapproximate", 1);
+          bibentry.set_field(format!("{datetype}dateapproximate"), 1);
         }
 
         // Save uncertain date information
         if $CONFIG_DATE_PARSERS{start}->uncertain {
-          $bibentry->set_field($datetype . "dateuncertain", 1);
+          bibentry.set_field(format!("{datetype}dateuncertain"), 1);
         }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
         // from non-ranges only
         if ($unspec) {
-          $bibentry->set_field($datetype . "dateunspecified", $unspec);
+          bibentry.set_field(format!("{datetype}dateunspecified"), $unspec);
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
-          $bibentry->set_datafield($datetype . "year", $sdate->year);
+          bibentry.set_datafield($format!("{datetype}year"), $sdate->year);
           // Save era date information
-          $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
+          bibentry.set_field(format!("{datetype}era"), sdate.secular_era.to_lowercase());
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
-          $bibentry->set_datafield($datetype . "month", $sdate->month);
+          bibentry.set_datafield(format!("{datetype}month"), $sdate->month);
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
-          $bibentry->set_datafield($datetype . "day", $sdate->day);
+          bibentry.set_datafield(format!("{datetype}day"), $sdate->day);
         }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-          $bibentry->set_field($datetype . "yeardivision", $yeardivision);
+          bibentry.set_field(format!("{datetype}yeardivision"), $yeardivision);
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
         if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
-          $bibentry->set_datafield($datetype . "hour", $sdate->hour);
-          $bibentry->set_datafield($datetype . "minute", $sdate->minute);
-          $bibentry->set_datafield($datetype . "second", $sdate->second);
+          bibentry.set_datafield(format!("{datetype}hour"), $sdate->hour);
+          bibentry.set_datafield(format!("{datetype}minute"), $sdate->minute);
+          bibentry.set_datafield(format!("{datetype}second"), $sdate->second);
           if !($sdate->time_zone->is_floating) { // ignore floating timezones
-            $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
+            bibentry.set_datafield(format!("{datetype}timezone"), tzformat($sdate->time_zone->name));
           }
         }
       }
@@ -1014,50 +1014,49 @@ fn _datetime(bibentry, entry, f, key) {
 
           // Save julian
           if $CONFIG_DATE_PARSERS{end}->julian {
-            $bibentry->set_field($datetype . "enddatejulian", 1);
+            bibentry.set_field(format!("{datetype}enddatejulian"), 1);
           }
 
           // Save approximate information
           if $CONFIG_DATE_PARSERS{end}->approximate {
-            $bibentry->set_field($datetype . "enddateapproximate", 1);
+            bibentry.set_field(format!("{datetype}enddateapproximate"), 1);
           }
 
           // Save uncertain date information
           if $CONFIG_DATE_PARSERS{end}->uncertain {
-            $bibentry->set_field($datetype . "enddateuncertain", 1);
+            bibentry.set_field(format!("{datetype}enddateuncertain"), 1);
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
-            $bibentry->set_datafield($datetype . "endyear", $edate->year);
+            bibentry.set_datafield(format!("{datetype}endyear"), edate.year);
             // Save era date information
-            $bibentry->set_field($datetype . "endera", edate.secular_era.to_lowercase());
+            bibentry.set_field(format!("{datetype}endera"), edate.secular_era.to_lowercase());
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("month")) {
-            $bibentry->set_datafield($datetype . "endmonth", $edate->month);
+            bibentry.set_datafield(format!("{datetype}endmonth"), edate.month);
           }
 
           if !($CONFIG_DATE_PARSERS{end}->missing("day")) {
-            $bibentry->set_datafield($datetype . "endday", $edate->day);
+            bibentry.set_datafield(format!("{datetype}endday"), edate.day);
           }
 
           // Save end yeardivision date information
           if (let $yeardivision = $CONFIG_DATE_PARSERS{end}->yeardivision) {
-            $bibentry->set_field($datetype . "endyeardivision", $yeardivision);
+            bibentry.set_field(format!("{datetype}endyeardivision"), yeardivision);
           }
 
           // must be an hour if there is a time but could be 00 so use defined()
           if !($CONFIG_DATE_PARSERS{end}->missing("time")) {
-            $bibentry->set_datafield($datetype . "endhour", $edate->hour);
-            $bibentry->set_datafield($datetype . "endminute", $edate->minute);
-            $bibentry->set_datafield($datetype . "endsecond", $edate->second);
-            if !($edate->time_zone->is_floating) { // ignore floating timezones
-              $bibentry->set_datafield($datetype . "endtimezone", tzformat($edate->time_zone->name));
+            bibentry.set_datafield(format!("{datetype}endhour"), edate.hour);
+            bibentry.set_datafield(format!("{datetype}endminute"), edate.minute);
+            bibentry.set_datafield(format!("{datetype}endsecond"), edate.second);
+            if !(edate.time_zone.is_floating()) { // ignore floating timezones
+              bibentry.set_datafield(format!("{datetype}endtimezone"), tzformat(edate.time_zone.name));
             }
           }
-        }
-        else { // open ended range - edate is defined but empty
-          $bibentry->set_datafield($datetype . "endyear", "");
+        } else { // open ended range - edate is defined but empty
+          bibentry.set_datafield(format!("{datetype}endyear"), "");
         }
       }
       else {
@@ -1066,57 +1065,55 @@ fn _datetime(bibentry, entry, f, key) {
     }
     else { // Simple date
       // Using high-level range parsing sub in order to get unspec
-      if (let ($sdate, _, _, $unspec) = parse_date_range($bibentry,
-                                                                $datetype,
-                                                                $node->textContent())) {
+      if (let ($sdate, _, _, $unspec) = parse_date_range($bibentry, $datetype, $node->textContent())) {
 
         // Save julian
         if $CONFIG_DATE_PARSERS{start}->julian {
-          $bibentry->set_field($datetype . "datejulian", 1);
+          bibentry.set_field(format!("{datetype}datejulian"), 1);
         }
         // Save approximate information
         if $CONFIG_DATE_PARSERS{start}->approximate {
-          $bibentry->set_field($datetype . "dateapproximate", 1);
+          bibentry.set_field(format!("{datetype}dateapproximate"), 1);
         }
 
         // Save uncertain date information
         if $CONFIG_DATE_PARSERS{start}->uncertain {
-          $bibentry->set_field($datetype . "dateuncertain", 1);
+          bibentry.set_field(format!("{datetype}dateuncertain"), 1);
         }
 
         // Date had EDTF 5.2.2 unspecified format
         // This does not differ for *enddate components as these are split into ranges
         // from non-ranges only
         if ($unspec) {
-          $bibentry->set_field($datetype . "dateunspecified", $unspec);
+          bibentry.set_field(format!("{datetype}dateunspecified"), $unspec);
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("year")) {
-          $bibentry->set_datafield($datetype . "year", $sdate->year);
+          bibentry.set_datafield(format!("{datetype}year"), sdate.year);
           // Save era date information
-          $bibentry->set_field($datetype . "era", sdate.secular_era.to_lowercase());
+          bibentry.set_field(format!("{datetype}era"), sdate.secular_era.to_lowercase());
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("month")) {
-          $bibentry->set_datafield($datetype . "month", $sdate->month);
+          bibentry.set_datafield(format!("{datetype}month"), sdate.month);
         }
 
         if !($CONFIG_DATE_PARSERS{start}->missing("day")) {
-          $bibentry->set_datafield($datetype . "day", $sdate->day);
+          bibentry.set_datafield(format!("{datetype}day"), sdate.day);
         }
 
         // Save start yeardivision date information
         if (let $yeardivision = $CONFIG_DATE_PARSERS{start}->yeardivision) {
-          $bibentry->set_field($datetype . "yeardivision", $yeardivision);
+          bibentry.set_field(format!("{datetype}yeardivision"), yeardivision);
         }
 
         // must be an hour if there is a time but could be 00 so use defined()
         if !($CONFIG_DATE_PARSERS{start}->missing("time")) {
-          $bibentry->set_datafield($datetype . "hour", $sdate->hour);
-          $bibentry->set_datafield($datetype . "minute", $sdate->minute);
-          $bibentry->set_datafield($datetype . "second", $sdate->second);
-          if !($sdate->time_zone->is_floating) { // ignore floating timezones
-            $bibentry->set_datafield($datetype . "timezone", tzformat($sdate->time_zone->name));
+          bibentry.set_datafield(format!("{datetype}hour"), sdate.hour);
+          bibentry.set_datafield(format!("{datetype}minute"), sdate.minute);
+          bibentry.set_datafield(format!("{datetype}second"), sdate.second);
+          if !(sdate.time_zone.is_floating()) { // ignore floating timezones
+            bibentry.set_datafield(format!("{datetype}timezone"), tzformat(sdate.time_zone.name));
           }
         }
       }
@@ -1132,7 +1129,7 @@ fn _datetime(bibentry, entry, f, key) {
 fn _name(bibentry, entry, f, key) {
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
-  let $bee = $bibentry->get_field("entrytype");
+  let bee = bibentry.get_field("entrytype");
   let $node = $entry->findnodes("./$NS:names[\@type='$f']")->get_node(1);
   let $xdmi = crate::Config->getoption("xdatamarker");
   let $xnsi = crate::Config->getoption("xnamesep");
@@ -1282,7 +1279,7 @@ fn _parse_range_list(rangenode) {
 }
 
 // Splits a list field into an array ref
-fn _split_list(bibentry, node, key, f, noxdata) {}
+fn _split_list(bibentry, node, key, f, noxdata: bool) {}
   let $xdmi = crate::Config->getoption("xdatamarker");
   let $xnsi = crate::Config->getoption("xnamesep");
 
@@ -1296,7 +1293,7 @@ fn _split_list(bibentry, node, key, f, noxdata) {}
       // If this field itself is XDATA, don't analyse XDATA further, just split and return
       if (let $xdatav = li.getAttribute("xdata")) {
         let xdatav = format!("{xdmi}{xnsi}{xdatav}"); // normalise to same as bibtex input
-        if !($noxdata) {
+        if !noxdata {
           bibentry.add_xdata_ref(_norm($f), &xdatav, Some(i));
         }
         result.push(xdatav);

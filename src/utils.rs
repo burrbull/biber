@@ -791,23 +791,24 @@ pub fn join_name(nstring: &str) -> String {
 }
 /*
 /// Process any per_entry option transformations which are necessary on output
-pub fn filter_entry_options($secnum, $be) {
-  let $bee = $be->get_field("entrytype");
-  let $citekey = $be->get_field("citekey");
-  let $roptions = [];
+pub fn filter_entry_options(secnum: u32, be: &Entry) {
+  let bee = be.get_field("entrytype");
+  let citekey = be.get_field("citekey");
+  let mut roptions = Vec::new();
 
-  for opt in (sort crate::Config->getblxentryoptions($secnum, $citekey)) {
+  for opt in (sort crate::Config->getblxentryoptions(secnum, citekey)) {
 
-    let $val = crate::Config->getblxoption($secnum, $opt, None, $citekey);
+    let $val = crate::Config->getblxoption(secnum, opt, None, citekey);
     let $cfopt = $CONFIG_BIBLATEX_OPTIONS{ENTRY}{$opt}{OUTPUT};
     $val = map_boolean($opt, $val, "tostring");
 
     // By this point, all entry meta-options have been expanded by expand_option_input
     if ($cfopt) { // suppress only explicitly ignored output options
-      push $roptions->@*, $opt . ($val ? "=$val" : "") ;
+      
+      roptions.push(if val { format!("{opt}={val}") } else { opt });
     }
   }
-  return $roptions;
+  roptions
 }
 
 /// Do an interpolating (neg)match using a match RE and a string passed in as variables
@@ -1063,11 +1064,11 @@ pub fn parse_date_range(bibentry: &mut Entry, datetype: &str, datestring: &str) 
   }
   // Set start date unknown flag
   if ($sep && !$sd) {
-    $bibentry->set_field(&format!("{datetype}dateunknown"), true);
+    bibentry.set_field(&format!("{datetype}dateunknown"), true);
   }
   // Set end date unknown flag
   if ($sep && !$ed) {
-    $bibentry->set_field(format!("{datetype}enddateunknown"), true);
+    bibentry.set_field(format!("{datetype}enddateunknown"), true);
   }
   return (parse_date_start($sd), parse_date_end($ed), $sep, $unspec);
 }

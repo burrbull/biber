@@ -434,7 +434,7 @@ impl Biber {
               }
               else if ($bcfopt->{type} == "multivalued") {
                 crate::Config->setoption($bcfopt->{key}{content},
-                  [ map {$_->{content}} sort {$a->{order} <=> $b->{order}} $bcfopt->{value}->@* ]);
+                  [ bcfopt.value.iter().sorted_by_key(|a| a.order).map(|a| a.content) ]);
               }
             }
           }
@@ -506,7 +506,9 @@ impl Biber {
       // User maps are set in config file
       if (let $usms = crate::Config->getoption("sourcemap")) {
         // Force "user" level for the maps
-        $usms->@* = map {$_->{level} = "user";$_} $usms->@*;
+        for m in usms {
+          m.level = "user";
+        }
 
         // Merge any user maps from the document set by \DeclareSourcemap into user
         // maps set in the biber config file. These document user maps take precedence so go
@@ -535,45 +537,43 @@ impl Biber {
     }
 
     // LABELALPHA NAME TEMPLATE
-    let $lants;
+    let mut lants = HashMap::new();
     for t in ($bcfxml->{labelalphanametemplate}->@*) {
-      let $lant;
-      for np in (sort {$a->{order} <=> $b->{order}} $t->{namepart}->@*) {
-        push $lant->@*, {namepart           => $np->{content},
-                        use                => $np->{use},
-                        pre                => $np->{pre},
-                        substring_compound => $np->{substring_compound},
-                        substring_side     => $np->{substring_side},
-                        substring_width    => $np->{substring_width}};
+      let mut lant = Vec::new();
+      for np in t.namepart.iter().sorted_by_key(|a| a.order) {
+        lant.push({namepart           => np.content,
+                    use                => np.use,
+                    pre                => np.pre,
+                    substring_compound => np.substring_compound,
+                    substring_side     => np.substring_side,
+                    substring_width    => np.substring_width
+                  });
       }
-      $lants->{$t->{name}} = $lant;
+      lants.insert(t.name, lant);
     }
-    crate::Config->setblxoption(None, "labelalphanametemplate", $lants);
+    crate::Config->setblxoption(None, "labelalphanametemplate", lants);
 
     // LABELALPHA TEMPLATE
     for t in ($bcfxml->{labelalphatemplate}->@*) {
-      let $latype = $t->{type};
-      if ($latype == "global") {
-        crate::Config->setblxoption(None, "labelalphatemplate", $t);
+      let latype = t.type;
+      if latype == "global" {
+        crate::Config->setblxoption(None, "labelalphatemplate", t);
       }
       else {
-        crate::Config->setblxoption(None, "labelalphatemplate",
-                                    $t,
-                                    "ENTRYTYPE",
-                                    $latype);
+        crate::Config->setblxoption(None, "labelalphatemplate", t, "ENTRYTYPE", latype);
       }
     }
 
     // EXTRADATE specification
-    let ed = Vec::new();
+    let mut ed = Vec::new();
     for scope in ($bcfxml->{extradatespec}->{scope}->@*) {
       let mut fields = Vec::new();
-      for field in (sort {$a->{order} <=> $b->{order}} $scope->{field}->@*) {
-        fields.push($field->{content});
+      for field in scope.field.iter().sorted_by_key(|a| a.order) {
+        fields.push(field.content);
       }
       ed.push(fields);
     }
-    crate::Config->setblxoption(None, "extradatespec", $ed);
+    crate::Config->setblxoption(None, "extradatespec", ed);
 
     // INHERITANCE schemes for crossreferences (always global)
     crate::Config->setblxoption(None, "inheritance", $bcfxml->{inheritance});
@@ -582,9 +582,9 @@ impl Biber {
     // Make the data structure look like the biber config file structure
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
-    let $noinit;
+    let mut noinit = Vec::new();
     for ni in ($bcfxml->{noinits}{noinit}->@*) {
-      push $noinit->@*, { value => $ni->{value}[0]};
+      noinit.push({ value => $ni->{value}[0]});
     }
     // There is a default so don't set this option if nothing is in the .bcf
     if !noinit.is_empty() {
@@ -595,68 +595,69 @@ impl Biber {
     // Make the data structure look like the biber config file structure
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
-    let $nolabel;
+    let mut nolabel = Vec::new();
     for nl in ($bcfxml->{nolabels}{nolabel}->@*) {
-      push $nolabel->@*, { value => $nl->{value}[0]};
+      nolabel.push({ value => $nl->{value}[0]});
     }
     // There is a default so don't set this option if nothing is in the .bcf
-    if $nolabel {
-      crate::Config->setoption("nolabel", $nolabel);
+    if !nolabel.is_empty() {
+      crate::Config->setoption("nolabel", nolabel);
     }
 
     // NOLABELWIDTHCOUNT
     // Make the data structure look like the biber config file structure
     // "value" is forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
-    let $nolabelwidthcount;
+    let mut nolabelwidthcount = Vec::new();
     for nlwc in ($bcfxml->{nolabelwidthcounts}{nolabelwidthcount}->@*) {
-      push $nolabelwidthcount->@*, { value => $nlwc->{value}[0]};
+      nolabelwidthcount.push({ value => $nlwc->{value}[0]});
     }
     // There is a default so don't set this option if nothing is in the .bcf
-    if $nolabelwidthcount {
-      crate::Config->setoption("nolabelwidthcount", $nolabelwidthcount);
+    if !nolabelwidthcount.is_empty() {
+      crate::Config->setoption("nolabelwidthcount", nolabelwidthcount);
     }
 
     // NOSORT
     // Make the data structure look like the biber config file structure
     // "field" and "value" are forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
-    let $nosort;
+    let mut nosort = Vec::new();
     for ns in ($bcfxml->{nosorts}{nosort}->@*) {
-      push $nosort->@*, {name => $ns->{field}[0], value => $ns->{value}[0]};
+      nosort.push({name => $ns->{field}[0], value => $ns->{value}[0]});
     }
     // There is a default so don't set this option if nothing is in the .bcf
-    if $nosort {
-      crate::Config->setoption("nosort", $nosort);
+    if !nosort.is_empty() {
+      crate::Config->setoption("nosort", nosort);
     }
 
     // NONAMESTRING
     // Make the data structure look like the biber config file structure
     // "field" and "value" are forced to arrays for other elements so we extract
     // the first element here as they will always be only length=1
-    let $nonamestring;
+    let mut nonamestring = Vec::new();
     for ns in ($bcfxml->{nonamestrings}{nonamestring}->@*) {
-      push $nonamestring->@*, {name => $ns->{field}[0], value => $ns->{value}[0]};
+      nonamestring.push({name => $ns->{field}[0], value => $ns->{value}[0]});
     }
-    if $nonamestring {
-      crate::Config->setoption("nonamestring", $nonamestring);
+    if !nonamestring.is_empty() {
+      crate::Config->setoption("nonamestring", nonamestring);
     }
 
     // UNIQUENAME TEMPLATE
-    let $unts;
+    let mut unts = HashMap::new();
     let mut checkbase = false;
     for unt in ($bcfxml->{uniquenametemplate}->@*) {
-      let $untval = [];
-      for np in (sort {$a->{order} <=> $b->{order}} $unt->{namepart}->@*) {
-        if $np->{base} {
+      let mut untval = Vec::new();
+      for np in unt.namepart.iter().sorted_by_key(|a| a.order) {
+        if np.base {
           checkbase = true;
         }
-        push $untval->@*, {namepart        => $np->{content},
-                          use             => $np->{use},
-                          disambiguation  => $np->{disambiguation},
-                          base            => $np->{base}};
+        untval.push({namepart        => np.content,
+                      use             => np.use,
+                      disambiguation  => np.disambiguation,
+                      base            => np.base
+                    });
       }
-      $unts->{$unt->{name}} = $untval;
+      unts.insert(unt.name, untval);
     }
 
     // Check to make sure we have a base to disambiguate from. If not, we can get infinite loops
@@ -665,7 +666,7 @@ impl Biber {
       biber_error("The uniquenametemplate must contain at least one "base" part otherwise name disambiguation is impossible");
     }
     
-    crate::Config->setblxoption(None, "uniquenametemplate", $unts);
+    crate::Config->setblxoption(None, "uniquenametemplate", unts);
 
     // SORTING NAME KEY
     // Use the order attributes to make sure things are in right order and create a data structure
@@ -673,27 +674,27 @@ impl Biber {
     let $snss;
     for sns in ($bcfxml->{sortingnamekeytemplate}->@*) {
       let mut snkps = Vec::new();
-      for snkp in (sort {$a->{order} <=> $b->{order}} $sns->{keypart}->@*) {
+      for snkp in sns.keypart.iter().sorted_by_key(|a| a.order) {
         let mut snps = Vec::new();
-        for snp in (sort {$a->{order} <=> $b->{order}} $snkp->{part}->@*) {
-          let $np;
-          if ($snp->{type} == "namepart") {
-            $np = { type => "namepart", value => $snp->{content} };
-            if let Some(val) = snp->{use} {
-              $np->{use} = val;
+        for snp in snkp.part.iter().sorted_by_key(|a| a.order) {
+          let np;
+          if snp.type == "namepart" {
+            np = { type => "namepart", value => snp.content };
+            if let Some(val) = snp.use {
+              np.use = val;
             }
-            if let Some(val) = snp->{inits} {
-              $np->{inits} = val;
+            if let Some(val) = snp.inits {
+              np.inits = val;
             }
-          } else if ($snp->{type} == "literal") {
-            $np = { type => "literal", value => $snp->{content} };
+          } else if snp.type == "literal" {
+            np = { type => "literal", value => snp.content };
           }
           snps.push(np);
         }
         snkps.push(snps);
       }
-      $snss->{$sns->{name}}{visibility} = $sns->{visibility};
-      $snss->{$sns->{name}}{template} = $snkps;
+      $snss->{sns.name}.visibility = sns.visibility;
+      $snss->{sns.name}.template = snkps;
     }
     crate::Config->setblxoption(None, "sortingnamekeytemplate", $snss);
 
@@ -701,61 +702,45 @@ impl Biber {
 
     // transliterations
     for tr in ($bcfxml->{transliteration}->@*) {
-      if ($tr->{entrytype}[0] == '*') { // already array forced for another option
-        crate::Config->setblxoption(None, "translit", $tr->{translit});
-      }
-      else { // per_entrytype
-        crate::Config->setblxoption(None, "translit",
-                                    $tr->{translit},
-                                    "ENTRYTYPE",
-                                    $tr->{entrytype}[0]);
+      if tr.entrytype[0] == '*' { // already array forced for another option
+        crate::Config->setblxoption(None, "translit", tr.translit);
+      } else { // per_entrytype
+        crate::Config->setblxoption(None, "translit", tr.translit, "ENTRYTYPE", tr.entrytype[0]);
       }
     }
 
     // sorting excludes
     for sex in ($bcfxml->{sortexclusion}->@*) {
-      let $excludes;
-      for ex in ($sex->{exclusion}->@*) {
-        $excludes->{$ex->{content}} = 1;
+      let mut excludes = HashSet::new();
+      for ex in sex.exclusion {
+        excludes.insert(ex.content);
       }
-      crate::Config->setblxoption(None, "sortexclusion",
-                                  $excludes,
-                                  "ENTRYTYPE",
-                                  $sex->{type});
+      crate::Config->setblxoption(None, "sortexclusion", excludes, "ENTRYTYPE", sex.type);
     }
 
     // sorting includes
     for sin in ($bcfxml->{sortinclusion}->@*) {
-      let $includes;
-      for in in ($sin->{inclusion}->@*) {
-        $includes->{$in->{content}} = 1;
+      let mut includes = HashSet::new();
+      for in in sin.inclusion {
+        includes.insert(in.content);
       }
-      crate::Config->setblxoption(None, "sortinclusion",
-                                  $includes,
-                                  "ENTRYTYPE",
-                                  $sin->{type});
+      crate::Config->setblxoption(None, "sortinclusion", includes, "ENTRYTYPE", sin.type);
     }
 
     // presort defaults
     for presort in ($bcfxml->{presort}->@*) {
-      // Global presort default
-      if ($presort->{type}).is_none() {
-        crate::Config->setblxoption(None, "presort", $presort->{content});
-      }
-      // Per-type default
-      else {
-        crate::Config->setblxoption(None, "presort",
-                                    $presort->{content},
-                                    "ENTRYTYPE",
-                                    $presort->{type});
+      if presort.type.is_none() { // Global presort default
+        crate::Config->setblxoption(None, "presort", presort.content);
+      } else { // Per-type default
+        crate::Config->setblxoption(None, "presort", presort.content, "ENTRYTYPE", presort.type);
       }
     }
 
-    let $sortingtemplates;
+    let mut sortingtemplates = HashMap::new();
     for ss in ($bcfxml->{sortingtemplate}->@*) {
-      $sortingtemplates->{$ss->{name}} = _parse_sort($ss);
+      sortingtemplates.insert(ss.name, _parse_sort(ss));
     }
-    crate::Config->setblxoption(None, "sortingtemplate", $sortingtemplates);
+    crate::Config->setblxoption(None, "sortingtemplate", sortingtemplates);
 
     // DATAMODEL schema (always global and is an array to accomodate multiple
     // datamodels in tool mode)
@@ -801,8 +786,7 @@ impl Biber {
       let existing_section = bib_sections.get_section(secnum);
       let $bib_section = if existing_section {
         existing_section
-      }
-      else {
+      } else {
         crate::Section::new(secnum)
       };
 
@@ -838,14 +822,14 @@ impl Biber {
 
       // Loop over all section keys
       for keyc in &prekeys {
-        let $key = NFD($keyc->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
+        let key = NFD(keyc.content); // Key is already UTF-8 - it comes from UTF-8 XML
         // Stop reading citekeys if we encounter "*" as a citation as this means
         // "all keys"
         if key == '*' {
           bib_section.set_allkeys(true);
-          crate::Config->set_keyorder($secnum, $key, $keyc->{order});
-          if ($keyc->{nocite}) {
-            $bib_section->set_allkeys_nocite(1);
+          crate::Config->set_keyorder(secnum, key, keyc.order);
+          if (keyc.nocite) {
+            bib_section.set_allkeys_nocite(1);
           }
           key_flag = true; // There is at least one key, used for error reporting below
         }
@@ -853,28 +837,30 @@ impl Biber {
           // Dynamic set definition
           // Save dynamic key -> member keys mapping for set entry auto creation later
           // We still need to find these even if allkeys is set
-          if (exists($keyc->{type}) && $keyc->{type} == "set") {
-            bib_section.set_dynamic_set(key, regex!("\s*,\s*").split(&keyc.members));
-            keys.push(key);
-            key_flag = true; // There is at least one key, used for error reporting below
-          }
-          else {
-            // Track cite/nocite - needed for sourcemapping logic
-            if ($keyc->{nocite}) {
-              bib_section.add_nocite(key);
+          match keyc.type.as_ref() {
+            Some("set") => {
+              bib_section.set_dynamic_set(key, regex!(r"\s*,\s*").split(&keyc.members));
+              keys.push(key);
+              key_flag = true; // There is at least one key, used for error reporting below
             }
-            else {
-              bib_section.add_cite(key);
+            _ => {
+              // Track cite/nocite - needed for sourcemapping logic
+              if (keyc.nocite) {
+                bib_section.add_nocite(key);
+              }
+              else {
+                bib_section.add_cite(key);
+              }
+              // Set order information - there is no order on dynamic key defs above
+              // as they are a definition, not a cite
+              crate::config::set_keyorder(secnum, key, keyc.order);
+              // order of keys which have the same order so we can track order in \cite{a,b,c}
+              if (keyc.intorder) {
+                Biber::Config->set_internal_keyorder(secnum, key, keyc.intorder);
+              }
+              keys.push(key);
+              key_flag = true; // There is at least one key, used for error reporting below
             }
-            // Set order information - there is no order on dynamic key defs above
-            // as they are a definition, not a cite
-            crate::config::set_keyorder($secnum, $key, $keyc->{order});
-            // order of keys which have the same order so we can track order in \cite{a,b,c}
-            if $keyc->{intorder} {
-              Biber::Config->set_internal_keyorder($secnum, $key, $keyc->{intorder});
-            }
-            keys.push(key);
-            key_flag = true; // There is at least one key, used for error reporting below
           }
         }
         bib_section.incr_seenkey(key); // always increment
@@ -882,8 +868,8 @@ impl Biber {
 
       // Get citecounts if present
       for keycount in ($section->{citekeycount}->@*) {
-        let $key = NFD($keycount->{content}); // Key is already UTF-8 - it comes from UTF-8 XML
-        bib_section.set_citecount(key, $keycount->{count});
+        let $key = NFD(keycount.content); // Key is already UTF-8 - it comes from UTF-8 XML
+        bib_section.set_citecount(key, keycount.count);
       }
 
       if bib_section.is_allkeys()) {
@@ -1131,7 +1117,7 @@ impl Biber {
 
   // datafield sets need to be resolved after the datamodel is parsed
   fn _resolve_datafieldsets {
-    let $dm = crate::config::get_dm();
+    let dm = crate::config::get_dm();
     for value in DATAFIELD_SETS.values_mut() {
       let fs = Vec::new();
       for m in ($value->@*) {
@@ -1153,7 +1139,7 @@ impl Biber {
           fs.push(m);
         }
       }
-      *value = $fs;
+      *value = fs;
     }
   }
 
@@ -1248,10 +1234,10 @@ impl Biber {
       section.set_dynamic_set(dset, realmems.iter().map(|s| s.as_str()));
 
       let be = crate::Entry::new();
-      $be->set_field("entrytype", "set");
-      $be->set_field("entryset", [ @members ]);
-      $be->set_field("citekey", $dset);
-      $be->set_field("datatype", "dynamic");
+      be.set_field("entrytype", "set");
+      be.set_field("entryset", [ @members ]);
+      be.set_field("citekey", $dset);
+      be.set_field("datatype", "dynamic");
       section.bibentries().add_entry(dset, be);
         debug!("Created dynamic set entry '{}' in section {}", dset, secnum);
 
@@ -1302,7 +1288,7 @@ impl Biber {
           continue;
         }
       }
-      $be->resolve_xdata($xdata);
+      be.resolve_xdata(xdata);
     }
   }
 
@@ -1476,8 +1462,7 @@ impl Biber {
     let section = self.sections().get_section(secnum);
 
     // Don't resolve crossrefs in tool mode unless told to
-    if (crate::Config->getoption("tool") &&
-        !crate::Config->getoption("output_resolve_crossrefs")) {
+    if (crate::Config->getoption("tool") && !crate::Config->getoption("output_resolve_crossrefs")) {
       return;
     }
 
@@ -1518,18 +1503,22 @@ impl Biber {
 
     if (crate::Config->getoption("validate_datamodel")) {
       info!("Datamodel validation starting");
-      let $dmwe = crate::Config->getoption("dieondatamodel") ? \&biber_error : \&biber_warn;
+      let $dmwe = if crate::Config->getoption("dieondatamodel") {
+         \&biber_error
+      } else {
+         \&biber_warn
+      };
       for citekey in section.get_citekeys() {
         let be = section.bibentry(citekey);
         let citekey = be.get_field("citekey");
-        let et = be.get_field("entrytype");
+        let mut et = be.get_field("entrytype");
         let ds = section.get_keytods(citekey);
 
         // default entrytype to MISC type if not a known type
-        if !($dm->is_entrytype($et)) {
-          $dmwe->("Datamodel: Entry '$citekey' ($ds): Invalid entry type '" . $be->get_field("entrytype") . "' - defaulting to "misc"", $be);
-          $be->set_field("entrytype", "misc");
-          $et = "misc";           // reset this too
+        if !(dm.is_entrytype(et)) {
+          dmwe(format!("Datamodel: Entry '{citekey}' ({ds}): Invalid entry type '{}' - defaulting to 'misc'", be.get_field("entrytype")), be);
+          be.set_field("entrytype", "misc");
+          et = "misc";           // reset this too
         }
 
         // Are all fields valid fields?
@@ -1537,33 +1526,33 @@ impl Biber {
         // * Valid because it's allowed for "ALL" entrytypes OR
         // * Valid field for the specific entrytype OR
         // * Valid because entrytype allows "ALL" fields
-        if !($et == "xdata" || $et == "set") { // XDATA/SET are generic containers for any field
-          for ef in ($be->datafields) {
-            if !($dm->is_field_for_entrytype($et, $ef)) {
-              $dmwe->("Datamodel: Entry '$citekey' ($ds): Invalid field '$ef' for entrytype '$et'", $be);
+        if !(et == "xdata" || et == "set") { // XDATA/SET are generic containers for any field
+          for ef in (be.datafields) {
+            if !(dm.is_field_for_entrytype(et, ef)) {
+              dmwe(format!("Datamodel: Entry '{citekey}' ({ds}): Invalid field '{ef}' for entrytype '{et}'"), be);
             }
           }
         }
 
         // Mandatory constraints
-        for warning in ($dm->check_mandatory_constraints($be)) {
-          $dmwe->($warning, $be);
+        for warning in (dm.check_mandatory_constraints(be)) {
+          dmwe(warning, be);
         }
 
         // Conditional constraints
-        for warning in ($dm->check_conditional_constraints($be)) {
-          $dmwe->($warning, $be);
+        for warning in (dm.check_conditional_constraints(be)) {
+          dmwe(warning, be);
         }
 
         // Datamodel datatypes
         // This is a check on the datatypes of all fields in the datamodel
-        for warning in ($dm->check_datatypes($be)) {
-          $dmwe->($warning, $be);
+        for warning in (dm.check_datatypes(be)) {
+          dmwe(warning, be);
         }
 
         // Data constraints
-        for warning in ($dm->check_data_constraints($be)) {
-          $dmwe->($warning, $be);
+        for warning in (dm.check_data_constraints(be)) {
+          dmwe(warning, be);
         }
       }
       info!("Datamodel validation complete");
@@ -1645,7 +1634,7 @@ impl Biber {
 
           if (let $p = $n->get_namepart($npn)) {
             if ($np->{use}) {     // only ever defined as 1
-              let $method = "get_use$npn";
+              let $method = format!("get_use{npn}");
               let $useok = crate::Config->getblxoption(secnum, format!("use{npn}"), bee, citekey);
               // Override with per-namelist setting - only for extended name format
               if let Some(val) = nl->$method {
@@ -2160,16 +2149,16 @@ impl Biber {
         // Use get_datafield() instead of get_field() because we add "entryset" below
         // and if the same entry is used in more than one set, it will pass this test
         // and generate an error if we use get_field()
-        if ($me->get_datafield("entryset")) {
+        if (me.get_datafield("entryset")) {
           biber_warn("Field "entryset" is no longer needed in set member entries in Biber - ignoring in entry '$member'", $me);
-          $me->del_field("entryset");
+          me.del_field("entryset");
         }
         // This ends up setting \inset{} in the bbl
-        $me->set_field("entryset", [ $citekey ]);
+        me.set_field("entryset", [ $citekey ]);
       }
 
       if !(@entrysetkeys) {
-        biber_warn(r#"No entryset found for entry $citekey of type "set""#, be);
+        biber_warn("No entryset found for entry $citekey of type 'set'", be);
       }
     }
     // Also set this here for any non-set keys which are in a set and which haven't
@@ -2189,7 +2178,7 @@ impl Biber {
     // Either specifically nocited or \nocite{*} and not specifically cited without nocite
     if (section.is_nocite(citekey) ||
         (section.is_allkeys_nocite() && !section.is_specificcitekey(citekey))) {
-      $be->set_field("nocite", "1");
+      be.set_field("nocite", "1");
     }
   }
 
@@ -2205,7 +2194,7 @@ impl Biber {
 
     // First we set the normal labelname name
     for h_ln in &lnamespec {
-      let $ln = $h_ln->{content};
+      let ln = h_ln.content;
       let lnameopt = if ln.len() > 5 && ln.starts_with("short") {
         ln[5..].to_string()
       } else {
@@ -2224,7 +2213,7 @@ impl Biber {
       }
 
       if (be.get_field(ln)) {
-        $be->set_labelname_info($ln);
+        be.set_labelname_info(ln);
         break;
       }
     }
@@ -2233,7 +2222,7 @@ impl Biber {
     // This is because fullhash generation ignores SHORT* fields (section 4.2.4.1, BibLaTeX
     // manual)
     for h_ln in ($lnamespec->@*) {
-      let $ln = $h_ln->{content};
+      let ln = h_ln.content;
       if regex_is_match!(r"\Ashort(.+)\z"xms, ln) {
         continue;
       }
@@ -2309,7 +2298,7 @@ impl Biber {
 
           // Did we find a labeldate - this is equivalent to checking for a year/endyear
           // as that is always present if there is a labeldate
-          if (defined(be.get_field(ldy)) || defined(be.get_field(ldey))) {
+          if be.get_field(ldy).is_some() || be.get_field(ldey).is_some() {
             // set source to field or date field prefix for a real date field
             be.set_labeldate_info(LabelDateInfo::Field {
               year: ldy,
@@ -2438,10 +2427,10 @@ impl Biber {
     let $ltitlespec = crate::Config->getblxoption(None, "labeltitlespec", bee);
 
     for h_ltn in ($ltitlespec->@*) {
-      let $ltn = $h_ltn->{content};
-      if (let $lt = $be->get_field($ltn)) {
-        $be->set_labeltitle_info($ltn);
-        $be->set_field("labeltitle", $lt);
+      let ltn = h_ltn.content;
+      if (let $lt = be.get_field(ltn)) {
+        be.set_labeltitle_info(ltn);
+        be.set_field("labeltitle", lt);
         break;
       }
         debug!("labeltitle information of entry {} is unset", citekey);
@@ -2459,19 +2448,19 @@ impl Biber {
     // max/mincitenames settings
     // This can't be resolved nicely by biblatex because it depends on use* options
     // and also SHORT* fields etc.
-    if (let $lnfhi = $be->get_labelnamefh_info) {
-      if (let $lnfh = $be->get_field($lnfhi)) {
+    if (let $lnfhi = be.get_labelnamefh_info()) {
+      if (let $lnfh = be.get_field(lnfhi)) {
         be.set_field("fullhash", self._getfullhash(citekey, lnfh));
       }
     }
 
     // Generate fullhash for all other name fields
     for n in ($dmh->{namelistsall}->@*) {
-      let nv = $be->get_field($n);
+      let nv = be.get_field(n);
       if !nv {
         continue;
       }
-      $be->set_field("${n}fullhash", $self->_getfullhash($citekey, nv));
+      be.set_field(format!("{n}fullhash"), self._getfullhash(citekey, nv));
     }
 
     return;
@@ -2496,7 +2485,7 @@ impl Biber {
 
     // Generate namehash for all other name fields
     for n in ($dmh->{namelistsall}->@*) {
-      let nv = $be->get_field($n);
+      let nv = be.get_field(n);
       if !nv {
         continue;
       }
@@ -2515,7 +2504,7 @@ impl Biber {
     let dmh = crate::config::get_dm_helpers();
 
     for pn in ($dmh->{namelistsall}->@*) {
-      let nl = $be->get_field($pn);
+      let nl = be.get_field(pn);
       if !nl {
         continue;
       }
@@ -3517,7 +3506,7 @@ impl Biber {
         }
         else {
           if be.get_field("entryset") {
-            @es = $be->get_field("entryset")->@*;
+            @es = be.get_field("entryset")->@*;
           }
         }
         dlist.set_entryfield(key, "entryset", \@es);
@@ -4229,7 +4218,7 @@ impl Biber {
         }
 
         // Related entries
-        if (let $relkeys = be->get_field("related")) {
+        if (let $relkeys = be.get_field("related")) {
           // skip looking for dependent if it's already there (loop suppression)
           for rm in relkeys {
             if !(section.has_citekey(rm) || section.is_related(rm)) {

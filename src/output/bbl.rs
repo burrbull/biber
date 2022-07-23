@@ -102,7 +102,7 @@ impl Bbl {
     // auto-escape TeX special chars if:
     // * The entry is not a BibTeX entry (no auto-escaping for BibTeX data)
     // * It's not a string field
-    if ($field_type != "strng" && $be->get_field("datatype") != "bibtex") {
+    if ($field_type != "strng" && be.get_field("datatype") != "bibtex") {
       $str =~ s/(?<!\\)(\#|\&|\%)/\\$1/gxms;
     }
 
@@ -125,10 +125,10 @@ impl Bbl {
   }
 
   /// Set the output for a key which is an alias to another key
-  fn set_output_keyalias(self, $alias, $key, $section) {
-    let $secnum = $section->number;
+  fn set_output_keyalias(&mut self, alias: &str, key: &str, section: &Section) {
+    let secnum = section.number();
 
-    let $acc = "  \\keyalias{$alias}{$key}\n";
+    let acc = format!("  \\keyalias{{{alias}}}{{{key}}}\n");
 
     // Create an index by keyname for easy retrieval
     $self->{output_data}{ALIAS_ENTRIES}{$secnum}{index}{$alias} = \$acc;
@@ -137,10 +137,10 @@ impl Bbl {
   }
 
   /// Set the .bbl output for an undefined key
-  fn set_output_undefkey(self, $key, $section) {
-    let $secnum = $section->number;
+  fn set_output_undefkey(&mut self, key: &str, section: &Section) {
+    let secnum = section.number();
 
-    let $acc = "  \\missing{$key}\n";
+    let acc = format!("  \\missing{{{key}}}\n");
 
     // Create an index by keyname for easy retrieval
     $self->{output_data}{MISSING_ENTRIES}{$secnum}{index}{$key} = \$acc;
@@ -276,7 +276,7 @@ impl Bbl {
     // Output list fields
     for listfield in ($dmh->{lists}->@*) {
       // Performance - as little as possible here - loop over DM fields for every entry
-      if (let $lf = $be->get_field($listfield)) {
+      if (let $lf = be.get_field(listfield)) {
         if lf.last().filter(|last| last.to_lowercase() == crate::Config->getoption("others_string")).is_some() {
           acc.push_str(&format!("      \\true{{more{listfield}}}\n"));
           lf.pop(); // remove the last element in the array
@@ -305,7 +305,7 @@ impl Bbl {
       }
       acc.push_str(&format!("      <BDS>{namefield}BIBNAMEHASH</BDS>\n"));
       acc.push_str(&format!("      <BDS>{namefield}NAMEHASH</BDS>\n"));
-      if (let $fullhash = $be->get_field("${namefield}fullhash")) {
+      if (let $fullhash = be.get_field(format!("{namefield}fullhash"))) {
         acc.push_str(&format!("      \\strng{{{namefield}fullhash}}{fullhash}\n"));
       }
     }
@@ -427,7 +427,7 @@ impl Bbl {
       if (be.get_field(&format!("{d}dateapproximate"))) {
         acc.push_str(&format!("      \\true{{{d}datecirca}}\n"));
       }
-      if ($be->get_field(&format!("{d}enddateapproximate"))) {
+      if (be.get_field(&format!("{d}enddateapproximate"))) {
         acc.push_str(&format!("      \\true{{{d}enddatecirca}}\n"));
       }
 

@@ -102,7 +102,7 @@ impl BibLaTeXML {
     // This only applies to the XDATA field as more granular XDATA will already
     // have/have not been resolved on the basis of this variable
     if !(crate::Config->getoption("output_resolve_xdata")) {
-      if (let $xdata = $be->get_field("xdata")) {
+      if (let $xdata = be.get_field("xdata")) {
         $xml->startTag([$xml_prefix, "xdata"]);
         $xml->startTag([$xml_prefix, "list"]);
         for xd in ($xdata->@*) {
@@ -131,11 +131,11 @@ impl BibLaTeXML {
     for namefield in dm.get_fields_of_type(FieldType::List, &[DataType::Name], None) {
 
       // Name loop
-      if (let $nf = $be->get_field($namefield)) {
+      if (let $nf = be.get_field(namefield)) {
 
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
-          !$be->is_xdata_resolved($namefield)) {
+          !be.is_xdata_resolved(namefield)) {
           let xdata = nf.get_xdata();
           if !xdata.is_empty() {
             $xml->emptyTag([$xml_prefix, "names"], "xdata" => NFC(xdatarefout(xdata, true)));
@@ -188,13 +188,13 @@ impl BibLaTeXML {
       }
 
       // List loop
-      if (let $lf = $be->get_field($listfield)) {
+      if (let $lf = be.get_field(listfield)) {
 
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
-            !$be->is_xdata_resolved($listfield)) {
+            !be.is_xdata_resolved(listfield)) {
           if (let $val = xdatarefcheck(lf, true)) {
-            $xml->emptyTag([$xml_prefix, $listfield], "xdata" => NFC($val));
+            $xml->emptyTag([$xml_prefix, listfield], "xdata" => NFC($val));
             continue;
           }
         }
@@ -206,7 +206,7 @@ impl BibLaTeXML {
           lf.pop();               // remove the last element in the array
         }
 
-        $xml->startTag([$xml_prefix, $listfield], attrs);
+        $xml->startTag([$xml_prefix, listfield], attrs);
         $xml->startTag([$xml_prefix, "list"]);
 
         // List loop
@@ -215,7 +215,7 @@ impl BibLaTeXML {
         for (i, f) in lf.iter().enumerate() {
           // XDATA is special
           if (!crate::Config->getoption("output_resolve_xdata") ||
-              !$be->is_xdata_resolved($listfield, i+1)) {
+              !be.is_xdata_resolved(listfield, i+1)) {
             if (let $val = xdatarefcheck(f, true)) {
               $xml->emptyTag([$xml_prefix, "item"], "xdata" => NFC($val));
               continue;
@@ -242,8 +242,7 @@ impl BibLaTeXML {
       let val = be.get_field(field);
 
       // XDATA is special
-      if (!crate::Config->getoption("output_resolve_xdata") ||
-          !$be->is_xdata_resolved($field)) {
+      if (!crate::Config->getoption("output_resolve_xdata") || !be.is_xdata_resolved(field)) {
 
         if (let $xval = xdatarefcheck(val, true)) {
           $xml->emptyTag([$xml_prefix, $field], "xdata" => NFC($xval));
@@ -252,9 +251,8 @@ impl BibLaTeXML {
       }
 
       if (length($val) || // length() catches '0' values, which we want
-        ($dm->field_is_nullok($field) &&
-        $be->field_exists($field))) {
-        if $dm->get_fieldformat($field) == "xsv" {
+        (dm.field_is_nullok(field) && be.field_exists(field))) {
+        if dm.get_fieldformat(field) == "xsv" {
           continue;
         }
         if $field == "crossref" { // this is handled above
@@ -267,35 +265,34 @@ impl BibLaTeXML {
     // xsv fields
     // NOTE: BUG? incorrect function
     for xsvf in ($dm->get_fields_of_type(FieldType::Field, "xsv")->@*) {
-      if (let $f = $be->get_field($xsvf)) {
-        if $xsvf == "ids" { // IDS is special
+      if (let $f = be.get_field(xsvf)) {
+        if xsvf == "ids" { // IDS is special
           continue;
         }
-        if $xsvf == "xdata" { // XDATA is special
+        if xsvf == "xdata" { // XDATA is special
           continue;
         }
 
         // XDATA is special
-        if (!crate::Config->getoption("output_resolve_xdata") ||
-            !$be->is_xdata_resolved($xsvf)) {
+        if (!crate::Config->getoption("output_resolve_xdata") || !be.is_xdata_resolved(xsvf)) {
           if (let $val = xdatarefcheck(f, true)) {
-            $xml->emptyTag([$xml_prefix, $xsvf], "xdata" => NFC($val));
+            $xml->emptyTag([$xml_prefix, $xsvf], "xdata" => NFC(val));
             continue;
           }
         }
 
-        $xml->dataElement([$xml_prefix, $xsvf], NFC(join(',',$f->@*)));
+        $xml->dataElement([$xml_prefix, $xsvf], NFC(f.join(",")));
       }
     }
 
     // Range fields
     // NOTE: already sorted
     for rfield in dm.get_fields_of_datatype(&[DataType::Range]) {
-      if ( let $rf = $be->get_field($rfield) ) {
+      if ( let $rf = be.get_field(rfield) ) {
 
         // XDATA is special
         if (!crate::Config->getoption("output_resolve_xdata") ||
-            !$be->is_xdata_resolved($rfield)) {
+            !be.is_xdata_resolved(rfield)) {
           if (let $val = xdatarefcheck(rf, true)) {
             $xml->emptyTag([$xml_prefix, $rfield], "xdata" => NFC($val));
             continue;
@@ -336,7 +333,7 @@ impl BibLaTeXML {
       let mut overrided = None;
 
       let ($d) = $datefield =~ m/^(.*)date$/;
-      if (let $sf = $be->get_field("${d}year") ) { // date exists if there is a year
+      if (let $sf = be.get_field(format!("{d}year")) ) { // date exists if there is a year
 
         if $d {
           attrs.insert("type", d); // ignore for main date
@@ -362,7 +359,7 @@ impl BibLaTeXML {
         }
 
         // Unknown dates
-        if ($be->get_field("${d}dateunknown")) {
+        if (be.get_field(format!("{d}dateunknown"))) {
           sf.push_Str("unknown");
         }
 
@@ -396,34 +393,34 @@ impl BibLaTeXML {
             "yearindecade" => {
               let (_, decade) = regex_captures!(r"^(\d+)\d$", be.get_field(format!("{d}year"))).unwrap();
               overridey = Some(format!("{decade}X"));
-              $be->del_field(format!("{d}endyear"));
+              be.del_field(&format!("{d}endyear"));
             }
             // 1900/1999 -> 19XX
             "yearincentury" => {
               let (_, century) = regex_captures!(r"^(\d+)\d\d$", be.get_field(format!("{d}year"))).unwrap();
               overridey = Some(format!("{century}XX"));
-              $be->del_field(format!("{d}endyear"));
+              be.del_field(&format!("{d}endyear"));
             }
             // 1999-01/1999-12 => 1999-XX
             "monthinyear" => {
               overridem = Some("XX");
-              $be->del_field(format!("{d}endyear"));
-              $be->del_field(format!("{d}endmonth"));
+              be.del_field(&format!("{d}endyear"));
+              be.del_field(&format!("{d}endmonth"));
             }
             // 1999-01-01/1999-01-31 -> 1999-01-XX
             "dayinmonth" => {
               overrided = Some("XX");
-              $be->del_field(format!("{d}endyear"));
-              $be->del_field(format!("{d}endmonth"));
-              $be->del_field(format!("{d}endday"));
+              be.del_field(&format!("{d}endyear"));
+              be.del_field(&format!("{d}endmonth"));
+              be.del_field(&format!("{d}endday"));
             }
             // 1999-01-01/1999-12-31 -> 1999-XX-XX
             "dayinyear" => {
               overridem = Some("XX");
               overrided = Some("XX");
-              $be->del_field(format!("{d}endyear"));
-              $be->del_field(format!("{d}endmonth"));
-              be.del_field(format!("{d}endday"));
+              be.del_field(&format!("{d}endyear"));
+              be.del_field(&format!("{d}endmonth"));
+              be.del_field(&format!("{d}endday"));
             }
             _ => {}
           }

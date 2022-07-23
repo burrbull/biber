@@ -1438,7 +1438,7 @@ impl DataList {
 
       // per-namehash
       for pn in ($dmh->{namelistsall}->@*) {
-        let nl = $be->get_field($pn);
+        let nl = be.get_field(pn);
         if !nl {
           continue;
         }
