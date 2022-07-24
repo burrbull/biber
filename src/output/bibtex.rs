@@ -635,13 +635,13 @@ impl BibTeX {
 
       // Start month
       if (let $sm = $overridem || be.get_field(&format!("{d}month"))) {
-        datestring.push_str('-' . sprintf('%.2d', $sm));
+        datestring.push_str(&format!("-{sm:02}")); // TODO: parse int
         be.del_field(&format!("{d}month"));
       }
 
       // Start day
       if (let $sd = $overrided || be.get_field(&format!("{d}day"))) {
-        datestring.push_str('-' . sprintf('%.2d', $sd));
+        datestring.push_str(&format!("-{sd:02}")); // TODO: parse int
         be.del_field(&format!("{d}day"));
       }
 
@@ -663,10 +663,12 @@ impl BibTeX {
       }
 
       // If start hour, there must be minute and second
-      if (let $sh = be.get_field("${d}hour")) {
-        datestring.push_str('T' . sprintf('%.2d', $sh) . ':' .
-          sprintf('%.2d', be.get_field(&format!("{d}minute"))) . ':' .
-            sprintf('%.2d', be.get_field(&format!("{d}second"))));
+      if (let $sh = be.get_field(&format!("{d}hour"))) {
+        datestring.push_str(&format!(
+          "T{sh:02}:{:02}:{:02}",
+          be.get_field(&format!("{d}minute")),
+          be.get_field(&format!("{d}second"))
+        ));
         be.del_field(&format!("{d}hour"));
         be.del_field(&format!("{d}minute"));
         be.del_field(&format!("{d}second"));
@@ -691,13 +693,13 @@ impl BibTeX {
 
         // End month
         if (let $em = $overrideem || be.get_field(&format!("{d}endmonth"))) {
-          datestring.push_str('-' . sprintf('%.2d', $em));
+          datestring.push_str(&format!("-{em:02}")); // TODO: parse int
           be.del_field(&format!("{d}endmonth"));
         }
 
         // End day
         if (let $ed = be.get_field(&format!("{d}endday"))) {
-          datestring.push_str('-' . sprintf('%.2d', $ed));
+          datestring.push_str(&format!("-{ed:02}"));
           be.del_field(&format!("{d}endday"));
         }
 
@@ -720,9 +722,7 @@ impl BibTeX {
 
         // If end hour, there must be minute and second
         if (let $eh = be.get_field(&format!("{d}endhour"))) {
-          datestring.push_str('T' . sprintf('%.2d', $eh) . ':' .
-            sprintf('%.2d', be.get_field(&format!("{d}endminute"))) . ':' .
-              sprintf('%.2d', be.get_field(&format!("{d}endsecond"))));
+          datestring.push_str(&format!("T{eh:02}{:02}{:02}", be.get_field(&format!("{d}endminute")), be.get_field(&format!("{d}endsecond"))));
           be.del_field(&format!("{d}endhour"));
           be.del_field(&format!("{d}endminute"));
           be.del_field(&format!("{d}endsecond"));

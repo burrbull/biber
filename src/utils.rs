@@ -1172,7 +1172,7 @@ fn parse_date($obj, $string) {
 
 /// Force month/day to ISO8601-2:2016 format with leading zero
 pub fn date_monthday($md) {
-  if md { sprintf("%.2d", md) } else { None };
+  if md { format!("{md:02}") } else { None };
 }
 
 /// Perform NFD form conversion as well as UTF-8 conversion. Used to normalize

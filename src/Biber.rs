@@ -1223,12 +1223,12 @@ impl Biber {
 
     // Instantiate any dynamic set entries before we do anything else
     for dset in section.dynamic_set_keys() {
-      let @members = $section->get_dynamic_set($dset);
+      let @members = section.get_dynamic_set(dset);
 
       // Resolve any aliases in the members
-      let @realmems;
+      let mur realmems = Vec::new();
       for mem in (@members) {
-        push @realmems, $section->get_citekey_alias($mem).unwrap_or($mem);
+        realmems.push(section.get_citekey_alias(mem).unwrap_or(mem));
       }
       @members = @realmems;
       section.set_dynamic_set(dset, realmems.iter().map(|s| s.as_str()));
@@ -1236,7 +1236,7 @@ impl Biber {
       let be = crate::Entry::new();
       be.set_field("entrytype", "set");
       be.set_field("entryset", [ @members ]);
-      be.set_field("citekey", $dset);
+      be.set_field("citekey", dset);
       be.set_field("datatype", "dynamic");
       section.bibentries().add_entry(dset, be);
         debug!("Created dynamic set entry '{}' in section {}", dset, secnum);
@@ -1244,7 +1244,7 @@ impl Biber {
       for m in (@members) {
       // Save graph information if requested
         if (crate::Config->getoption("output_format") == "dot") {
-          crate::Config->set_graph("set", $dset, $m);
+          crate::Config->set_graph("set", dset, m);
         }
         // Instantiate any related entry clones we need from dynamic set members
         section.bibentry(m).relclone();
