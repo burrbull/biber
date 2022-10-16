@@ -806,6 +806,7 @@ fn _create_entry(k, e) {
   bibentry.set_field("rawdata", $e->print_s);
 
   let $entrytype = $e->type;
+  bibentry.set_field("entrytype", UniCase::new($entrytype));
 
   // We put all the fields we find modulo field aliases into the object
   // validation happens later and is not datasource dependent
@@ -891,11 +892,10 @@ fn _create_entry(k, e) {
       }
     }
     else if (crate::Config->getoption("validate_datamodel")) {
-      biber_warn("Datamodel: Entry '$k' ($ds): Field '$f' invalid in data model - ignoring", $bibentry);
+      biber_warn("Datamodel: $entrytype entry '$k' ($ds): Field '$f' invalid in data model - ignoring", $bibentry);
     }
   }
 
-  bibentry.set_field("entrytype", UniCase::new($entrytype));
   bibentry.set_field("datatype", "bibtex");
     debug!("Adding entry with key '{}' to entry list", k);
   section.bibentries().add_entry(k, bibentry);
@@ -1008,9 +1008,9 @@ fn _literal(bibentry: &mut Entry, entry, field: &str, key: &str) {
   if fc == UniCase::new("month") {
     return _hack_month($value);
   }
-  // Rationalise any bcp47 style langids into babel/polyglossia names
-  // biblatex will convert these back again when loading .lbx files
-  // We need this until babel/polyglossia support proper bcp47 language/locales
+  // Rationalise any BCP47 style langids into babel/polyglossia names
+  // We need this until babel/polyglossia support proper BCP47 language/locales and then
+  // biblatex needs to be changed as currently .lbx filenames are not BCP47 compliant
   else if (fc == UniCase::new("langid") && let $map = $LOCALE_MAP_R{$value}) {
     return $map;
   }
@@ -1209,6 +1209,7 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
   let secnum = crate::MASTER.get_current_section();
   let section = crate::MASTER.sections().get_section(secnum);
   let $ds = $section->get_keytods($key);
+  let $bee = bibentry.get_field("entrytype");
 
   let (sdate, edate, sep, unspec) = parse_date_range(bibentry, datetype, date);
 
@@ -1305,7 +1306,7 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
     if ($sep) {
       if (defined($edate)) { // End date was successfully parsed
         if ($edate) { // End date is an object not "0"
-          // Did this entry get its datepart fields from splitting an EDTF date field?
+          // Did this entry get its datepart fields from splitting an ISO8601-2 date field?
           bibentry.set_field(format!("{datetype}datesplit"), 1);
 
           if !($CONFIG_DATE_PARSERS{end}->missing("year")) {
@@ -1349,12 +1350,12 @@ fn _datetime(bibentry: &mut Entry, entry, field: &str, key: &str) {
         }
       }
       else {
-        biber_warn("Entry '$key' ($ds): Invalid format '$date' of end date field '$field' - ignoring", $bibentry);
+        biber_warn("$bee entry '$key' ($ds): Invalid format '$date' of end date field '$field' - ignoring", $bibentry);
       }
     }
   }
   else {
-    biber_warn("Entry '$key' ($ds): Invalid format '$date' of date field '$field' - ignoring", $bibentry);
+    biber_warn("$bee entry '$key' ($ds): Invalid format '$date' of date field '$field' - ignoring", $bibentry);
   }
   return;
 }

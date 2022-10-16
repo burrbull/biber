@@ -537,7 +537,7 @@ impl DataList {
     $self->{state}{seen_extratitle} = {};
     $self->{state}{seen_extratitleyear} = {};
     $self->{state}{seen_extraalpha} = {};
-    $self->{state}{seen_namedateparts} = {};
+    $self->{state}{seen_nametitledateparts} = {};
     $self->{state}{seen_labelname} = {};
     $self->{state}{seen_nametitle} = {};
     $self->{state}{seen_titleyear} = {};
@@ -578,30 +578,30 @@ impl DataList {
   /// extradate. It uses labelyear plus name as we need to disambiguate
   /// entries with different labelyear (like differentiating 1984--1986 from
   /// just 1984)
-  fn get_seen_namedateparts(self, $ny) {
-    return $self->{state}{seen_namedateparts}{$ny}.unwrap_or(0);
+  fn get_seen_nametitledateparts(self, $ny) {
+    return $self->{state}{seen_nametitledateparts}{$ny}.unwrap_or(0);
   }
 
-  /// Increment the count of an labelname/dateparts combination for extradate
+  /// Increment the count of an labelname/labeltitle+dateparts combination for extradate
   ///
-  /// We pass in the name and date strings separately as we have to
+  /// We pass in the name/title and date strings separately as we have to
   /// be careful and only increment this counter beyond 1 if there is
-  /// a name component. Otherwise, extradate gets defined for all
-  /// entries with no name but the same year etc.
-  fn incr_seen_namedateparts(self, ns: &str, ys: &str) {
+  /// a name/title component. Otherwise, extradate gets defined for all
+  /// entries with no name/title but the same year etc.
+  fn incr_seen_nametitledateparts(self, ns: &str, ys: &str) {
     let $tmp = format!("{ns},{ys}");
     // We can always increment this to 1
-    if !(exists($self->{state}{seen_namedateparts}{$tmp})) {
-      $self->{state}{seen_namedateparts}{$tmp}++;
+    if !(exists($self->{state}{seen_nametitledateparts}{$tmp})) {
+      $self->{state}{seen_nametitledateparts}{$tmp}++;
     }
-    // But beyond that only if we have a labelname in the entry since
+    // But beyond that only if we have a labelname/labeltitle in the entry since
     // this counter is used to create extradate which doesn't mean anything for
-    // entries with no name
+    // entries with no name or title
     // We allow empty year so that we generate extradate for the same name with no year
     // so we can do things like "n.d.-a", "n.d.-b" etc.
     else {
       if ($ns) {
-        $self->{state}{seen_namedateparts}{$tmp}++;
+        $self->{state}{seen_nametitledateparts}{$tmp}++;
       }
     }
     return;

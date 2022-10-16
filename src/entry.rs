@@ -263,8 +263,9 @@ impl Entry {
         let ($xe, $xf, $xfp) = $xdataref =~ m/^([^$xdatasep]+)$xdatasep([^$xdatasep]+)(?:$xdatasep(\d+))?$/x;
         if !($xf) { // There must be a field in a granular XDATA ref
           let $entry_key = self.get_field("citekey");
+          let bee = self.get_field('entrytype');
           let secnum = crate::MASTER.get_current_section();
-          biber_warn("Entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
+          biber_warn("$bee entry '$entry_key' has XDATA reference from field '$reffield' that contains no source field (section $secnum)", $self);
           false
         } else {
           // field pointing to XDATA
@@ -556,19 +557,20 @@ impl Entry {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
     let entry_key = self.get_field("citekey");
+    let bee = self.get_field("entrytype");
     let $dm = crate::config::get_dm();
 
     for xdatum in xdata {
       for xdref in &xdatum.xdataentries {
         let xdataentry = section.bibentry(xdref);
         if !xdataentry {
-          biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
+          biber_warn("$bee entry '$entry_key' references XDATA entry '$xdref' which does not exist, not resolving (section $secnum)", $self);
           xdatum.resolved = false;
           continue;
         }
         else {
           if xdataentry.get_field("entrytype") != "xdata" {
-            biber_warn("Entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
+            biber_warn("$bee entry '$entry_key' references XDATA entry '$xdref' which is not an XDATA entry, not resolving (section $secnum)", $self);
             xdatum.resolved = false;
             continue;
           }
@@ -606,13 +608,13 @@ impl Entry {
 
               if !(reffielddm.fieldtype == xdatafielddm.fieldtype &&
                       reffielddm.datatype == xdatafielddm.datatype) {
-                biber_warn("Field '$reffield' in entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
+                biber_warn("Field '$reffield' in $bee entry '$entry_key' which xdata references field '$xdatafield' in entry '$xdref' are not the same types, not resolving (section $secnum)", $self);
                 xdatum.resolved = false;
                 continue;
               }
 
               if !(xdataentry.get_field(xdatafield)) {
-                biber_warn("Field '$reffield' in entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
+                biber_warn("Field '$reffield' in $bee entry '$entry_key' references XDATA field '$xdatafield' in entry '$xdref' and this field does not exist, not resolving (section $secnum)", $self);
                 xdatum.resolved = false;
                 continue;
               }
@@ -627,7 +629,7 @@ impl Entry {
                 }
                 else {
                   if !(xdataentry.get_field(xdatafield).is_nth_name(xdataposition)) {
-                    biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
+                    biber_warn("Field '$reffield' in $bee entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                     xdatum.resolved = false;
                     continue;
                   }
@@ -647,7 +649,7 @@ impl Entry {
                 }
                 else {
                   if !(xdataentry.get_field(xdatafield)[xdataposition-1]) {
-                    biber_warn("Field '$reffield' in entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
+                    biber_warn("Field '$reffield' in $bee entry '$entry_key' references field '$xdatafield' position $xdataposition in entry '$xdref' and this position does not exist, not resolving (section $secnum)", $self);
                     xdatum.resolved = false;
                     continue;
                   }
@@ -703,7 +705,8 @@ impl Entry {
       biber_error("Circular inheritance between '$source_key'<->'$target_key'");
     }
 
-    let $type        = self.get_field("entrytype");
+    let bee        = self.get_field("entrytype");
+    let tbee        = self.get_field("entrytype");
     let $parenttype  = parent.get_field("entrytype");
     let $inheritance = crate::Config->getblxoption(None, "inheritance");
     let processed = HashSet::new();
@@ -717,7 +720,7 @@ impl Entry {
     // override with type_pair specific defaults if they exist ...
     for type_pair in ($defaults->{type_pair}->@*) {
       if ((type_pair.source == '*' || type_pair.source == parenttype) &&
-          (type_pair.target == '*' || type_pair.target == $type)) {
+          (type_pair.target == '*' || type_pair.target == bee)) {
         if type_pair.inherit_all {
           inherit_all = type_pair.inherit_all;
         }
@@ -735,7 +738,7 @@ impl Entry {
       // Match for this combination of entry and crossref parent?
       for type_pair in ($inherit->{type_pair}->@*) {
         if (($type_pair->{source} == '*' || $type_pair->{source} == $parenttype) &&
-            ($type_pair->{target} == '*' || $type_pair->{target} == $type)) {
+            ($type_pair->{target} == '*' || $type_pair->{target} == bee)) {
           for field in ($inherit->{field}->@*) {
             // Skip for fields in the per-entry noinerit datafield set
             if (let $niset = crate::Config->getblxoption(secnum, "noinherit", None, target_key) &&
@@ -757,7 +760,7 @@ impl Entry {
             // Set the field if it doesn't exist or override is requested
             else if (!self.field_exists(field.target) ||
                   field_override_target == "true") {
-                debug!("Entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, field.source, field.target, source_key);
+                debug!("{bee} entry '{}' is inheriting field '{}' as '{}' from entry '{}'", target_key, field.source, field.target, source_key);
 
               self.set_datafield(field.target, parent.get_field(field.source));
 
@@ -844,7 +847,7 @@ impl Entry {
 
         // Set the field if it doesn't exist or override is requested
         if (!self.field_exists(field) || override_target == "true") {
-            debug!("Entry '{}' is inheriting field '{}' from entry '{}'", target_key, field, source_key);
+            debug!("{tbee} entry  '{}' is inheriting field '{}' from {bee} entry '{}'", target_key, field, source_key);
 
           self.set_datafield(field, parent.get_field(field));
 

@@ -312,7 +312,7 @@ impl DataModel {
                       };
     // Mapping of sorting fields to Sort::Key sort data types which are not "str"
     $self->{sortdataschema} = |f| {
-      if ["citeorder", "citecount"].into_iter().chain(self.helpers{integers}.iter()).any(|k| f == k) {
+      if ["intciteorder", "citeorder", "citecount"].into_iter().chain(self.helpers{integers}.iter()).any(|k| f == k) {
         return "int";
       }
       else {

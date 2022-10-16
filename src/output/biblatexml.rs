@@ -12,7 +12,7 @@ use XML::Writer;
 use Unicode::Normalize;
 */
 
-/// Class for biblatexml output of tool mode
+/// Class for biblatexml output
 pub struct BibLaTeXML;
 
 impl BibLaTeXML {
@@ -82,7 +82,7 @@ impl BibLaTeXML {
 
     $xml->startTag([$xml_prefix, "entry"], attribute_map!("id" => NFC(key), "entrytype" => NFC(bee)));
 
-    // Filter aliases which point to this key an insert them
+    // Filter aliases which point to this key and insert them
     if (let @ids = section.get_citekey_aliases().filter(|a| section.get_citekey_alias(a) == key).sorted() ) {
       $xml->startTag([$xml_prefix, "ids"]);
       $xml->startTag([$xml_prefix, "list"]);
@@ -222,7 +222,7 @@ impl BibLaTeXML {
             }
           }
 
-          $xml->dataElement([$xml_prefix, "item"], NFC(f), AttributeMap::new());
+          $xml->dataElement([$xml_prefix, "item"], NFC(f));
         }
         $xml->endTag();           // list
         $xml->endTag();           // listfield
@@ -385,7 +385,7 @@ impl BibLaTeXML {
                               "S1"      => 40,
                               "S2"      => 41 );
 
-        // Did the date fields come from interpreting an EDTF 5.2.2 unspecified date?
+        // Did the date fields come from interpreting an iso8601-2 unspecified date?
         // If so, do the reverse of crate::Utils::parse_date_unspecified()
         if (let Some(unspec) = be.get_field(format!("{d}dateunspecified"))) {
           match unspec {
@@ -426,7 +426,7 @@ impl BibLaTeXML {
           }
         }
 
-        // Seasons derived from EDTF dates
+        // Seasons derived from iso8601 dates
         if (let $s = be.get_field(format!("{d}yeardivision"))) {
           $overridem = $yeardivisions{$s};
         }
@@ -592,7 +592,7 @@ impl BibLaTeXML {
     let secnum = crate::MASTER.get_current_section();
     let section = crate::MASTER.sections().get_section(secnum);
 
-    // We rely on the order of this array for the order of the .bbl
+    // We rely on the order of this array for the order of the output
     for k in section.get_citekeys() {
       // Regular entry
       let be = section.bibentry(k) || biber_error("Cannot find entry with key '$k' to output");

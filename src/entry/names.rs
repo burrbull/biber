@@ -31,14 +31,6 @@ impl Names {
     &self.typ
   }
 
-  // ///  Serialiser for JSON::XS::encode
-  // fn TO_JSON(self) {
-  //   for n in ($self->@*){
-  //     $json->{$k} = $v;
-  //   }
-  //   return [ map {$_} $self->@* ];
-  // }
-
   /// Test for an empty object
   fn notnull(&self) -> bool {
     !self.namelist.is_empty()

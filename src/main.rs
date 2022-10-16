@@ -313,7 +313,7 @@ struct Args {
     /// The legacy option **--outformat** is supported as an alias
     #[clap(
         long,
-        value_name = "dot|bibtex|biblatexml|bbl|bblxml",
+        value_name = "dot|bibtex|biblatexml|bbl|bblxml|bibjson",
         default_value_t,
         alias = "outformat"
     )]
@@ -805,12 +805,12 @@ if ($opts->{output_macro_fields}) {
 
 # Check the output_format option
 if (let $of = $opts->{output_format}) {
-  if !($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml)\z/xms) {
-    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml'";
+  if !($opts->{output_format} =~ /\A(?:bbl|dot|bibtex|biblatexml|bblxml|bibjson)\z/xms) {
+    say STDERR "Biber: Unknown output format '$of', must be one of 'bbl', 'dot', 'bibtex', 'biblatexml', 'bblxml, 'bibjson''";
     exit EXIT_ERROR;
   }
-  if ($opts->{output_format} eq 'bblxml') {
-    say STDERR "Biber: Deprecated output format 'bblxml' - this will be removed in a future version";
+  if ($opts->{output_format} eq 'bblxml' or $opts->{output_format} eq 'dot') {
+    say STDERR "Biber: Deprecated output format '" . $opts->{output_format} . "' - this will be removed in a future version";
   }
 }
 
@@ -828,8 +828,8 @@ if (exists($opts->{tool}) and
 # Check output-format value
 if (exists($opts->{tool}) and
     exists($opts->{output_format}) and
-    $opts->{output_format} !~ /\A(?:bibtex|biblatexml)\z/xms) {
-    say STDERR "Biber: Output format in tool mode must be one of 'bibtex' or 'biblatexml'";
+    $opts->{output_format} !~ /\A(?:bibtex|biblatexml|bibjson)\z/xms) {
+    say STDERR "Biber: Output format in tool mode must be one of 'bibtex', 'biblatexml' or 'bibjson'";
     exit EXIT_ERROR;
 }
 
@@ -912,10 +912,13 @@ if (Biber::Config->getoption('output_file')) {
 else {
   if (Biber::Config->getoption('tool')) {
     if (Biber::Config->getoption('output_format') eq 'bibtex') { # tool .bib output
-      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bib/r;
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.bib/r;
     }
     elsif (Biber::Config->getoption('output_format') eq 'biblatexml') { # tool .blxtxml output
-      $outfile = $ARGV[0] =~ s/\..+$/_bibertool.bltxml/r;
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.bltxml/r;
+    }
+    elsif (Biber::Config->getoption('output_format') eq 'bibjson') { # bibjson output
+      $outfile = $ARGV[0] =~ s/\.[^.]+$/_bibertool.json/r;
     }
   }
   else {

@@ -1125,7 +1125,7 @@ pub fn parse_date_end(date) {
   return parse_date($CONFIG_DATE_PARSERS{end}, date);
 }
 
-/// Parse of EDTF dates
+/// Parse of iso8601-2 dates
 fn parse_date($obj, $string) {
   // Must do this to make sure meta-information from sub-class crate::Date::Format is reset
   $obj->init();

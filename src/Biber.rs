@@ -35,6 +35,7 @@ use crate::UCollate;
 use crate::Utils;
 use Carp;
 use Data::Dump;
+use Digest::MD5 qw( md5_hex );
 use Data::Compare;
 use Encode;
 use File::Copy;
@@ -1510,13 +1511,14 @@ impl Biber {
       };
       for citekey in section.get_citekeys() {
         let be = section.bibentry(citekey);
+        let bee = be.get_field("entrytype");
         let citekey = be.get_field("citekey");
         let mut et = be.get_field("entrytype");
         let ds = section.get_keytods(citekey);
 
         // default entrytype to MISC type if not a known type
         if !(dm.is_entrytype(et)) {
-          dmwe(format!("Datamodel: Entry '{citekey}' ({ds}): Invalid entry type '{}' - defaulting to 'misc'", be.get_field("entrytype")), be);
+          dmwe(format!("Datamodel: {bee} entry '{citekey}' ({ds}): Invalid entry type '{}' - defaulting to 'misc'", be.get_field("entrytype")), be);
           be.set_field("entrytype", "misc");
           et = "misc";           // reset this too
         }
@@ -1529,7 +1531,7 @@ impl Biber {
         if !(et == "xdata" || et == "set") { // XDATA/SET are generic containers for any field
           for ef in (be.datafields) {
             if !(dm.is_field_for_entrytype(et, ef)) {
-              dmwe(format!("Datamodel: Entry '{citekey}' ({ds}): Invalid field '{ef}' for entrytype '{et}'"), be);
+              dmwe(format!("Datamodel: {bee} entry '{citekey}' ({ds}): Invalid field '{ef}' for entrytype '{et}'"), be);
             }
           }
         }
@@ -1979,18 +1981,18 @@ impl Biber {
     }
   }
 
-  /// Track labelname/date parts combination for generation of extradate
+  /// Track labelname/labeltitle+date parts combination for generation of extradate
   fn process_extradate(&self, citekey: &str, dlist: &mut DataList) {
     let secnum = self.get_current_section();
     let section = self.sections().get_section(secnum);
     let be = section.bibentry(citekey);
     let bee = be.get_field("entrytype");
+    let dm = Biber::Config->get_dm();
 
     // Generate labelname/year combination for tracking extradate
-    // * If there is no labelname to use, use empty string
-    // * If there is no date information to use, try year
-    // * Don't increment the seen_namedateparts count if the name string is empty
-    //   (see code in incr_seen_namedateparts method).
+    // * If there is no labelname/labeltitle to use, use empty string
+    // * Don't increment the seen_nametitledateparts count if the name/title string is empty
+    //  (see code in incr_seen_nametitledateparts method).
     // * Don't increment if skiplab is set
 
     if crate::Config->getblxoption(None, "labeldateparts", bee, citekey) {
@@ -2000,9 +2002,26 @@ impl Biber {
 
         trace!("Creating extradate information for '{}'", citekey);
 
-      let mut namehash = "";
-      if let Some(lni) = be.get_labelname_info().skip_empty() {
-        namehash = self._getnamehash_u(citekey, be.get_field(lni), dlist);
+      let $contexthash = '';
+      let $edc = Biber::Config->getblxoption(undef, 'extradatecontext');
+      for $field in ($edc->@*) {
+        let $fieldc = $field->{content};
+        if ($fieldc =~ m/^label.+/) {
+          let $method = "get_${fieldc}_info";
+          $fieldc = $be->$method;
+        }
+        if (let $fv = $be->get_field($fieldc)) {
+          if ($dm->field_is_datatype('name', $fieldc)) {
+            $contexthash = $self->_getnamehash_u($citekey, $fv, $dlist);
+          }
+          elsif ($dm->field_is_fieldtype('list', $fieldc)) {
+            $contexthash = md5_hex(encode_utf8(NFC(normalise_string_hash(join('', $fv->@*)))));
+          }
+          else {
+            $contexthash = md5_hex(encode_utf8(NFC(normalise_string_hash($fv))));
+          }
+          break;
+        }
       }
 
       let mut datestring = String::new(); // Need a default empty string
@@ -2020,11 +2039,11 @@ impl Biber {
         }
       }
 
-      let tracking_string = format("{namehash},{datestring}");
+      let tracking_string = format("{contexthash},{datestring}");
 
       be.set_field("extradatescope", edscope);
-      dlist.set_entryfield(citekey, "namedateparts", &tracking_string);
-      dlist.incr_seen_namedateparts(namehash, datestring);
+      dlist.set_entryfield(citekey, "nametitledateparts", &tracking_string);
+      dlist.incr_seen_nametitledateparts(contexthash, datestring);
     }
   }
 
@@ -2262,7 +2281,7 @@ impl Biber {
       for lds in ($ldatespec->@*) {
         let pseudodate = false;
         let $ld = $lds->{content};
-        if ($lds->{"type"} == "field") { // labeldate field
+        if ($lds->{"type"} == "field") { // labeldate/year field
 
           let ldy;
           let ldey;
@@ -2272,16 +2291,14 @@ impl Biber {
           let ldmin;
           let ldsec;
           let ldtz;
+          let mut datetype = '';
 
-          // resolve dates
-          let datetype = if let Some(s) = ld.strip_suffix("date") {
-            s
-          } else {
-            ld
-          };
-
-          if dm.field_is_datatype("date", ld) &&
-              be.get_field(format!("{datetype}datesplit")) { // real EDTF dates
+          
+          // This effectively loses the distinction between DATE and YEAR fields
+          // which is what we want
+          $ldy = $ld;
+          if ($dm->field_is_datatype('date', $ld)) {
+            $datetype = $ld =~ s/date\z//xmsr;
             ldy    = format!("{datetype}year");
             ldey   = format!("{datetype}endyear");
             ldm    = format!("{datetype}month");
@@ -2291,8 +2308,7 @@ impl Biber {
             ldsec  = format!("{datetype}second");
             ldtz   = format!("{datetype}timezone");
           }
-          else { // non-EDTF split date field so make a pseudo-year
-            ldy = ld;
+          else { // non-iso8601-2 split date field so make a pseudo-year
             pseudodate = true;
           }
 
@@ -3524,10 +3540,10 @@ impl Biber {
         }
         // extradate
         if crate::Config->getblxoption(None, "labeldateparts", bee, key) {
-          let namedateparts = dlist.get_entryfield(key, "namedateparts");
-          if dlist.get_seen_namedateparts(namedateparts) > 1 {
-              trace!("namedateparts for '{}': {}", namedateparts, dlist.get_seen_namedateparts(namedateparts));
-            let v = dlist.incr_seen_extradate(namedateparts);
+          let nametitledateparts = dlist.get_entryfield(key, "nametitledateparts");
+          if dlist.get_seen_nametitledateparts(nametitledateparts) > 1 {
+              trace!("nametitledateparts for '{}': {}", nametitledateparts, dlist.get_seen_nametitledateparts(nametitledateparts));
+            let v = dlist.incr_seen_extradate(nametitledateparts);
             dlist.set_extradatedata_for_key(key, v);
           }
         }
@@ -4161,6 +4177,7 @@ impl Biber {
       else {
         // This must exist for all but dynamic sets
         let be = section.bibentry(citekey);
+        let bee = be.get_field("entrytype");
 
         // xdata
         if (let $xdata = be.get_xdata_refs()) {
@@ -4170,7 +4187,7 @@ impl Biber {
               if !section.bibentry(xdref) {
                 new_deps.push(xdref);
               }
-                debug!("Entry '{}' has xdata '{}'", citekey, xdref);
+                debug!("{bee} entry '{citekey}' has xdata '{xdref}'");
               if !keyswithdeps.contains(citekey) {
                 keyswithdeps.push(citekey);
               }
@@ -4184,7 +4201,7 @@ impl Biber {
           if !section.bibentry(refkey) {
             new_deps.push(refkey);
           }
-            debug!("Entry '{}' has xref '{}'", citekey, refkey);
+            debug!("{bee} entry '{citekey}' has xref '{refkey}'");
           if !keyswithdeps.contains(citekey) {
             keyswithdeps.push(citekey);
           }
@@ -4214,7 +4231,7 @@ impl Biber {
               }
             }
           }
-            debug!("Static set entry '{}' has members: {}", citekey, smems.join(", "));
+            debug!("Static set entry '{citekey}' has members: {}", smems.join(", "));
         }
 
         // Related entries
@@ -4230,7 +4247,7 @@ impl Biber {
               }
             }
           }
-            debug!("Entry '{}' has related entries: {}", citekey, relkeys.join(", "));
+            debug!("Entry '{citekey}' has related entries: {}", relkeys.join(", "));
         }
       }
     }

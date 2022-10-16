@@ -181,7 +181,8 @@ fn _initopts(opts) {
 
   // prepend output directory for log, if specified
   if (let $outdir = crate::Config->getoption("output_directory")) {
-    $biberlog = File::Spec->catfile($outdir, $biberlog);
+    let (_, _, biberlogfile) = File::Spec->splitpath($biberlog);
+    $biberlog = File::Spec->catfile($outdir, biberlogfile);
   }
 
   // Parse output-field-replace into something easier to use

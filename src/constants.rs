@@ -35,7 +35,7 @@ our @EXPORT = qw{
 */
 // Version of biblatex control file which this release expects. Matched against version
 // passed in control file. Used when checking the .bcf
-pub const BCF_VERSION: &str = "3.9";
+pub const BCF_VERSION: &str = "3.10";
 // Format version of the .bbl. Used when writing the .bbl
 pub const BBL_VERSION: &str = "3.2";
 
