@@ -485,7 +485,7 @@ impl BibLaTeXML {
           $xml->dataElement([$xml_prefix, "end"], end);
         }
         else { // simple date
-          $xml->characters(NFC(join('-', @start)));
+          $xml->characters(NFC(start.join("-")));
 
           // If start hour, there must be minute and second
           if let Some(sh) = be.get_field(format!("{d}hour")) {
