@@ -1,9 +1,9 @@
 //! Various utility subs used in Biber
 
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 
 use crate::Id;
-use lazy_regex::{regex, regex_is_match, regex_replace, regex_replace_all, regex_captures};
+use lazy_regex::{regex, regex_captures, regex_is_match, regex_replace, regex_replace_all};
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -575,8 +575,8 @@ pub fn escape_label(s: &str) -> String {
   }
   let s = regex_replace_all!(r"([_\^\$\#%\&])", &s, |_, symbol| format!("\\{symbol}"));
   s.replace('~', "{\\textasciitilde}")
-   .replace('>', "{\\textgreater}")
-   .replace('<', "{\\textless}")
+    .replace('>', "{\\textgreater}")
+    .replace('<', "{\\textless}")
 }
 /// Unscapes a few special character which might be used in label but which need
 /// sorting without escapes
@@ -586,12 +586,15 @@ pub fn unescape_label(s: &str) -> String {
   }
   let s = regex_replace_all!(r"\\([_\^\$\#%\&])", &s, |_, symbol| format!("{symbol}"));
   s.replace("{\\textasciitilde}", "~")
-   .replace("{\\textgreater}", ">")
-   .replace("{\\textless}", "<")
+    .replace("{\\textgreater}", ">")
+    .replace("{\\textless}", "<")
 }
 
 /// reduce_array(\@a, \@b) returns all elements in @a that are not in @b
-pub fn reduce_array<T: Clone + Eq + std::hash::Hash>(a: impl Iterator<Item=T>, b: impl Iterator<Item=T>) -> Vec<T> {
+pub fn reduce_array<T: Clone + Eq + std::hash::Hash>(
+  a: impl Iterator<Item = T>,
+  b: impl Iterator<Item = T>,
+) -> Vec<T> {
   let countb = HashSet::<T>::from_iter(b);
   let mut result = Vec::<T>::new();
   for elem in a {
@@ -628,13 +631,13 @@ pub fn has_outer(s: &str) -> bool {
   if regex_is_match!(r"\}\s*\{", s) {
     return false;
   }
-  s.len() > 2 && s.starts_with('{') &&  s.ends_with('}')
+  s.len() > 2 && s.starts_with('{') && s.ends_with('}')
 }
 
 /// Add surrounding curly brackets:
 /// "string" -> "{string}"
 pub fn add_outer(s: &str) -> String {
-    format!("{{{}}}", s)
+  format!("{{{}}}", s)
 }
 /// upper case of initial letters in a string
 pub fn ucinit(s: &str) -> String {
@@ -784,10 +787,17 @@ pub fn inits(istring: &str) -> impl Iterator<Item=&str> {
 /// Replace all join typsetting elements in a name part (space, ties) with BibLaTeX macros
 /// so that typesetting decisions are made in BibLaTeX, not hard-coded in Biber
 pub fn join_name(nstring: &str) -> String {
-  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\\S)\s+").unwrap().replace_all(nstring, "\\bibnamedelimb "); // Don't do spaces in char macros
-  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\)~A").unwrap().replace_all(&nstring, "\\bibnamedelima "); // Don't do '\~'
-  // Special delim after name parts ending in period
-  fancy_regex::Regex::new(r"(?xms)(?<=\.)\\bibnamedelim[ab]").unwrap().replace_all(&nstring, "\\bibnamedelimi").into()
+  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\\S)\s+")
+    .unwrap()
+    .replace_all(nstring, "\\bibnamedelimb "); // Don't do spaces in char macros
+  let nstring = fancy_regex::Regex::new(r"(?xms)(?<!\\)~A")
+    .unwrap()
+    .replace_all(&nstring, "\\bibnamedelima "); // Don't do '\~'
+                                                // Special delim after name parts ending in period
+  fancy_regex::Regex::new(r"(?xms)(?<=\.)\\bibnamedelim[ab]")
+    .unwrap()
+    .replace_all(&nstring, "\\bibnamedelimi")
+    .into()
 }
 /*
 /// Process any per_entry option transformations which are necessary on output
@@ -804,7 +814,7 @@ pub fn filter_entry_options(secnum: u32, be: &Entry) {
 
     // By this point, all entry meta-options have been expanded by expand_option_input
     if ($cfopt) { // suppress only explicitly ignored output options
-      
+
       roptions.push(if val { format!("{opt}={val}") } else { opt });
     }
   }
@@ -1076,23 +1086,36 @@ pub fn parse_date_range(bibentry: &mut Entry, datetype: &str, datestring: &str) 
 /// Parse of ISO8601-2:2016 4.3 unspecified format into date range
 /// Returns range plus specification of granularity of unspecified
 fn parse_date_unspecified(d: &str) -> Option<(String, char, String, &str)> {
-
   // 199X -> 1990/1999
   if let Some((_, decade)) = regex_captures!(r"^(\d{3})X$", d) {
-    return Some((format!("{decade}0"), '/', format!("{decade}9"), "yearindecade"));
+    return Some((
+      format!("{decade}0"),
+      '/',
+      format!("{decade}9"),
+      "yearindecade",
+    ));
   }
   // 19XX -> 1900/1999
   else if let Some((_, century)) = regex_captures!(r"^(\d{2})XX$", d) {
-    return Some((format!("{century}00"), '/', format!("{century}99"), "yearincentury"));
+    return Some((
+      format!("{century}00"),
+      '/',
+      format!("{century}99"),
+      "yearincentury",
+    ));
   }
   // 1999-XX -> 1999-01/1999-12
   else if let Some((_, year)) = regex_captures!(r"^(\d{4})\p{Dash}XX$", d) {
-    return Some((format!("{year}-01"), '/', format!("{year}-12"), "monthinyear"));
+    return Some((
+      format!("{year}-01"),
+      '/',
+      format!("{year}-12"),
+      "monthinyear",
+    ));
   }
   // 1999-01-XX -> 1999-01-01/1999-01-31
   // (understands different months and leap years)
   else if let Some((_, year, month)) = regex_captures!(r"^(\d{4})\p{Dash}(\d{2})\p{Dash}XX", d) {
-
     fn leapyear(year: i32) -> bool {
       ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0)
     }
@@ -1104,13 +1127,30 @@ fn parse_date_unspecified(d: &str) -> Option<(String, char, String, &str)> {
     for m in ["09", "04", "06", "11"] {
       monthdays.insert(m.into(), "30");
     }
-    monthdays.insert("02".into(), if leapyear(year.parse().unwrap()) {"29"} else {"28"});
+    monthdays.insert(
+      "02".into(),
+      if leapyear(year.parse().unwrap()) {
+        "29"
+      } else {
+        "28"
+      },
+    );
 
-    return Some((format!("{year}-{month}-01"), '/', format!("{year}-{month}-{}", monthdays.get(month).unwrap()), "dayinmonth"));
+    return Some((
+      format!("{year}-{month}-01"),
+      '/',
+      format!("{year}-{month}-{}", monthdays.get(month).unwrap()),
+      "dayinmonth",
+    ));
   }
   // 1999-XX-XX -> 1999-01-01/1999-12-31
   else if let Some((_, year)) = regex_captures!(r"^(\d{4})\p{Dash}XX\p{Dash}XX", d) {
-    return Some((format!("{year}-01-01"), '/', format!("{year}-12-31"), "dayinyear"));
+    return Some((
+      format!("{year}-01-01"),
+      '/',
+      format!("{year}-12-31"),
+      "dayinyear",
+    ));
   }
   None
 }
@@ -1202,7 +1242,10 @@ pub fn locale2bcp47<'a>(localestr: &'a str) -> &'a str {
   if localestr.is_empty() {
     return "";
   }
-  return crate::constants::LOCALE_MAP.get(localestr).copied().unwrap_or(localestr);
+  return crate::constants::LOCALE_MAP
+    .get(localestr)
+    .copied()
+    .unwrap_or(localestr);
 }
 
 /// Map CLDR (bcp47) locale to a babel/polyglossia locale
@@ -1211,7 +1254,10 @@ pub fn bcp472locale<'a>(localestr: &'a str) -> &'a str {
   if localestr.is_empty() {
     return "";
   }
-  return crate::constants::LOCALE_MAP_R.get(localestr).copied().unwrap_or(localestr);
+  return crate::constants::LOCALE_MAP_R
+    .get(localestr)
+    .copied()
+    .unwrap_or(localestr);
 }
 /* TODO
 /// Calculate the length of a range field
@@ -1393,7 +1439,7 @@ pub fn call_transliterator($target, $from, $to, $text) {
 }
 */
 /// Passed an array of strings, returns an array of initials
-pub fn gen_initials<'a>(strings: impl Iterator<Item=&'a str>) -> Vec<String> {
+pub fn gen_initials<'a>(strings: impl Iterator<Item = &'a str>) -> Vec<String> {
   let mut strings_out = Vec::new();
   for mut string in strings {
     // Deal with hyphenated name parts and normalise to a '-' character for easy
@@ -1402,19 +1448,15 @@ pub fn gen_initials<'a>(strings: impl Iterator<Item=&'a str>) -> Vec<String> {
     // Dont' split a name part if the hyphen in a hyphenated name is protected like:
     // Hans{-}Peter as this is an old BibTeX way of suppressing hyphenated names
     if !regex_is_match!(r"^\{.+\}$", string) && regex_is_match!(r"[^{]\p{Dash}[^}]", string) {
-      strings_out.push(
-        gen_initials(regex!(r"\p{Dash}").split(string))
-        .join("-"));
-    }
-    else {
+      strings_out.push(gen_initials(regex!(r"\p{Dash}").split(string)).join("-"));
+    } else {
       // remove any leading braces and backslash from latex decoding or protection
       let string = regex!(r"^\{+").replace(string, "");
       let chr = string.graphemes(true).next().unwrap();
       // Keep diacritics with their following characters
       if regex_is_match!(r"^\p{Dia}", chr) {
         strings_out.push(string.graphemes(true).take(2).collect());
-      }
-      else {
+      } else {
         strings_out.push(chr.into());
       }
     }
@@ -1426,19 +1468,25 @@ pub fn gen_initials<'a>(strings: impl Iterator<Item=&'a str>) -> Vec<String> {
 ///
 /// 1. After the first part if it is less than three characters long
 /// 2. Before the family part
-pub fn join_name_parts<'a>(parts: impl Iterator<Item=&'a str>) -> String {
+pub fn join_name_parts<'a>(parts: impl Iterator<Item = &'a str>) -> String {
   let parts: Vec<_> = parts.collect();
-  if parts.len() == 1 { // special case - 1 part
+  if parts.len() == 1 {
+    // special case - 1 part
     parts[0].into()
-  } else if parts.len() == 2 { // special case - 2 parts
+  } else if parts.len() == 2 {
+    // special case - 2 parts
     format!("{}~{}", parts[0], parts[1])
   } else {
     format!(
       "{}{}{}~{}",
       parts[0],
-      if parts[0].graphemes(true).count() < 3 { '~' } else { ' ' },
-      parts[1..parts.len()-1].join(" "),
-      parts[parts.len()-1]
+      if parts[0].graphemes(true).count() < 3 {
+        '~'
+      } else {
+        ' '
+      },
+      parts[1..parts.len() - 1].join(" "),
+      parts[parts.len() - 1]
     )
   }
 }
@@ -1492,7 +1540,7 @@ pub fn process_backendin($bin) -> Option<Unknown> {
 //    let $hopts;
 //    for o in opts {
 //      let ($k, $v) = $o =~ m/\s*([^=]+)=(.+)\s*/;
-/* TODO 
+/* TODO
       $hopts->{$k} = $v;
     }
     return $hopts;
@@ -1549,8 +1597,8 @@ fn _bool_norm($b) -> bool {
 
 pub fn regex_xms(re: &str) -> Result<regex::Regex, regex::Error> {
   regex::RegexBuilder::new(re)
-  .multi_line(true)
-  .dot_matches_new_line(true)
-  .ignore_whitespace(true)
-  .build()
+    .multi_line(true)
+    .dot_matches_new_line(true)
+    .ignore_whitespace(true)
+    .build()
 }

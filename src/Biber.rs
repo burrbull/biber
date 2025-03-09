@@ -666,7 +666,7 @@ impl Biber {
     if !checkbase {
       biber_error("The uniquenametemplate must contain at least one "base" part otherwise name disambiguation is impossible");
     }
-    
+
     crate::Config->setblxoption(None, "uniquenametemplate", unts);
 
     // SORTING NAME KEY
@@ -2002,7 +2002,7 @@ impl Biber {
 
         trace!("Creating extradate information for '{}'", citekey);
 
-      let $contexthash = '';
+      let contexthash = "";
       let $edc = Biber::Config->getblxoption(undef, 'extradatecontext');
       for $field in ($edc->@*) {
         let $fieldc = $field->{content};
@@ -2293,7 +2293,7 @@ impl Biber {
           let ldtz;
           let mut datetype = '';
 
-          
+
           // This effectively loses the distinction between DATE and YEAR fields
           // which is what we want
           $ldy = $ld;
@@ -2612,7 +2612,7 @@ impl Biber {
             $count-$visible_names_cite==1 {
           $visible_names_cite = $count;
         }
-  
+
         // max/minbibnames
         if ($count > $maxbn) {
           // Visibility to the uniquelist point if uniquelist is requested
@@ -3301,7 +3301,7 @@ impl Biber {
           if dlist.get_uniquename_all(nlid, nid).is_none() {
             dlist.set_uniquename_all(nlid, nid, namedisschema[0]);
           }
-            
+
         }
       }
     }
@@ -4086,7 +4086,7 @@ impl Biber {
         let (vol, mut dir, _) = File::Spec->splitpath( $INC{"Biber.pm"} );
         if let Some(d) = dir.strip_suffix('/') {
           dir = d.into(); // splitpath sometimes leaves a trailing '/'
-        }        
+        }
 
         // Use Windows style globbing on Windows
         if ($^O =~ /Win/) {

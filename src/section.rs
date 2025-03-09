@@ -1,11 +1,11 @@
 //! `Section` objects
+use crate::utils::reduce_array;
+use crate::{BiSet, Entries, InputFormat, SkipEmpty, Unknown};
+use bimap::BiHashMap;
 use std::{
-  collections::{HashMap, HashSet},
+  hashbrown::{HashMap, HashSet},
   path::{Path, PathBuf},
 };
-use bimap::BiHashMap;
-use crate::{BiSet, InputFormat, Entries, Unknown, SkipEmpty};
-use crate::utils::reduce_array;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataSourceType {
@@ -19,7 +19,7 @@ pub struct DataSource {
   pub(crate) datatype: InputFormat,
   pub(crate) encoding: String,
   pub(crate) glob: Option<String>,
-} 
+}
 
 pub struct Section {
   number: u32,
@@ -95,8 +95,13 @@ impl Section {
   /// this key, taking into account things like \citeauthor etc. which are not
   /// real citations. A zero or undef value needs to be less than 0 which does
   /// not fail if() checks - required for the delicate sorting dispatch logic
-  fn get_citecount(& self, key: &str) -> i32 {
-    self.citecount.get(key).map(|&n| n as i32).filter(|&n| n > 0).unwrap_or(-1)
+  fn get_citecount(&self, key: &str) -> i32 {
+    self
+      .citecount
+      .get(key)
+      .map(|&n| n as i32)
+      .filter(|&n| n > 0)
+      .unwrap_or(-1)
   }
 
   /// Get the count of a key
@@ -174,7 +179,10 @@ impl Section {
   /// <previouskey>  - we've seen a differently cased variant of this key so we can warn about this
   /// undef  - Not seen this key at all in any case variant before
   fn has_badcasekey(&self, key: &str) -> Option<&String> {
-    self.everykey_lc.get(&key.to_lowercase()).filter(|&ckey| ckey != key)
+    self
+      .everykey_lc
+      .get(&key.to_lowercase())
+      .filter(|&ckey| ckey != key)
   }
 
   /// Check if a key is specifically cited by \cite{key} or \nocite{key}
@@ -355,7 +363,11 @@ impl Section {
   /// Returns true when $key is in the crate::Section object
   /// Understands key alaises
   fn has_citekey(&self, key: &str) -> bool {
-    let key = self.get_citekey_alias(key).skip_empty().map(|s| s.as_str()).unwrap_or(key);
+    let key = self
+      .get_citekey_alias(key)
+      .skip_empty()
+      .map(|s| s.as_str())
+      .unwrap_or(key);
     self.citekeys_h.contains(key)
   }
 
@@ -405,7 +417,7 @@ impl Section {
   }
 
   /// Get a list of all citekey aliases for the section
-  fn get_citekey_aliases(&self) -> impl Iterator<Item=&String> {
+  fn get_citekey_aliases(&self) -> impl Iterator<Item = &String> {
     self.citekey_alias.keys()
   }
 
@@ -435,8 +447,10 @@ impl Section {
   }
 
   /// Record a mapping of dynamic key to member keys
-  fn set_dynamic_set<'a>(&mut self, dkey: &str, members: impl Iterator<Item=&'a str>) {
-    self.dkeys.insert(dkey.into(), members.map(|s| s.to_string()).collect());
+  fn set_dynamic_set<'a>(&mut self, dkey: &str, members: impl Iterator<Item = &'a str>) {
+    self
+      .dkeys
+      .insert(dkey.into(), members.map(|s| s.to_string()).collect());
   }
 
   /// Retrieve member keys for a dynamic set key
@@ -451,7 +465,7 @@ impl Section {
   }
 
   /// Retrieve all dynamic set keys
-  fn dynamic_set_keys(&self) -> impl Iterator<Item=&String> {
+  fn dynamic_set_keys(&self) -> impl Iterator<Item = &String> {
     self.dkeys.keys()
   }
 

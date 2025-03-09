@@ -1483,7 +1483,7 @@ fn _namestring(self, citekey: &str, field: &str, dlist: &DataList) {
     // This won't override the visibility type selection already taken from higher-level
     // sorting namekey templates since this option only applies at name list level and higher
     // anyway and this is individual name scope
-    snkname = n.get_sortingnamekeytemplatename.unwrap_or(snkname);
+    snkname = n.get_sortingnamekeytemplatename().unwrap_or(snkname);
 
     // Now get the actual sorting name key template
     let $snk = crate::Config->getblxoption(None, "sortingnamekeytemplate")->{$snkname};

@@ -1,7 +1,8 @@
-use phf::phf_map;
-use once_cell::sync::Lazy;
-use std::{sync::Mutex, collections::{HashMap, HashSet}};
 use crate::BiSet;
+use hashbrown::{HashMap, HashSet};
+use once_cell::sync::Lazy;
+use phf::phf_map;
+use std::sync::Mutex;
 
 /* TODO
 use Encode;
@@ -114,14 +115,12 @@ pub const MONTHS: phf::Map<&'static str, &'static str> = phf_map! {
 #[derive(Clone, Debug)]
 pub enum DataField {
   String(String),
-  Field {
-    fieltype: String,
-    datatype: String,
-  },
+  Field { fieltype: String, datatype: String },
 }
 
 // datafieldsets
-pub static DATAFIELD_SETS: Lazy<Mutex<HashMap<String, Vec<DataField>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static DATAFIELD_SETS: Lazy<Mutex<HashMap<String, Vec<DataField>>>> =
+  Lazy::new(|| Mutex::new(HashMap::new()));
 
 /* TODO
 // datatypes for data model validation
@@ -152,7 +151,7 @@ our %DM_DATATYPES = (
                        } else if f.ends_with("season") { // LEGACY
                          if !($v =~ m/(?:winter|spring|summer|autumn)/) {
                           return false;
-                         } 
+                         }
                        } else if f.ends_with("yeardivision") {
                          if !(grep {$v == $_} values %YEARDIVISIONS) {
                           return false;
@@ -637,10 +636,12 @@ pub const LOCALE_MAP_R: phf::Map<&'static str, &'static str> = phf_map! {
 
 // Holds the scope of each of the BibLaTeX configuration options from the .bcf
 // Holds the options in a particular scope
-pub static CONFIG_OPT_SCOPE_BIBLATEX: Lazy<Mutex<BiSet<String, String>>> = Lazy::new(|| Mutex::new(BiSet::new()));
+pub static CONFIG_OPT_SCOPE_BIBLATEX: Lazy<Mutex<BiSet<String, String>>> =
+  Lazy::new(|| Mutex::new(BiSet::new()));
 
 // Holds the datatype of an option at a particular scope
-pub static CONFIG_OPTTYPE_BIBLATEX: Lazy<Mutex<HashMap<String, crate::Unknown>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+pub static CONFIG_OPTTYPE_BIBLATEX: Lazy<Mutex<HashMap<String, crate::Unknown>>> =
+  Lazy::new(|| Mutex::new(HashMap::new()));
 
 /* TODO
 our %CONFIG_OPTTYPE_BIBLATEX;

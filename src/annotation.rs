@@ -2,9 +2,10 @@
 //!
 //! Record an annotation for a scope and citekey
 
-use crate::{OptIter, NestedMap};
-use std::collections::{HashMap, HashSet, BTreeMap};
+use crate::{EasyMap, NestedMap, OptIter};
+use hashbrown::{HashMap, HashSet};
 use once_cell::sync::Lazy;
+use std::collections::BTreeMap;
 use std::sync::Mutex;
 use unicase::UniCase;
 
@@ -18,7 +19,10 @@ pub struct Ann {
   //             key             field            name             item
   item: HashMap<String, HashMap<String, BTreeMap<String, BTreeMap<String, Annotation>>>>,
   //             key             field            name             item             part
-  part: HashMap<String, HashMap<String, BTreeMap<String, BTreeMap<String, BTreeMap<String, Annotation>>>>>,
+  part: HashMap<
+    String,
+    HashMap<String, BTreeMap<String, BTreeMap<String, BTreeMap<String, Annotation>>>>,
+  >,
   //              key      field                    name
   names: HashMap<String, HashMap<String, HashSet<UniCase<String>>>>,
 }
@@ -62,43 +66,79 @@ impl Annotation {
 }
 
 impl Ann {
-  fn set_field_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool) {
-    let elem = Annotation { value: value.into(), literal };
+  fn set_field_annotation(
+    &mut self,
+    key: &str,
+    field: &str,
+    name: String,
+    value: &str,
+    literal: bool,
+  ) {
+    let elem = Annotation {
+      value: value.into(),
+      literal,
+    };
 
-    self.field.entry(key.clone()).or_default()
-      .entry(field.clone()).or_default()
-      .insert(name.clone(), elem);
+    self.field.in_entry2(key, field).insert(name.clone(), elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
+    self.names.in_entry2(key, field).insert(uniname);
   }
 
-  fn set_item_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool, count: String) {
-    let elem = Annotation { value: value.into(), literal };
+  fn set_item_annotation(
+    &mut self,
+    key: &str,
+    field: &str,
+    name: String,
+    value: &str,
+    literal: bool,
+    count: String,
+  ) {
+    let elem = Annotation {
+      value: value.into(),
+      literal,
+    };
 
-    self.item.entry(key.clone()).or_default()
-      .entry(field.clone()).or_default()
-      .entry(name.clone()).or_default()
+    self
+      .item
+      .in_entry2(key, field)
+      .entry(name.clone())
+      .or_default()
       .insert(count, elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
+    self.names.in_entry2(key, field).insert(uniname);
   }
 
-  fn set_part_annotation(&mut self, key: String, field: String, name: String, value: &str, literal: bool, count: String, part: String ) {
-    let elem = Annotation { value: value.into(), literal };
+  fn set_part_annotation(
+    &mut self,
+    key: &str,
+    field: &str,
+    name: String,
+    value: &str,
+    literal: bool,
+    count: String,
+    part: String,
+  ) {
+    let elem = Annotation {
+      value: value.into(),
+      literal,
+    };
 
-    self.part.entry(key.clone()).or_default()
-      .entry(field.clone()).or_default()
-      .entry(name.clone()).or_default()
-      .entry(count).or_default()
+    self
+      .part
+      .in_entry2(key, field)
+      .entry(name.clone())
+      .or_default()
+      .entry(count)
+      .or_default()
       .insert(part, elem);
 
     // Record all annotation names or a field
     let uniname = UniCase::new(name);
-    self.names.entry(key).or_default().entry(field).or_default().insert(uniname);
+    self.names.in_entry2(key, field).insert(uniname);
   }
 
   /// Copy all annotations from one entry to another
@@ -125,15 +165,9 @@ impl Ann {
   /// Retrieve all annotations for a scope and citekey
   fn get_annotations(&self, scope: Scope, key: &str, field: &str) -> Vec<&String> {
     match scope {
-      Scope::Field => {
-        OptIter::new(self.field.get2(key, field).map(|m| m.keys())).collect()
-      }
-      Scope::Item => {
-        OptIter::new(self.item.get2(key, field).map(|m| m.keys())).collect()
-      }
-      Scope::Part => {
-        OptIter::new(self.part.get2(key, field).map(|m| m.keys())).collect()
-      }
+      Scope::Field => OptIter::new(self.field.get2(key, field).map(|m| m.keys())).collect(),
+      Scope::Item => OptIter::new(self.item.get2(key, field).map(|m| m.keys())).collect(),
+      Scope::Part => OptIter::new(self.part.get2(key, field).map(|m| m.keys())).collect(),
     }
   }
 
@@ -146,27 +180,49 @@ impl Ann {
   }
 
   /// Retrieve an specific annotation for a scope, citekey and name
-  fn get_item_annotation(&self, key: &str, field: &str, mut name: &str, count: &str) -> Option<&Annotation> {
+  fn get_item_annotation(
+    &self,
+    key: &str,
+    field: &str,
+    mut name: &str,
+    count: &str,
+  ) -> Option<&Annotation> {
     if name.is_empty() {
       name = "default";
     }
-    self.item.get2(key, field).and_then(|m| m.get(name)).and_then(|m| m.get(count))
+    self
+      .item
+      .get2(key, field)
+      .and_then(|m| m.get(name))
+      .and_then(|m| m.get(count))
   }
 
   /// Retrieve an specific annotation for a scope, citekey and name
-  fn get_part_annotation(&self, key: &str, field: &str, mut name: &str, count: &str, part: &str) -> Option<&Annotation> {
+  fn get_part_annotation(
+    &self,
+    key: &str,
+    field: &str,
+    mut name: &str,
+    count: &str,
+    part: &str,
+  ) -> Option<&Annotation> {
     if name.is_empty() {
       name = "default";
     }
-    self.part.get2(key, field).and_then(|m| m.get(name)).and_then(|m| m.get(count)).and_then(|m| m.get(part))
+    self
+      .part
+      .get2(key, field)
+      .and_then(|m| m.get(name))
+      .and_then(|m| m.get(count))
+      .and_then(|m| m.get(part))
   }
 
   /// Returns boolean to say if a field is annotated
   fn is_annotated_field(key: &str, field: &str) -> bool {
     let ann = &ANN.lock().unwrap();
     ann.field.contains_key2(key, field)
-    || ann.item.contains_key2(key, field)
-    || ann.part.contains_key2(key, field)
+      || ann.item.contains_key2(key, field)
+      || ann.part.contains_key2(key, field)
   }
 
   /// Retrieve all annotated fields for a particular scope for a key
@@ -179,21 +235,46 @@ impl Ann {
   }
 
   /// Retrieve the itemcounts for a particular scope, key, field and nam3
-  fn get_annotated_items(&self, key: &str, field: &str, mut name: &str) -> impl Iterator<Item=(&String, &Annotation)> {
+  fn get_annotated_items(
+    &self,
+    key: &str,
+    field: &str,
+    mut name: &str,
+  ) -> impl Iterator<Item = (&String, &Annotation)> {
     if name.is_empty() {
       name = "default";
     }
-    OptIter::new(self.item.get2(key, field).and_then(|m| m.get(name)).map(|m| m.iter()))
+    OptIter::new(
+      self
+        .item
+        .get2(key, field)
+        .and_then(|m| m.get(name))
+        .map(|m| m.iter()),
+    )
   }
 
   /// Retrieve the parts for a particular scope, key, field, name and itemcount
-  fn get_annotated_parts(&self, key: &str, field: &str, mut name: &str) -> impl Iterator<Item=(&String, &String, &Annotation)> {
+  fn get_annotated_parts(
+    &self,
+    key: &str,
+    field: &str,
+    mut name: &str,
+  ) -> impl Iterator<Item = (&String, &String, &Annotation)> {
     if name.is_empty() {
       name = "default";
     }
-    OptIter::new(self.part.get2(key, field).and_then(|m| m.get(name)).map(|m| m.iter().flat_map(|(k1, f)| f.iter().map(move |(k2, val)| (k1, k2, val)))))
+    OptIter::new(
+      self
+        .part
+        .get2(key, field)
+        .and_then(|m| m.get(name))
+        .map(|m| {
+          m.iter()
+            .flat_map(|(k1, f)| f.iter().map(move |(k2, val)| (k1, k2, val)))
+        }),
+    )
   }
-/*
+  /*
   /// Dump config information (for debugging)
   fn dump() {
     dd($ANN);

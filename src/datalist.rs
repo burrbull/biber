@@ -1,5 +1,7 @@
 //! `DataLists` objects
 
+use hashbrown::HashMap;
+
 /*
 use crate::Utils;
 use crate::Constants;
@@ -8,6 +10,7 @@ use Digest::MD5 qw( md5_hex );
 use List::Util qw( first );
 */
 use crate::utils::regex_xms;
+use crate::{EasyMap, NestedMap, Unknown};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterType {
@@ -62,6 +65,9 @@ pub struct Filter {
 
 struct State {
   seenpa: HashMap<String, HashSet<String>>,
+  fields: HashMap<String, HashMap<String, String>>,
+  uniquenamecount: HashMap<String, HashMap<String, HashMap<String, u32>>>,
+  uniquenamecount_all: HashMap<String, HashMap<String, HashMap<String, u32>>>,
 }
 
 pub struct DataList {
@@ -103,25 +109,25 @@ impl DataList {
   }
 
   /// Sets the section of a data list
-  fn set_section(&mut self, section: u32) {
+  pub fn set_section(&mut self, section: u32) {
     self.section = section;//($section).to_lowercase()
   }
 
   /// Gets the section of a data list
-  fn get_section(&self) -> u32 {
+  pub fn get_section(&self) -> u32 {
     self.section
   }
 
   /// Resets all state data. Used mainly in tests which call crate::prepare()
   /// multiple times without re-creating datalists
-  fn reset_state(&mut self) {
+  pub fn reset_state(&mut self) {
     self.state.clear();
   }
 
   /// Increment the count of occurrences of a primary author base name
   /// if it has a different non-base part. How many variants of the basename
   /// are there in the dlist?
-  fn incr_seenpa(&mut self, base: &str, hash: &str) {
+  pub fn incr_seenpa(&mut self, base: &str, hash: &str) {
     // increment the number of base variants
     match self.state.seenpa.get_mut(base) {
       Some(v) => v.insert(hash),
@@ -130,170 +136,160 @@ impl DataList {
         s.insert(hash);
         self.state.seenpa.insert(base.into(), s);
       }
+    }
   }
 
   /// Get the count of unique (i.e. with different hash) occurrences of a primary
   /// author base name
-  fn get_seenpa(&self, base: &str) -> u32 {
+  pub fn get_seenpa(&self, base: &str) -> u32 {
     self.state.seenpa.get(base).map(|m| m.len() as u32).unwrap_or(0)
   }
 
   /// Resets all entryfield data in a list
-  fn reset_entryfields(&mut self) {
+  pub fn reset_entryfields(&mut self) {
     self.state.fields.clear();
   }
 
   /// Retrieves per-list datafield information for an entry
-  fn get_entryfield(&self, citekey: &str, f: &str) -> Option<Unknown> {
-    return self.state.fields{$citekey}{$f};
+  pub fn get_entryfield(&self, citekey: &str, f: &str) -> Option<Unknown> {
+    return self.state.fields.get2(citekey, f);
   }
 
   /// Records per-list datafield information for an entry
-  fn set_entryfield(&mut self, citekey: &str, $f, $v) {
-    $self->{state}{fields}{$citekey}{$f} = $v;
-    return;
+  pub fn set_entryfield(&mut self, citekey: &str, f: &str, v: Unknown) {
+    self.state.fields.in_entry2(citekey, f).insert(v);
   }
 
   /// Add a name to the list of name contexts which have the name in it
   /// (only called for visible names)
-  fn add_uniquenamecount(&mut self, $name, $namecontext, $key) {
-    $self->{state}{uniquenamecount}{$name}{$namecontext}{$key}++;
-    return;
+  pub fn add_uniquenamecount(&mut self, name: &str, namecontext: &str, key: &str) {
+    self.state.uniquenamecount.in_entry2(name, namecontext).in_entry(key) += 1;
   }
 
   /// Add a name to the list of name contexts which have the name in it
   /// (called for all names)
-  fn add_uniquenamecount_all(&mut self, $name, $namecontext, $key) {
-    $self->{state}{uniquenamecount_all}{$name}{$namecontext}{$key}++;
-    return;
+  pub fn add_uniquenamecount_all(&mut self, name: &str, namecontext: &str, key: &str) {
+    self.state.uniquenamecount_all.in_entry2(name, namecontext).in_entry(key) += 1;
   }
 
   /// Get the number of uniquelist entries for a (possibly partial) list
-  fn get_uniquelistcount(self, $namelist) {
-    return $self->{state}{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)};
+  pub fn get_uniquelistcount(&self, $namelist) {
+    return self.state{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)};
   }
 
   /// Increment the count for a list part to the data for a name
-  fn add_uniquelistcount(self, $namelist) {
-    $self->{state}{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)}++;
+  pub fn add_uniquelistcount(&mut self, $namelist) {
+    self.state{uniquelistcount}{global}{join("\x{10FFFD}", $namelist->@*)}++;
     return;
   }
 
   /// Increment the count for a complete list to the data for a name
-  fn add_uniquelistcount_final(self, $namelist, $labelyear) {
-    $self->{state}{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)}++;
+  pub fn add_uniquelistcount_final(&mut self, $namelist, $labelyear) {
+    self.state{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)}++;
     if ($labelyear) { // uniquelist=minyear
-      $self->{state}{uniquelistcount}{global}{final}{$labelyear}{join("\x{10FFFD}", $namelist->@*)}++;
+      self.state{uniquelistcount}{global}{final}{$labelyear}{join("\x{10FFFD}", $namelist->@*)}++;
     }
     return;
   }
 
   /// Increment the count for a list and year for a name
   /// Used to track uniquelist = minyear
-  fn add_uniquelistcount_minyear(self, $minyearnamelist, $year, $namelist) {
+  pub fn add_uniquelistcount_minyear(&mut self, $minyearnamelist, $year, $namelist) {
     // Allow year a default in case labelyear is undef
-    $self->{state}{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.unwrap_or("0")}{join("\x{10FFFD}", $namelist->@*)}++;
+    self.state{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.unwrap_or("0")}{join("\x{10FFFD}", $namelist->@*)}++;
     return;
   }
 
   /// Get the count for a list and year for a name
   /// Used to track uniquelist = minyear
-  fn get_uniquelistcount_minyear(self, $minyearnamelist, $year) {
-    return scalar keys $self->{state}{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.uniquework("0")}->%*;
+  pub fn get_uniquelistcount_minyear(&self, $minyearnamelist, $year) {
+    return scalar keys self.state{uniquelistcount}{minyear}{join("\x{10FFFD}", $minyearnamelist->@*)}{$year.uniquework("0")}->%*;
   }
 
   /// Get the number of uniquelist entries for a full list
-  fn get_uniquelistcount_final(self, $namelist) {
-    let $c = $self->{state}{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)};
+  pub fn get_uniquelistcount_final(&self, $namelist) {
+    let $c = self.state{uniquelistcount}{global}{final}{join("\x{10FFFD}", $namelist->@*)};
     return $c.unwrap_or(0);
   }
 
   /// Reset the count for list parts and complete lists
-  fn reset_uniquelistcount(self) {
-    $self->{state}{uniquelistcount} = {};
+  pub fn reset_uniquelistcount(&mut self) {
+    self.state{uniquelistcount} = {};
     return;
   }
 
   /// Reset the list of names which have the name part in it
-  fn reset_uniquenamecount(&mut self) {
+  pub fn reset_uniquenamecount(&mut self) {
     self.state.uniquenamecount.clear();
     self.state.uniquenamecount_all.clear();
   }
 
   /// Get a basenamestring for a particular name
-  fn get_basenamestring(&self, nlid: Id, nid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring};
+  pub fn get_basenamestring(&self, nlid: Id, nid: Id) {
+    return self.state.namelistdata{$nlid}{$nid}.basenamestring;
   }
 
   /// Get a namestring for a particular name
-  fn get_namestring(&self, nlid: Id, nid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{namestring};
+  pub fn get_namestring(&self, nlid: Id, nid: Id) {
+    return self.state.namelistdata{$nlid}{$nid}.namestring;
   }
 
   /// Get namestrings for a particular name
-  fn get_namestrings(&self, nlid: Id, nid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{namestrings};
+  pub fn get_namestrings(&self, nlid: Id, nid: Id) {
+    return self.state.namelistdata{$nlid}{$nid}.namestrings;
   }
 
   /// Set name disambiguation metadata
-  fn set_namedis(&mut self, nlid: Id, nid: Id, $ns, $nss, $nds) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{namestring} = $ns;
-    $self->{state}{namelistdata}{$nlid}{$nid}{namestrings} = $nss;
+  pub fn set_namedis(&mut self, nlid: Id, nid: Id, $ns, $nss, $nds) {
+    self.state.namelistdata{$nlid}{$nid}.namestring = $ns;
+    self.state.namelistdata{$nlid}{$nid}.namestrings = $nss;
 
     for (i, se) in nds.iter().enumerate() {
       // make these explicit for faster lookup since they are static
       if se[0] == "base" {
-        $self->{state}{namelistdata}{$nlid}{$nid}{basenamestring} = nss[i];
-        $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts} = se[1];
+        self.state.namelistdata{$nlid}{$nid}.basenamestring = nss[i];
+        self.state.namelistdata{$nlid}{$nid}.basenamestringparts = se[1];
         break;
       }
     }
 
-    $self->{state}{namelistdata}{$nlid}{$nid}{namedisschema} = $nds;
-    return;
+    self.state.namelistdata{$nlid}{$nid}.namedisschema = $nds;
   }
 
   /// Return boolean to say if a namepart is a base part according to
   /// template which created the information
-  fn is_unbasepart(&self, nlid: Id, nid: Id, $np) -> bool {
-    if self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}.contains(np) {
-      return true;
-    }
-    else {
-      return false;
-    }
+  pub fn is_unbasepart(&self, nlid: Id, nid: Id, $np) -> bool {
+    self.state.namelistdata{$nlid}{$nid}.basenamestringparts.contains(np)
   }
 
   /// Get hash for a name
-  fn get_namehash(&self, nlid: Id, nid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{hash};
+  pub fn get_namehash(&self, nlid: Id, nid: Id) {
+    return self.state.namelistdata{$nlid}{$nid}.hash;
   }
 
   /// Set hash for a name
-  fn set_namehash(&mut self, nlid: Id, nid: Id, s: &str) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{hash} = $s;
-    return;
+  pub fn set_namehash(&mut self, nlid: Id, nid: Id, s: &str) {
+    self.state.namelistdata{$nlid}{$nid}.hash = $s;
   }
 
   /// Get uniquename minimalness info for a name
-  fn get_unmininfo(&self, nlid: Id, nid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo};
+  pub fn get_unmininfo(&self, nlid: Id, nid: Id) {
+    return self.state.namelistdata{$nlid}{$nid}.unmininfo;
   }
 
   /// Set uniquename minimalness info for a name
-  fn set_unmininfo(&mut self, nlid: Id, nid: Id, $s) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{unmininfo} = $s;
-    return;
+  pub fn set_unmininfo(&mut self, nlid: Id, nid: Id, $s) {
+    self.state.namelistdata{$nlid}{$nid}.unmininfo = $s;
   }
 
   /// Get a name disambiguation schema for a name
-  fn get_namedisschema(&self, nlid: Id, nid: Id) {
+  pub fn get_namedisschema(&self, nlid: Id, nid: Id) {
     self.state.namelistdata{$nlid}{$nid}.namedisschema;
   }
 
   /// Get legacy uniquename summary for a name
-  fn get_unsummary(&self, nlid: Id, nid: Id) -> Option<u32> {
-    let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
+  pub fn get_unsummary(&self, nlid: Id, nid: Id) -> Option<u32> {
+    let $un = self.state.namelistdata{$nlid}{$nid}.un;
     if !defined($un) {
       return None;
     }
@@ -310,8 +306,8 @@ impl DataList {
   }
 
   /// Get uniquename summary part for a name
-  fn get_unpart(&self, nlid: Id, nid: Id) {
-    let $un = $self->{state}{namelistdata}{$nlid}{$nid}{un};
+  pub fn get_unpart(&self, nlid: Id, nid: Id) {
+    let $un = self.state.namelistdata{$nlid}{$nid}.un;
     if !defined($un) {
       return None;
     }
@@ -319,75 +315,75 @@ impl DataList {
   }
 
   /// Get uniquename parts for a name
-  fn get_unparts(&self, nlid: Id, nid: Id, $np) {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np};
+  pub fn get_unparts(&self, nlid: Id, nid: Id, $np) {
+    return self.state.namelistdata{$nlid}{$nid}.unparts{$np};
   }
 
   /// Set uniquename parts for a name
-  fn set_unparts(&mut self, nlid: Id, nid: Id, $np, $s) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{unparts}{$np} = $s;
+  pub fn set_unparts(&mut self, nlid: Id, nid: Id, $np, $s) {
+    self.state.namelistdata{$nlid}{$nid}.unparts{$np} = $s;
     return;
   }
 
   /// Get the list of name contexts which contain a name
   /// Mainly for use in tests
   fn _get_uniquename(&self, $name, $namecontext) {
-    let @list = sort keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
+    let @list = sort keys self.state{uniquenamecount}{$name}{$namecontext}->%*;
     return \@list;
   }
 
   /// Get uniquename for a name
-  fn get_uniquename(&self, nlid: Id, nid: Id) -> Option<Unknown> {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{un};
+  pub fn get_uniquename(&self, nlid: Id, nid: Id) -> Option<Unknown> {
+    return self.state.namelistdata{$nlid}{$nid}.un;
   }
 
   /// Set uniquename for a name
-  fn set_uniquename(&mut self, nlid: Id, nid: Id, s: Unknown) {
+  pub fn set_uniquename(&mut self, nlid: Id, nid: Id, s: Unknown) {
 
-    let currval = $self->{state}{namelistdata}{$nlid}{$nid}{un};
+    let currval = self.state.namelistdata{$nlid}{$nid}.un;
     // Set modified flag to positive if we changed something
     if (currval.is_none() || !Compare($currval, $s)) {
       self.set_unul_changed(true);
     }
-    $self->{state}{namelistdata}{$nlid}{$nid}{un} = Some(s);
+    self.state.namelistdata{$nlid}{$nid}.un = Some(s);
     return;
   }
 
   /// Reset uniquename for a name
-  fn reset_uniquename(&mut self, nlid: Id, nid: Id) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{un} = ["base", $self->{state}{namelistdata}{$nlid}{$nid}{basenamestringparts}];
+  pub fn reset_uniquename(&mut self, nlid: Id, nid: Id) {
+    self.state.namelistdata{$nlid}{$nid}.un = ["base", self.state.namelistdata{$nlid}{$nid}.basenamestringparts];
     return;
   }
 
   /// Get uniquename for a name, regardless of visibility
-  fn get_uniquename_all(&self, nlid: Id, nid: Id) -> Option<Unknown> {
-    return $self->{state}{namelistdata}{$nlid}{$nid}{unall};
+  pub fn get_uniquename_all(&self, nlid: Id, nid: Id) -> Option<Unknown> {
+    return self.state.namelistdata{$nlid}{$nid}.unall;
   }
 
   /// Set uniquename for a name, regardless of visibility
-  fn set_uniquename_all(&mut self, nlid: Id, nid: Id, s) {
-    $self->{state}{namelistdata}{$nlid}{$nid}{unall} = $s;
+  pub fn set_uniquename_all(&mut self, nlid: Id, nid: Id, s) {
+    self.state.namelistdata{$nlid}{$nid}.unall = $s;
     return;
   }
 
   /// Count the names in a string used to determine uniquelist.
-  fn count_uniquelist(&self, namelist: Unknown) -> usize {
+  pub fn count_uniquelist(&self, namelist: Unknown) -> usize {
     namelist.len()
   }
 
   /// Gets a uniquelist setting for a namelist
-  fn get_uniquelist(&self, nlid: Id) -> Option<Unknown> {
-    return $self->{state}{namelistdata}{$nlid}{ul};
+  pub fn get_uniquelist(&self, nlid: Id) -> Option<Unknown> {
+    return self.state.namelistdata{$nlid}.ul;
   }
 
   /// Sets a uniquelist setting for a namelist
-  fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
+  pub fn set_uniquelist(self, nl, namelist, labelyear, ul, maxcn, mincn) {
     // $nl is the namelist object
     // $namelist is the extracted string concatenation from $nl which forms the tracking key
     let nlid = nl.get_id();
     let uniquelist = self.count_uniquelist(namelist);
     let num_names = nl.count();
-    let $currval = $self->{state}{namelistdata}{$nlid}{ul};
+    let $currval = self.state.namelistdata{$nlid}.ul;
 
     // Set modified flag to positive if we changed something
     if (!defined($currval) || $currval != $uniquelist) {
@@ -462,124 +458,136 @@ impl DataList {
       $uniquelist--;
     }
 
-    $self->{state}{namelistdata}{$nlid}{ul} = $uniquelist;
+    self.state.namelistdata{$nlid}{ul} = $uniquelist;
     return;
   }
 
   /// Gets citation name list visibility
-  fn get_visible_cite(&self, nlid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{viscite};
+  pub fn get_visible_cite(&self, nlid: Id) {
+    return self.state.namelistdata{$nlid}.viscite;
   }
 
   /// Gets citation name list visibility
-  fn set_visible_cite(&mut self, nlid: Id, $s) {
-    $self->{state}{namelistdata}{$nlid}{viscite} = $s;
+  pub fn set_visible_cite(&mut self, nlid: Id, $s) {
+    self.state.namelistdata{$nlid}.viscite = $s;
     return;
   }
 
   /// Gets bib name list visibility
-  fn get_visible_bib(&self, nlid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{visbib};
+  pub fn get_visible_bib(&self, nlid: Id) {
+    return self.state.namelistdata{$nlid}{visbib};
   }
 
   /// Gets bib name list visibility
-  fn set_visible_bib(&mut self, nlid: Id, $s) {
-    $self->{state}{namelistdata}{$nlid}{visbib} = $s;
+  pub fn set_visible_bib(&mut self, nlid: Id, $s) {
+    self.state.namelistdata{$nlid}{visbib} = $s;
     return;
   }
 
   /// Gets sort name list visibility
-  fn get_visible_sort(&self, nlid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{vissort};
+  pub fn get_visible_sort(&self, nlid: Id) {
+    return self.state.namelistdata{$nlid}.vissort;
   }
 
   /// Gets sort name list visibility
-  fn set_visible_sort(&mut self, nlid: Id, $s) {
-    $self->{state}{namelistdata}{$nlid}{vissort} = $s;
+  pub fn set_visible_sort(&mut self, nlid: Id, $s) {
+    self.state.namelistdata{$nlid}.vissort = $s;
     return;
   }
 
   /// Gets alpha name list visibility
-  fn get_visible_alpha(&self, nlid: Id) {
-    return $self->{state}{namelistdata}{$nlid}{visalpha};
+  pub fn get_visible_alpha(&self, nlid: Id) {
+    return self.state.namelistdata{$nlid}.visalpha;
   }
 
   /// Gets alpha name list visibility
-  fn set_visible_alpha(&mut self, nlid: Id, $s) {
-    $self->{state}{namelistdata}{$nlid}{visalpha} = $s;
+  pub fn set_visible_alpha(&mut self, nlid: Id, $s) {
+    self.state.namelistdata{$nlid}.visalpha = $s;
     return;
   }
 
   /// Get the number of uniquenames entries for a visible name
-  fn get_numofuniquenames(&self, name: &str, namecontext: &str) -> usize {
-    return scalar keys $self->{state}{uniquenamecount}{$name}{$namecontext}->%*;
+  pub fn get_numofuniquenames(&self, name: &str, namecontext: &str) -> usize {
+    return scalar keys self.state.uniquenamecount{$name}{$namecontext}->%*;
   }
 
   /// Get the number of uniquenames entries for a name
-  fn get_numofuniquenames_all(&self, name: &str, namecontext: &str) -> usize {
-    return scalar keys $self->{state}{uniquenamecount_all}{$name}{$namecontext}->%*;
+  pub fn get_numofuniquenames_all(&self, name: &str, namecontext: &str) -> usize {
+    return scalar keys self.state.uniquenamecount_all{$name}{$namecontext}->%*;
   }
 
   /// Return a boolean saying whether uniquenename+uniquelist processing is finished
-  fn get_unul_done(&self) -> bool {
+  pub fn get_unul_done(&self) -> bool {
     self.unulchanged
   }
 
   /// Set a boolean saying whether uniquename+uniquelist has changed
-  fn set_unul_changed(&mut self, val: bool) {
+  pub fn set_unul_changed(&mut self, val: bool) {
     self.unulchanged = val;
   }
 
   /// Reset the counters for extra*
-  fn reset_seen_extra(&mut, self) {
-    $self->{state}{seen_extradate} = {};
-    $self->{state}{seen_extraname} = {};
-    $self->{state}{seen_extratitle} = {};
-    $self->{state}{seen_extratitleyear} = {};
-    $self->{state}{seen_extraalpha} = {};
-    $self->{state}{seen_nametitledateparts} = {};
-    $self->{state}{seen_labelname} = {};
-    $self->{state}{seen_nametitle} = {};
-    $self->{state}{seen_titleyear} = {};
+  pub fn reset_seen_extra(&mut self) {
+    self.state.seen_extradate.clear();
+    self.state.seen_extraname.clear();
+    self.state.seen_extratitle.clear();
+    self.state.seen_extratitleyear.clear();
+    self.state.seen_extraalpha.clear();
+    self.state.seen_nametitledateparts.clear();
+    self.state.seen_labelname.clear();
+    self.state.seen_nametitle.clear();
+    self.state.seen_titleyear.clear();
     return;
   }
 
   /// Increment and return the counter for extradate
-  fn incr_seen_extradate(self, $ey) {
-    return ++$self->{state}{seen_extradate}{$ey};
+  pub fn incr_seen_extradate(&mut self, ey: Unknown) -> u32 {
+    let e = self.state.seen_extradate.in_entry(ey);
+    *e += 1;
+    *e
   }
 
   /// Increment and return the counter for extraname
-  fn incr_seen_extraname(self, $en) {
-    return ++$self->{state}{seen_extraname}{$en};
+  pub fn incr_seen_extraname(&mut self, en: Unknown) -> u32 {
+    let e = self.state.seen_extraname.in_entry(en);
+    *e += 1;
+    *e
   }
 
   /// Increment and return a counter used to track extraname
-  fn incr_seen_labelname(self, $ln) {
-    return ++$self->{state}{seen_labelname}{$ln};
+  pub fn incr_seen_labelname(&mut self, ln: &str) -> u32 {
+    let e = self.state.seen_labelname.in_entry(ln);
+    *e += 1;
+    *e
   }
 
   /// Increment and return the counter for extratitle
-  fn incr_seen_extratitle(self, $et) {
-    return ++$self->{state}{seen_extratitle}{$et};
+  pub fn incr_seen_extratitle(&mut self, et: &str) -> u32 {
+    let e = self.state.seen_extratitle.in_entry(et);
+    *e += 1;
+    *e
   }
 
   /// Increment and return the counter for extratitleyear
-  fn incr_seen_extratitleyear(self, $ety) {
-    return ++$self->{state}{seen_extratitleyear}{$ety};
+  pub fn incr_seen_extratitleyear(&mut self, ety: Unknown) -> u32 {
+    let e = self.state.seen_extratitleyear.in_entry(ety);
+    *e += 1;
+    *e
   }
 
   /// Increment and return the counter for extraalpha
-  fn incr_seen_extraalpha(self, $ea) {
-    return ++$self->{state}{seen_extraalpha}{$ea};
+  pub fn incr_seen_extraalpha(&mut self, ea: Unknown) -> u32 {
+    let e = self.state.seen_extraalpha.in_entry(ea);
+    *e += 1;
+    *e
   }
 
   /// Get the count of an labelname/dateparts combination for tracking
   /// extradate. It uses labelyear plus name as we need to disambiguate
   /// entries with different labelyear (like differentiating 1984--1986 from
   /// just 1984)
-  fn get_seen_nametitledateparts(self, $ny) {
-    return $self->{state}{seen_nametitledateparts}{$ny}.unwrap_or(0);
+  pub fn get_seen_nametitledateparts(&self, ny: Unknown) {
+    self.state.seen_nametitledateparts.get(ny).unwrap_or(0)
   }
 
   /// Increment the count of an labelname/labeltitle+dateparts combination for extradate
@@ -588,33 +596,29 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a name/title component. Otherwise, extradate gets defined for all
   /// entries with no name/title but the same year etc.
-  fn incr_seen_nametitledateparts(self, ns: &str, ys: &str) {
-    let $tmp = format!("{ns},{ys}");
-    // We can always increment this to 1
-    if !(exists($self->{state}{seen_nametitledateparts}{$tmp})) {
-      $self->{state}{seen_nametitledateparts}{$tmp}++;
+  pub fn incr_seen_nametitledateparts(&mut self, ns: &str, ys: &str) {
+    let tmp = format!("{ns},{ys}");
+    match self.state.seen_nametitledateparts.entry_ref(&tmp) {
+        // We can always increment this to 1
+        EntryRef::Vacant(e) => e.insert(1),
+        // But beyond that only if we have a labelname/labeltitle in the entry since
+        // this counter is used to create extradate which doesn't mean anything for
+        // entries with no name or title
+        // We allow empty year so that we generate extradate for the same name with no year
+        // so we can do things like "n.d.-a", "n.d.-b" etc.
+        EntryRef::Occupied(e) if !ns.is_empty() => *e.get_mut() += 1,
+        _ => {}
     }
-    // But beyond that only if we have a labelname/labeltitle in the entry since
-    // this counter is used to create extradate which doesn't mean anything for
-    // entries with no name or title
-    // We allow empty year so that we generate extradate for the same name with no year
-    // so we can do things like "n.d.-a", "n.d.-b" etc.
-    else {
-      if ($ns) {
-        $self->{state}{seen_nametitledateparts}{$tmp}++;
-      }
-    }
-    return;
   }
 
   /// Get the count of a labelname hash for tracking extraname
-  fn get_seen_labelname(&self, ln: &str) -> u32 {
+  pub fn get_seen_labelname(&self, ln: &str) -> u32 {
     self.state.seen_labelname.get(ln).unwrap_or(0);
   }
 
   /// Get the count of an labelname/labeltitle combination for tracking
   /// extratitle.
-  fn get_seen_nametitle(self, nt: &str) {
+  pub fn get_seen_nametitle(&self, nt: &str) {
     self.state.seen_nametitle.get(nt).unwrap_or(0);
   }
 
@@ -624,27 +628,27 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a title component. Otherwise, extratitle gets defined for all
   /// entries with no title.
-  fn incr_seen_nametitle(self, ns: &str, ts: &str) {
+  pub fn incr_seen_nametitle(&mut self, ns: &str, ts: &str) {
     let tmp = format!("{ns},{ts}");
-    // We can always increment this to 1
-    if !($self->{state}{seen_nametitle}{$tmp}) {
-      $self->{state}{seen_nametitle}{$tmp}++;
+    match self.state.seen_nametitle.entry_ref(&tmp) {
+        // We can always increment this to 1
+        EntryRef::Vacant(e) => e.insert(1),
+        EntryRef::Occupied(e) => {
+            let e = *e.get_mut();
+            // But beyond that only if we have a labeltitle in the entry since
+            // this counter is used to create extratitle which doesn't mean anything for
+            // entries with no title
+            if *e == 0 || !ts.is_empty() {
+                e += 1;
+            }
+        }
     }
-    // But beyond that only if we have a labeltitle in the entry since
-    // this counter is used to create extratitle which doesn't mean anything for
-    // entries with no title
-    else {
-      if !ts.is_empty() {
-        $self->{state}{seen_nametitle}{$tmp}++;
-      }
-    }
-    return;
   }
 
   /// Get the count of an labeltitle/labelyear combination for tracking
   /// extratitleyear
-  fn get_seen_titleyear(&self, ty: &str) {
-    return $self->{state}{seen_titleyear}{$ty}.unwrap_or(0);
+  pub fn get_seen_titleyear(&self, ty: &str) {
+    self.state.seen_titleyear.get(ty).unwrap_or(0)
   }
 
   /// Increment the count of an labeltitle/labelyear combination for extratitleyear
@@ -653,357 +657,350 @@ impl DataList {
   /// be careful and only increment this counter beyond 1 if there is
   /// a title component. Otherwise, extratitleyear gets defined for all
   /// entries with no title.
-  fn incr_seen_titleyear(self, ts: &str, ys: &str) {
+  pub fn incr_seen_titleyear(&mut self, ts: &str, ys: &str) {
     let $tmp = format!("{ts},{ys}");
-    // We can always increment this to 1
-    if !($self->{state}{seen_titleyear}{$tmp}) {
-      $self->{state}{seen_titleyear}{$tmp}++;
+    match self.state.seen_titleyear.entry_ref(&tmp) {
+        // We can always increment this to 1
+        EntryRef::Vacant(e) => e.insert(1),
+        EntryRef::Occupied(e) => {
+            let e = *e.get_mut();
+            // But beyond that only if we have a labeltitle in the entry since
+            // this counter is used to create extratitleyear which doesn't mean anything for
+            // entries with no title
+            if *e == 0 || !ts.is_empty() {
+                e += 1;
+            }
+        }
     }
-    // But beyond that only if we have a labeltitle in the entry since
-    // this counter is used to create extratitleyear which doesn't mean anything for
-    // entries with no title
-    else {
-      if ($ts) {
-        $self->{state}{seen_titleyear}{$tmp}++;
-      }
-    }
-    return;
   }
 
   /// Reset various work uniqueness counters
-  fn reset_workuniqueness(&mut self) {
-    self.state.seenname.reset();
-    self.state.seentitle.reset();
-    self.state.seenbaretitle.reset();
-    self.state.seenwork.reset();
+  pub fn reset_workuniqueness(&mut self) {
+    self.state.seenname.clear();
+    self.state.seentitle.clear();
+    self.state.seenbaretitle.clear();
+    self.state.seenwork.clear();
   }
 
   /// Get the count of occurrences of a labelname or labeltitle
-  fn get_seenname(&self, identifier: &str) -> u32 {
-    return $self->{state}{seenname}{$identifier};
+  pub fn get_seenname(&self, identifier: &str) -> u32 {
+    self.state.seenname.get(identifier).unwrap_or(0)
   }
 
   /// Increment the count of occurrences of a labelname or labeltitle
-  fn incr_seenname(&mut self, identifier: &str) {
-    $self->{state}{seenname}{$identifier}++;
-    return;
+  pub fn incr_seenname(&mut self, identifier: &str) {
+    *self.state.seenname.in_entry(identifier) += 1;
   }
 
   /// Get the count of occurrences of a labeltitle
-  fn get_seentitle(self, $identifier) {
-    return $self->{state}{seentitle}{$identifier};
+  pub fn get_seentitle(&self, identifier: &str) -> u32 {
+    self.state.seentitle.get(identifier).unwrap_or(0)
   }
 
   /// Increment the count of occurrences of a labeltitle
-  fn incr_seentitle(self, $identifier) {
-    $self->{state}{seentitle}{$identifier}++;
-    return;
+  pub fn incr_seentitle(&mut self, identifier: &str) {
+    *self.state.seentitle.in_entry(identifier) += 1;
   }
 
-  /// Get the count of occurrences of a labeltitle when there is
-  /// no labelname
-  fn get_seenbaretitle(self, $identifier) {
-    return $self->{state}{seenbaretitle}{$identifier};
+  /// Get the count of occurrences of a labeltitle when there is no labelname
+  pub fn get_seenbaretitle(&self, identifier: &str) -> u32 {
+    self.state.seenbaretitle.get(identifier).unwrap_or(0)
   }
 
   /// Increment the count of occurrences of a labeltitle
   /// when there is no labelname
-  fn incr_seenbaretitle(self, $identifier) {
-    $self->{state}{seenbaretitle}{$identifier}++;
-    return;
+  pub fn incr_seenbaretitle(&mut self, identifier: &str) {
+    *self.state.seenbaretitle.in_entry(identifier) += 1;
   }
 
   /// Get the count of occurrences of a labelname and labeltitle
-  fn get_seenwork(self, $identifier) {
-    return $self->{state}{seenwork}{$identifier};
+  pub fn get_seenwork(&self, identifier: &str) -> u32 {
+    self.state.seenwork.get(identifier).unwrap_or(0)
   }
 
   /// Increment the count of occurrences of a labelname and labeltitle
-  fn incr_seenwork(self, $identifier) {
-    $self->{state}{seenwork}{$identifier}++;
-    return;
+  pub fn incr_seenwork(&mut self, identifier: &str) {
+    *self.state.seenwork.in_entry(identifier) += 1;
   }
 
   /// Increment a counter to say we have seen this labelalpha
-  fn incr_la_disambiguation(self, $la) {
-    $self->{state}{ladisambiguation}{$la}++;
-    return;
+  pub fn incr_la_disambiguation(&mut self, la: &str) {
+    *self.state.ladisambiguation.in_entry(la) += 1;
   }
 
   /// Get the disambiguation counter for this labelalpha.
   /// Return a 0 for undefs to avoid spurious errors.
-  fn get_la_disambiguation(self, $la) {
-    return $self->{state}{ladisambiguation}{$la}.unwrap_or(0);
+  pub fn get_la_disambiguation(&self, la: &str) -> u32 {
+    self.state.ladisambiguation.get(la).unwrap_or(0)
   }
 
   /// Sets the sortingtemplate name of a data list
-  fn set_sortingtemplatename(self, stn) {
-    $self->{sortingtemplatename} = stn.to_lowercase();
-    return;
+  pub fn set_sortingtemplatename(&mut self, stn) {
+    self.sortingtemplatename = stn.to_lowercase();
   }
 
   /// Gets the attributes of a data list
-  fn get_attrs(self) {
+  pub fn get_attrs(&self) {
     format!("{}/{}/{}/{}/{}", self.sortingtemplatename,
                       self.sortingnamekeytemplatename,
                       self.labelprefix,
                       self.uniquenametemplatename,
-                      self.labelalphanametemplatename);
+                      self.labelalphanametemplatename)
   }
 
   /// Gets the sortingtemplatename of a data list
-  fn get_sortingtemplatename(&self) {
-    return $self->{sortingtemplatename};
+  pub fn get_sortingtemplatename(&self) -> &str {
+    &self.sortingtemplatename
   }
 
   /// Sets the sortingnamekeytemplate name of a data list
-  fn set_sortingnamekeytemplatename(self, snksn) {
-    $self->{sortingnamekeytemplatename} = snksn.to_lowercase();
+  pub fn set_sortingnamekeytemplatename(&mut self, snksn) {
+    self.sortingnamekeytemplatename = Some(snksn.to_lowercase());
     return;
   }
 
   /// Gets the sortingnamekeytemplatename of a data list
-  fn get_sortingnamekeytemplatename(&self) -> &Option<String> {
-    &self.sortingnamekeytemplatename()
+  pub fn get_sortingnamekeytemplatename(&self) -> &Option<&str> {
+    self.sortingnamekeytemplatename.as_ref()
   }
 
   /// Sets the uniquenametemplate name of a data list
-  fn set_uniquenametemplatename(&mut self, untn: &str) {
+  pub fn set_uniquenametemplatename(&mut self, untn: &str) {
     self.uniquenametemplatename = Some(untn.to_lowercase());
   }
 
   /// Gets the uniquenametemplate name of a data list
-  fn get_uniquenametemplatename(&self) -> &Option<String> {
+  pub fn get_uniquenametemplatename(&self) -> &Option<String> {
     &self.uniquenametemplatename;
   }
 
   /// Sets the labelalphanametemplate name of a data list
-  fn set_labelalphanametemplatename(self, latn) {
+  pub fn set_labelalphanametemplatename(&mut self, latn) {
     $self->{labelalphanametemplatename} = latn.to_lowercase();
     return;
   }
 
   /// Gets the labelalphanametemplate name of a data list
-  fn get_labelalphanametemplatename(self) {
+  pub fn get_labelalphanametemplatename(self) {
     return $self->{labelalphanametemplatename};
   }
 
   /// Sets the sortinit collator for this list
-  fn set_sortinit_collator(&mut self, collator) {
+  pub fn set_sortinit_collator(&mut self, collator) {
     $self->{sortinitcollator} = collator;
     return;
   }
 
   /// Gets the sortinit collator for this list
-  fn get_sortinit_collator(self) {
+  pub fn get_sortinit_collator(self) {
     return $self->{sortinitcollator};
   }
 
   /// Gets the labelprefix setting of a data list
-  fn get_labelprefix(&self) -> String {
+  pub fn get_labelprefix(&self) -> String {
     &self.labelprefix
   }
 
   /// Sets the labelprefix setting of a data list
-  fn set_labelprefix(&mut self, pn: &str) {
+  pub fn set_labelprefix(&mut self, pn: &str) {
     self.labelprefix = pn.into();
   }
 
   /// Sets the name of a data list
-  fn set_name(&mut self, name: &str) {
+  pub fn set_name(&mut self, name: &str) {
     self.name = name.into();
   }
 
   /// Gets the name of a data list
-  fn get_name(&self) -> &String {
+  pub fn get_name(&self) -> &String {
     &self.name
   }
 
   /// Sets the type of a data list
-  fn set_type(&mut self, typ: &str) {
+  pub fn set_type(&mut self, typ: &str) {
     self.typ = typ.to_lowercase();
     return;
   }
 
   /// Gets the type of a section list
-  fn get_type(&self) -> &String {
+  pub fn get_type(&self) -> &String {
     self.typ
   }
 
   /// Sets the keys for the list
-  fn set_keys(self, $keys) {
+  pub fn set_keys(self, $keys) {
     $self->{keys} = $keys;
     return;
   }
 
   /// Gets the keys for the list
-  fn get_keys(&self) -> &Vec<String> {
+  pub fn get_keys(&self) -> &Vec<String> {
     &self.keys
   }
 
   /// Count the keys for the list
-  fn count_keys(&self) {
+  pub fn count_keys(&self) {
     self.keys.len()
   }
 
   /// Gets  name list data
-  fn get_namelistdata(self) {
-    return $self->{state}{namelistdata};
+  pub fn get_namelistdata(self) {
+    return self.state.namelistdata;
   }
 
   /// Saves name list data
-  fn set_namelistdata(self, $nld) {
-    $self->{state}{namelistdata} = $nld;
+  pub fn set_namelistdata(self, $nld) {
+    self.state.namelistdata = $nld;
     return;
   }
 
   /// Gets labelalpha field data
-  fn get_labelalphadata(self) {
-    return $self->{state}{labelalphadata};
+  pub fn get_labelalphadata(self) {
+    return self.state{labelalphadata};
   }
 
   /// Saves labelalpha data
-  fn set_labelalphadata(self, $lad) {
-    $self->{state}{labelalphadata} = $lad;
+  pub fn set_labelalphadata(self, $lad) {
+    self.state{labelalphadata} = $lad;
     return;
   }
 
   /// Gets labelalpha field data for a key
-  fn get_labelalphadata_for_key(self, key: &str) {
-    return $self->{state}{labelalphadata}{$key};
+  pub fn get_labelalphadata_for_key(self, key: &str) {
+    return self.state{labelalphadata}{$key};
   }
 
   /// Saves labelalpha field data for a key
-  fn set_labelalphadata_for_key(self, $key, $la) {
+  pub fn set_labelalphadata_for_key(self, $key, $la) {
     if !defined($key) {
       return;
     }
-    $self->{state}{labelalphadata}{$key} = $la;
+    self.state{labelalphadata}{$key} = $la;
     return;
   }
 
   /// Saves extradate field data for a key
-  fn set_extradatedata_for_key(self, $key, $ed) {
+  pub fn set_extradatedata_for_key(self, $key, $ed) {
     if !defined($key) {
       return;
     }
-    $self->{state}{extradatedata}{$key} = $ed;
+    self.state{extradatedata}{$key} = $ed;
     return;
   }
 
   /// Saves extraname field data for a key
-  fn set_extranamedata_for_key(self, $key, $en) {
+  pub fn set_extranamedata_for_key(self, $key, $en) {
     if !defined($key) {
       return;
     }
-    $self->{state}{extranamedata}{$key} = $en;
+    self.state{extranamedata}{$key} = $en;
     return;
   }
 
   /// Gets the extraname field data for a key
-  fn get_extranamedata_for_key(self, $key) {
+  pub fn get_extranamedata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
-    return $self->{state}{extranamedata}{$key};
+    return self.state{extranamedata}{$key};
   }
 
   /// Saves extradate field data for all keys
-  fn set_extradatedata(self, $ed) {
-    $self->{state}{extradatedata} = $ed;
+  pub fn set_extradatedata(self, $ed) {
+    self.state{extradatedata} = $ed;
     return;
   }
 
   /// Gets the extradate field data for a key
-  fn get_extradatedata_for_key(self, $key) {
+  pub fn get_extradatedata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
-    return $self->{state}{extradatedata}{$key};
+    return self.state{extradatedata}{$key};
   }
 
   /// Saves extratitle field data for a key
-  fn set_extratitledata_for_key(self, $key, $ed) {
+  pub fn set_extratitledata_for_key(self, $key, $ed) {
     if !defined($key) {
       return;
     }
-    $self->{state}{extratitledata}{$key} = $ed;
+    self.state{extratitledata}{$key} = $ed;
     return;
   }
 
   /// Saves extratitle field data for all keys
-  fn set_extratitledata(self, $ed) {
-    $self->{state}{extratitledata} = $ed;
+  pub fn set_extratitledata(self, $ed) {
+    self.state{extratitledata} = $ed;
     return;
   }
 
   /// Gets the extratitle field data for a key
-  fn get_extratitledata_for_key(self, $key) {
+  pub fn get_extratitledata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
-    return $self->{state}{extratitledata}{$key};
+    return self.state{extratitledata}{$key};
   }
 
   /// Saves extratitleyear field data for a key
-  fn set_extratitleyeardata_for_key(self, $key, $ed) {
+  pub fn set_extratitleyeardata_for_key(self, $key, $ed) {
     if !defined($key) {
       return;
     }
-    $self->{state}{extratitleyeardata}{$key} = $ed;
+    self.state{extratitleyeardata}{$key} = $ed;
     return;
   }
 
   /// Saves extratitleyear field data for all keys
-  fn set_extratitleyeardata(self, $ed) {
-    $self->{state}{extratitleyeardata} = $ed;
+  pub fn set_extratitleyeardata(self, $ed) {
+    self.state{extratitleyeardata} = $ed;
     return;
   }
 
   /// Gets the extratitleyear field data for a key
-  fn get_extratitleyeardata_for_key(self, $key) {
+  pub fn get_extratitleyeardata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
-    return $self->{state}{extratitleyeardata}{$key};
+    return self.state{extratitleyeardata}{$key};
   }
 
   /// Saves extraalpha field data for a key
-  fn set_extraalphadata_for_key(self, $key, $ed) {
+  pub fn set_extraalphadata_for_key(self, $key, $ed) {
     if !defined($key) {
       return;
     }
-    $self->{state}{extraalphadata}{$key} = $ed;
+    self.state{extraalphadata}{$key} = $ed;
     return;
   }
 
   /// Saves extraalpha field data for all keys
-  fn set_extraalphadata(self, $ed) {
-    $self->{state}{extraalphadata} = $ed;
+  pub fn set_extraalphadata(self, $ed) {
+    self.state{extraalphadata} = $ed;
     return;
   }
 
   /// Gets the extraalpha field data for a key
-  fn get_extraalphadata_for_key(self, $key) {
+  pub fn get_extraalphadata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
-    return $self->{state}{extraalphadata}{$key};
+    return self.state{extraalphadata}{$key};
   }
 
   /// Gets the sortdata schema for a sortlist
-  fn get_sortdataschema(self) {
+  pub fn get_sortdataschema(self) {
     return $self->{sortdataschema};
   }
 
   /// Saves the sortdata schema for a sortlist
-  fn set_sortdataschema(self, $ss) {
+  pub fn set_sortdataschema(self, $ss) {
     $self->{sortdataschema} = $ss;
     return;
   }
 
   /// Saves sorting data in a list for a key
-  fn set_sortdata(self, $key, $sd) {
+  pub fn set_sortdata(self, $key, $sd) {
     if !defined($key) {
       return;
     }
@@ -1012,7 +1009,7 @@ impl DataList {
   }
 
   /// Gets the sorting data in a list for a key
-  fn get_sortdata_for_key(self, $key) {
+  pub fn get_sortdata_for_key(self, $key) {
     if !defined($key) {
       return;
     }
@@ -1020,7 +1017,7 @@ impl DataList {
   }
 
   /// Saves sortinit data for a specific key
-  fn set_sortinitdata_for_key(self, $key, $init) {
+  pub fn set_sortinitdata_for_key(self, $key, $init) {
     if !defined($key) {
       return;
     }
@@ -1029,13 +1026,13 @@ impl DataList {
   }
 
   /// Saves sortinit data for all keys
-  fn set_sortinitdata(self, $sid) {
+  pub fn set_sortinitdata(self, $sid) {
     $self->{sortinitdata} = $sid;
     return;
   }
 
   /// Gets the sortinit in a list for a key
-  fn get_sortinit_for_key(self, $key) {
+  pub fn get_sortinit_for_key(self, $key) {
     if !defined($key) {
       return;
     }
@@ -1043,23 +1040,23 @@ impl DataList {
   }
 
   /// Sets the sortingtemplate of a list
-  fn set_sortingtemplate(self, sortingtemplate) {
+  pub fn set_sortingtemplate(self, sortingtemplate) {
     $self->{sortingtemplate} = $sortingtemplate;
     return;
   }
 
   /// Gets the sortingtemplate of a list
-  fn get_sortingtemplate(self) {
+  pub fn get_sortingtemplate(self) {
     return $self->{sortingtemplate};
   }
 
   /// Adds a filter to a list object
-  fn add_filter(&mut self, filter: Filter) {
+  pub fn add_filter(&mut self, filter: Filter) {
     self.filters.push(filter)
   }
 
   /// Gets all filters for a list object
-  fn get_filters(&self) -> &Vec<Filter> {
+  pub fn get_filters(&self) -> &Vec<Filter> {
     self.filters
   }
 
@@ -1069,7 +1066,7 @@ impl DataList {
   /// of the reference context and not the entry per se so it cannot be stored
   /// statically in the entry and must be retrieved from the specific datalist
   /// when outputting the entry.
-  fn instantiate_entry(&self, section: Section, $entry, key: &str, fmt: Option<OutputFormat>) -> String {
+  pub fn instantiate_entry(&self, section: Section, $entry, key: &str, fmt: Option<OutputFormat>) -> String {
     let be = section.bibentry(key);
     let bee = be.get_field("entrytype");
 
@@ -1233,11 +1230,11 @@ impl DataList {
         }
         for n in nl.names() {
           let nid = n.get_id();
-          if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
+          if (let $e = self.state.namelistdata{nl.get_id()}{nid}{hash}) {
             let s = format!("hash={e}");
             let r = regex_xms(&format!(r"<BDS>{nid}-PERNAMEHASH</BDS>")).unwrap();
             entry_string = r.entry_string.replace_all(&s);
-            
+
           }
           else {
             let r = regex_xms(&format!(r"<BDS>{nid}-PERNAMEHASH</BDS>,?")).unwrap();
@@ -1444,7 +1441,7 @@ impl DataList {
         }
         for n in nl.names() {
           let nid = n.get_id();
-          if (let $e = $self->{state}{namelistdata}{nl.get_id()}{nid}{hash}) {
+          if (let $e = self.state.namelistdata{nl.get_id()}{nid}{hash}) {
             let r = regex_xms(&format!(r"\[BDS\]{nid}-PERNAMEHASH\[/BDS\]")).unwrap();
             entry_string = r.entry_string.replace_all(e);
           }
@@ -1511,9 +1508,9 @@ impl DataList {
   /// namelist_differs_index([a, b, c, d, e]) -> 2
   /// namelist_differs_index([a]) -> 1
   /// ```
-  fn namelist_differs_index(self, @list) {
+  pub fn namelist_differs_index(self, @list) {
     let mut index = None;
-    for l_s in (keys $self->{state}{uniquelistcount}{global}{final}->%*) {
+    for l_s in (keys self.state{uniquelistcount}{global}{final}->%*) {
       let @l = split("\x{10FFFD}", $l_s);
       if Compare(\@list, \@l) {// Ignore identical lists
         continue;
@@ -1555,7 +1552,7 @@ impl DataList {
   /// [a, b, d, e, f]
   /// [a, b, e, z, z, y]
   /// ```
-  fn namelist_differs_nth(self, list, n, ul: &str, labelyear) -> bool {
+  pub fn namelist_differs_nth(self, list, n, ul: &str, labelyear) -> bool {
     let @list_one = $list->@*;
     // Loop over all final lists, looking for ones which match:
     // * up to n - 1
@@ -1564,9 +1561,9 @@ impl DataList {
 
     // uniquelist=minyear should only disambiguate from entries with the
     // same labelyear
-    let $unames = $self->{state}{uniquelistcount}{global}{final};
+    let $unames = self.state{uniquelistcount}{global}{final};
     if ul == "minyear" {
-      $unames = $self->{state}{uniquelistcount}{global}{final}{$labelyear};
+      $unames = self.state{uniquelistcount}{global}{final}{$labelyear};
     }
 
     for l_s in unames.keys() {

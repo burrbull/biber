@@ -25,3 +25,4 @@ unicode-normalization = "0.1.19"
 unicode-segmentation = "1.9.0"
 uuid = { version = "1.1.2", features = ["v4", "fast-rng"] }
 xmltree = { version = "0.10.3", features = ["attribute-order"] }
+hashbrown = "0.15.2"
